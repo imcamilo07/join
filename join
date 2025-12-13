@@ -18,6 +18,31 @@ local scrolling = mainFrame:WaitForChild("ScrollingFrame")
 local usados = {} -- ignorados persistentes
 local joinLock = false -- 🔒 FIX anti-spam JOIN
 
+-- ================= PERSISTENCIA (AGREGADO) =================
+local FILE_NAME = "auto_join_usados.json"
+
+local HttpService = game:GetService("HttpService")
+
+local function cargarUsados()
+	if isfile(FILE_NAME) then
+		local ok, data = pcall(function()
+			return HttpService:JSONDecode(readfile(FILE_NAME))
+		end)
+		if ok and type(data) == "table" then
+			usados = data
+		end
+	end
+end
+
+local function guardarUsados()
+	pcall(function()
+		writefile(FILE_NAME, HttpService:JSONEncode(usados))
+	end)
+end
+
+cargarUsados()
+-- ===========================================================
+
 -- ================= UTILS =================
 local function parseValor(txt)
 	if not txt then return nil end
@@ -148,6 +173,7 @@ local function escanear()
 
 		item.MouseButton1Click:Connect(function()
 			usados[srv.firma] = true
+			guardarUsados() -- AGREGADO
 			item.BackgroundColor3 = Color3.fromRGB(90,40,40)
 			escanear()
 		end)
@@ -181,6 +207,7 @@ local function escanear()
 
 				task.delay(0.3, function()
 					usados[srv.firma] = true
+					guardarUsados() -- AGREGADO
 					joinLock = false
 				end)
 			end)
