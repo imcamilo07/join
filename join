@@ -1,149 +1,139 @@
--- =========================
--- CONFIG
--- =========================
-local SCAN_DELAY = 1.5 -- segundos entre escaneos
-local MAX_SCANS = 5
+-- ================= CONFIG =================
+local MAX_SERVERS = 5
 
--- =========================
--- SERVICES
--- =========================
-local Players = game:GetService("Players")
-local player = Players.LocalPlayer
+-- ================= SETUP =================
+local player = game.Players.LocalPlayer
+local petMenu = player.PlayerGui:WaitForChild("PetMenu")
+local mainFrame = petMenu:WaitForChild("Frame")
+local scrolling = mainFrame:WaitForChild("ScrollingFrame")
 
--- =========================
--- GUI REFERENCES (AJUSTA SI ES NECESARIO)
--- =========================
-local playerGui = player:WaitForChild("PlayerGui")
-local petMenu = playerGui:WaitForChild("PetMenu")
-local serversFrame = petMenu.Frame.ScrollingFrame
+local usados = {}
 
--- BOTONES PROPIOS
-local joinButton = petMenu:WaitForChild("JoinButton") -- TU botón gigante
-local toggleButton = petMenu:WaitForChild("ToggleButton") -- ON / OFF
+-- ================= UTILS =================
+local function parseValor(txt)
+	if not txt then return nil end
+	txt = txt:gsub("%s","")
 
--- =========================
--- STATE
--- =========================
-local autoEnabled = false
-local usedServers = {} -- guarda valores ya usados
-local scanning = false
+	local num, suf = txt:match("([%d%.]+)([MB])")
+	if not num or not suf then return nil end
 
--- =========================
--- UTILS
--- =========================
-local function parseValue(text)
-	if not text then return nil end
+	num = tonumber(num)
+	if not num then return nil end
 
-	text = tostring(text):upper():gsub(" ", "")
-	local number, unit = text:match("([%d%.]+)([MB])")
-	if not number or not unit then return nil end
-
-	number = tonumber(number)
-	if not number then return nil end
-
-	if unit == "B" then
-		return number * 1_000_000_000, text
-	elseif unit == "M" then
-		return number * 1_000_000, text
+	if suf == "B" then
+		return num * 1e9, num .. "B"
+	else
+		return num * 1e6, num .. "M"
 	end
-
-	return nil
 end
 
--- =========================
--- SCAN SERVERS
--- =========================
-local function scanServers()
-	if scanning or not autoEnabled then return end
-	scanning = true
+-- ================= BIG JOIN GUI =================
+local gui = Instance.new("ScreenGui")
+gui.Name = "BIG_JOIN_GUI"
+gui.ResetOnSpawn = false
+gui.Parent = player.PlayerGui
+
+local bigBtn = Instance.new("TextButton")
+bigBtn.Size = UDim2.new(0, 320, 0, 120)
+bigBtn.Position = UDim2.new(1, -340, 0.5, -60) -- derecha-centro (iPhone friendly)
+bigBtn.BackgroundColor3 = Color3.fromRGB(0,170,0)
+bigBtn.TextColor3 = Color3.new(1,1,1)
+bigBtn.TextScaled = true
+bigBtn.Font = Enum.Font.SourceSansBold
+bigBtn.Visible = false
+bigBtn.Parent = gui
+
+-- ================= CORE =================
+local function escanear()
+	local lista = {}
+	local vistos = 0
 
 	print("----- [Auto] Escaneando servidores -----")
 
-	local bestValue = 0
-	local bestText = nil
-	local bestJoinButton = nil
+	for _,obj in ipairs(scrolling:GetChildren()) do
+		if obj:IsA("Frame") then
+			local lbl = obj:FindFirstChildWhichIsA("TextLabel")
+			if lbl then
+				local valor, textoLimpio = parseValor(lbl.Text)
+				if valor then
+					vistos += 1
+					print("[Scan #" .. vistos .. "]", lbl.Text)
 
-	for scanIndex = 1, MAX_SCANS do
-		print("[Scan #" .. scanIndex .. "]")
-
-		for _, frame in ipairs(serversFrame:GetChildren()) do
-			if frame:IsA("Frame") then
-				local valueText = nil
-				local realJoinButton = nil
-
-				for _, obj in ipairs(frame:GetDescendants()) do
-					if obj:IsA("TextLabel") then
-						local value, originalText = parseValue(obj.Text)
-						if value and not usedServers[originalText] then
-							if value > (valueText and valueText.value or 0) then
-								valueText = {
-									value = value,
-									text = originalText
-								}
-							end
-						end
-					elseif obj:IsA("TextButton") and obj.Text:upper():find("JOIN") then
-						realJoinButton = obj
-					end
-				end
-
-				if valueText and realJoinButton then
-					if valueText.value > bestValue then
-						bestValue = valueText.value
-						bestText = valueText.text
-						bestJoinButton = realJoinButton
+					if vistos <= MAX_SERVERS then
+						table.insert(lista, {
+							frame = obj,
+							valor = valor,
+							texto = textoLimpio,
+							firma = textoLimpio
+						})
 					end
 				end
 			end
 		end
-
-		task.wait(0.2)
+		if vistos >= MAX_SERVERS then break end
 	end
 
-	if bestJoinButton and bestText then
-		print("[Auto] Mejor servidor:", bestText)
-
-		joinButton.Text = "JOIN " .. bestText
-		joinButton.Visible = true
-
-		joinButton.MouseButton1Click:Once(function()
-			print("[Auto] Ejecutando JOIN real")
-			usedServers[bestText] = true
-
-			-- CLICK REAL (EL QUE SÍ FUNCIONA)
-			pcall(function()
-				bestJoinButton:Activate()
-			end)
-		end)
-	else
-		print("[Auto] No se encontró servidor válido")
+	if #lista == 0 then
+		print("[Auto] Ningún servidor válido")
+		bigBtn.Visible = false
+		return
 	end
 
-	scanning = false
+	table.sort(lista, function(a,b)
+		return a.valor > b.valor
+	end)
+
+	local mejor = lista[1]
+
+	if usados[mejor.firma] then
+		print("[Auto] Servidor ya usado:", mejor.texto)
+		bigBtn.Visible = false
+		return
+	end
+
+	print("[Auto] Mejor servidor:", mejor.texto)
+
+	bigBtn.Text = "JOIN " .. mejor.texto
+	bigBtn.Visible = true
+
+	-- limpiar conexiones viejas
+	for _,c in ipairs(getconnections(bigBtn.MouseButton1Click)) do
+		c:Disable()
+	end
+
+	bigBtn.MouseButton1Click:Connect(function()
+		usados[mejor.firma] = true
+		bigBtn.Visible = false
+
+		local inner = mejor.frame:FindFirstChildWhichIsA("Frame")
+		if not inner then
+			warn("Inner Frame no encontrado")
+			return
+		end
+
+		local joinBtn = inner:FindFirstChildWhichIsA("TextButton")
+		if not joinBtn then
+			warn("JOIN no encontrado")
+			return
+		end
+
+		print("[Auto] Ejecutando JOIN real:", mejor.texto)
+
+		-- 🔥 JOIN REAL (EL QUE SÍ FUNCIONA)
+		for _,conn in ipairs(getconnections(joinBtn.MouseButton1Click)) do
+			conn:Fire()
+		end
+	end)
 end
 
--- =========================
--- TOGGLE ON / OFF
--- =========================
-toggleButton.MouseButton1Click:Connect(function()
-	autoEnabled = not autoEnabled
-	toggleButton.Text = autoEnabled and "AUTO: ON" or "AUTO: OFF"
-
-	if autoEnabled then
-		task.spawn(function()
-			while autoEnabled do
-				scanServers()
-				task.wait(SCAN_DELAY)
-			end
-		end)
-	end
+-- ================= TRIGGER =================
+scrolling.ChildAdded:Connect(function()
+	task.wait(0.3)
+	escanear()
 end)
 
--- =========================
--- INIT
--- =========================
-joinButton.Visible = false
-toggleButton.Text = "AUTO: OFF"
+print("[Auto] Script listo. Refresca manualmente.")
+
 
 
 
