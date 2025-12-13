@@ -192,7 +192,7 @@ end
 
 -- ================= TRIGGER =================
 scrolling.ChildAdded:Connect(function()
-	task.wait(0.05)
+	task.wait(0.02)
 	escanear()
 end)
 
