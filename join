@@ -169,10 +169,14 @@ local function escanear()
 		item.TextColor3 = Color3.new(1,1,1)
 		item.Parent = listScroll
 
+		-- 🔹🔹🔹 ÚNICO CAMBIO AÑADIDO: TOGGLE IGNORADO
 		item.MouseButton1Click:Connect(function()
-			usados[srv.firma] = true
+			if usados[srv.firma] then
+				usados[srv.firma] = nil -- des-ignorar
+			else
+				usados[srv.firma] = true -- ignorar
+			end
 			guardarUsados()
-			item.BackgroundColor3 = Color3.fromRGB(90,40,40)
 			escanear()
 		end)
 	end
@@ -180,7 +184,6 @@ local function escanear()
 	bigBtn.Visible = false
 
 	for _,srv in ipairs(lista) do
-		-- 🔥🔥🔥 ÚNICA CORRECCIÓN REAL: se quitó el bloqueo por JobId
 		if not usados[srv.firma]
 			and srv.valor >= MIN_JOIN_VALUE then
 
@@ -237,6 +240,7 @@ scrolling.ChildAdded:Connect(function()
 end)
 
 print("[Auto] Script listo.")
+
 
 
 
