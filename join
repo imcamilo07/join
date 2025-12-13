@@ -44,7 +44,7 @@ end
 
 cargarUsados()
 
--- 🔹🔹🔹 AÑADIDO: marcar el servidor actual como visitado
+-- marcar el servidor actual como visitado (NO AFECTA AUTOJOIN)
 if game.JobId and game.JobId ~= "" then
 	servidoresVisitados[game.JobId] = true
 end
@@ -180,9 +180,9 @@ local function escanear()
 	bigBtn.Visible = false
 
 	for _,srv in ipairs(lista) do
+		-- 🔥🔥🔥 ÚNICA CORRECCIÓN REAL: se quitó el bloqueo por JobId
 		if not usados[srv.firma]
-			and srv.valor >= MIN_JOIN_VALUE
-			and not servidoresVisitados[game.JobId] then -- 🔹 AÑADIDO
+			and srv.valor >= MIN_JOIN_VALUE then
 
 			bigBtn.Text = "JOIN " .. srv.texto
 			bigBtn.Visible = true
@@ -206,7 +206,6 @@ local function escanear()
 					conn:Fire()
 				end
 
-				-- 🔹🔹🔹 AÑADIDO: marcar servidor como visitado
 				if game.JobId and game.JobId ~= "" then
 					servidoresVisitados[game.JobId] = true
 				end
@@ -238,6 +237,7 @@ scrolling.ChildAdded:Connect(function()
 end)
 
 print("[Auto] Script listo.")
+
 
 
 
