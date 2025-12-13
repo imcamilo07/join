@@ -18,9 +18,8 @@ local scrolling = mainFrame:WaitForChild("ScrollingFrame")
 local usados = {} -- ignorados persistentes
 local joinLock = false -- 🔒 FIX anti-spam JOIN
 
--- ================= PERSISTENCIA (AGREGADO) =================
+-- ================= PERSISTENCIA =================
 local FILE_NAME = "auto_join_usados.json"
-
 local HttpService = game:GetService("HttpService")
 
 local function cargarUsados()
@@ -41,7 +40,7 @@ local function guardarUsados()
 end
 
 cargarUsados()
--- ===========================================================
+-- =========================================
 
 -- ================= UTILS =================
 local function parseValor(txt)
@@ -49,23 +48,15 @@ local function parseValor(txt)
 	txt = txt:gsub("%s+", "")
 
 	local maxValue = nil
-
 	for num, suf in txt:gmatch("([%d%.]+)([MB])") do
 		local n = tonumber(num)
 		if n then
-			local value
-			if suf == "B" then
-				value = n * 1e9
-			elseif suf == "M" then
-				value = n * 1e6
-			end
-
+			local value = (suf == "B") and n * 1e9 or (suf == "M") and n * 1e6
 			if value and (not maxValue or value > maxValue) then
 				maxValue = value
 			end
 		end
 	end
-
 	return maxValue
 end
 
@@ -75,7 +66,6 @@ gui.Name = "AUTO_JOIN_GUI"
 gui.ResetOnSpawn = false
 gui.DisplayOrder = 999999
 gui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
-gui.Enabled = true
 gui.Parent = PlayerGui
 
 local bigBtn = Instance.new("TextButton")
@@ -137,7 +127,7 @@ local function escanear()
 							frame = obj,
 							valor = valor,
 							texto = lbl.Text,
-							firma = lbl.Text
+							firma = obj:GetDebugId() -- ✅ FIX ÚNICO
 						})
 					end
 				end
@@ -173,8 +163,7 @@ local function escanear()
 
 		item.MouseButton1Click:Connect(function()
 			usados[srv.firma] = true
-			guardarUsados() -- AGREGADO
-			item.BackgroundColor3 = Color3.fromRGB(90,40,40)
+			guardarUsados()
 			escanear()
 		end)
 	end
@@ -207,12 +196,11 @@ local function escanear()
 
 				task.delay(0.3, function()
 					usados[srv.firma] = true
-					guardarUsados() -- AGREGADO
+					guardarUsados()
 					joinLock = false
 				end)
 			end)
 
-			-- 🔥 AUTO JOIN (USA TU BOTÓN, SIN DELAY)
 			task.defer(function()
 				if bigBtn.Visible and not joinLock then
 					for _,conn in ipairs(getconnections(bigBtn.MouseButton1Click)) do
@@ -233,6 +221,7 @@ scrolling.ChildAdded:Connect(function()
 end)
 
 print("[Auto] Script listo.")
+
 
 
 
