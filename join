@@ -1,6 +1,6 @@
 -- ================= CONFIG =================
 local MAX_SERVERS = 5
-local MIN_JOIN_VALUE = 200e6 -- 150M mínimo para mostrar JOIN
+local MIN_JOIN_VALUE = 150e6 -- 150M mínimo para mostrar JOIN
 
 -- ================= SETUP =================
 local player = game.Players.LocalPlayer
@@ -17,10 +17,10 @@ local scrolling = mainFrame:WaitForChild("ScrollingFrame")
 
 local usados = {} -- ignorados persistentes
 local joinLock = false -- 🔒 FIX anti-spam JOIN
-local joinedThisSession = false -- ✅ AÑADIDO: bloquea re-join al mismo server
 
--- ================= PERSISTENCIA =================
+-- ================= PERSISTENCIA (AGREGADO) =================
 local FILE_NAME = "auto_join_usados.json"
+
 local HttpService = game:GetService("HttpService")
 
 local function cargarUsados()
@@ -41,6 +41,7 @@ local function guardarUsados()
 end
 
 cargarUsados()
+-- ===========================================================
 
 -- ================= UTILS =================
 local function parseValor(txt)
@@ -48,15 +49,23 @@ local function parseValor(txt)
 	txt = txt:gsub("%s+", "")
 
 	local maxValue = nil
+
 	for num, suf in txt:gmatch("([%d%.]+)([MB])") do
 		local n = tonumber(num)
 		if n then
-			local value = (suf == "B" and n * 1e9) or (suf == "M" and n * 1e6)
+			local value
+			if suf == "B" then
+				value = n * 1e9
+			elseif suf == "M" then
+				value = n * 1e6
+			end
+
 			if value and (not maxValue or value > maxValue) then
 				maxValue = value
 			end
 		end
 	end
+
 	return maxValue
 end
 
@@ -65,11 +74,13 @@ local gui = Instance.new("ScreenGui")
 gui.Name = "AUTO_JOIN_GUI"
 gui.ResetOnSpawn = false
 gui.DisplayOrder = 999999
+gui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+gui.Enabled = true
 gui.Parent = PlayerGui
 
 local bigBtn = Instance.new("TextButton")
-bigBtn.Size = UDim2.new(0,260,0,90)
-bigBtn.Position = UDim2.new(1,-280,0.5,-45)
+bigBtn.Size = UDim2.new(0, 260, 0, 90)
+bigBtn.Position = UDim2.new(1, -280, 0.5, -45)
 bigBtn.BackgroundColor3 = Color3.fromRGB(0,170,0)
 bigBtn.TextColor3 = Color3.new(1,1,1)
 bigBtn.TextScaled = true
@@ -78,8 +89,8 @@ bigBtn.Visible = false
 bigBtn.Parent = gui
 
 local listFrame = Instance.new("Frame")
-listFrame.Size = UDim2.new(0,260,0,150)
-listFrame.Position = UDim2.new(1,-280,0.5,-210)
+listFrame.Size = UDim2.new(0, 260, 0, 150)
+listFrame.Position = UDim2.new(1, -280, 0.5, -210)
 listFrame.BackgroundColor3 = Color3.fromRGB(35,35,35)
 listFrame.Visible = false
 listFrame.Parent = gui
@@ -87,9 +98,10 @@ listFrame.Parent = gui
 Instance.new("UICorner", listFrame).CornerRadius = UDim.new(0,12)
 
 local listScroll = Instance.new("ScrollingFrame")
-listScroll.Size = UDim2.new(1,-8,1,-8)
+listScroll.Size = UDim2.new(1, -8, 1, -8)
 listScroll.Position = UDim2.new(0,4,0,4)
 listScroll.CanvasSize = UDim2.new(0,0,0,0)
+listScroll.ScrollBarImageTransparency = 0.3
 listScroll.Parent = listFrame
 
 local layout = Instance.new("UIListLayout", listScroll)
@@ -121,11 +133,11 @@ local function escanear()
 				if valor then
 					vistos += 1
 					if vistos <= MAX_SERVERS then
-						table.insert(lista,{
+						table.insert(lista, {
 							frame = obj,
 							valor = valor,
 							texto = lbl.Text,
-							firma = lbl.Text .. "|" .. tostring(obj)
+							firma = lbl.Text
 						})
 					end
 				end
@@ -141,12 +153,15 @@ local function escanear()
 		return
 	end
 
-	table.sort(lista,function(a,b) return a.valor > b.valor end)
+	table.sort(lista, function(a,b)
+		return a.valor > b.valor
+	end)
+
 	listFrame.Visible = true
 
 	for _,srv in ipairs(lista) do
 		local item = Instance.new("TextButton")
-		item.Size = UDim2.new(1,-6,0,32)
+		item.Size = UDim2.new(1, -6, 0, 32)
 		item.Text = srv.texto
 		item.TextScaled = true
 		item.Font = Enum.Font.SourceSans
@@ -158,7 +173,7 @@ local function escanear()
 
 		item.MouseButton1Click:Connect(function()
 			usados[srv.firma] = true
-			guardarUsados()
+			guardarUsados() -- AGREGADO
 			item.BackgroundColor3 = Color3.fromRGB(90,40,40)
 			escanear()
 		end)
@@ -176,27 +191,30 @@ local function escanear()
 			end
 
 			bigBtn.MouseButton1Click:Connect(function()
-				if joinLock or joinedThisSession then return end -- ✅ AÑADIDO
+				if joinLock then return end
 				joinLock = true
 				bigBtn.Visible = false
 
-				local joinBtn = srv.frame:FindFirstChildWhichIsA("TextButton", true)
+				local inner = srv.frame:FindFirstChildWhichIsA("Frame")
+				if not inner then joinLock = false return end
+
+				local joinBtn = inner:FindFirstChildWhichIsA("TextButton")
 				if not joinBtn then joinLock = false return end
 
 				for _,conn in ipairs(getconnections(joinBtn.MouseButton1Click)) do
 					conn:Fire()
 				end
 
-				task.delay(0.3,function()
+				task.delay(0.3, function()
 					usados[srv.firma] = true
-					guardarUsados()
-					joinedThisSession = true -- ✅ AÑADIDO
+					guardarUsados() -- AGREGADO
 					joinLock = false
 				end)
 			end)
 
+			-- 🔥 AUTO JOIN (USA TU BOTÓN, SIN DELAY)
 			task.defer(function()
-				if bigBtn.Visible and not joinLock and not joinedThisSession then
+				if bigBtn.Visible and not joinLock then
 					for _,conn in ipairs(getconnections(bigBtn.MouseButton1Click)) do
 						conn:Fire()
 					end
@@ -215,7 +233,6 @@ scrolling.ChildAdded:Connect(function()
 end)
 
 print("[Auto] Script listo.")
-
 
 
 
