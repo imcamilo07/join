@@ -1,4 +1,4 @@
- -- ================= CONFIG =================
+-- ================= CONFIG =================
 local MAX_SERVERS = 5
 
 -- ================= SETUP =================
@@ -27,14 +27,14 @@ end
 
 -- ================= BIG JOIN GUI =================
 local gui = Instance.new("ScreenGui")
-gui.Name = "BIG_JOIN"
+gui.Name = "BIG_JOIN_GUI"
 gui.ResetOnSpawn = false
 gui.Parent = player.PlayerGui
 
 local bigBtn = Instance.new("TextButton")
 bigBtn.Size = UDim2.new(0, 320, 0, 120)
 bigBtn.Position = UDim2.new(0.5, -160, 0.7, 0)
-bigBtn.BackgroundColor3 = Color3.fromRGB(0,160,0)
+bigBtn.BackgroundColor3 = Color3.fromRGB(0,170,0)
 bigBtn.TextColor3 = Color3.new(1,1,1)
 bigBtn.TextScaled = true
 bigBtn.Font = Enum.Font.SourceSansBold
@@ -44,7 +44,7 @@ bigBtn.Parent = gui
 -- ================= CORE =================
 local function escanear()
 	local lista = {}
-	local count = 0
+	local vistos = 0
 
 	print("----- [Auto] Escaneando servidores -----")
 
@@ -54,19 +54,21 @@ local function escanear()
 			if lbl then
 				local valor = parseValor(lbl.Text)
 				if valor then
-					count += 1
-					print("[Scan #" .. count .. "]", lbl.Text)
-					if count <= MAX_SERVERS then
+					vistos += 1
+					print("[Scan #" .. vistos .. "]", lbl.Text)
+
+					if vistos <= MAX_SERVERS then
 						table.insert(lista, {
 							frame = obj,
 							valor = valor,
 							texto = lbl.Text,
+							firma = lbl.Text .. "_" .. tostring(vistos)
 						})
 					end
 				end
 			end
 		end
-		if count >= MAX_SERVERS then break end
+		if vistos >= MAX_SERVERS then break end
 	end
 
 	if #lista == 0 then
@@ -80,10 +82,9 @@ local function escanear()
 	end)
 
 	local mejor = lista[1]
-	local firma = mejor.texto
 
-	if usados[firma] then
-		print("[Auto] Servidor ya usado:", firma)
+	if usados[mejor.firma] then
+		print("[Auto] Servidor ya usado:", mejor.texto)
 		bigBtn.Visible = false
 		return
 	end
@@ -93,21 +94,35 @@ local function escanear()
 	bigBtn.Text = "JOIN " .. mejor.texto
 	bigBtn.Visible = true
 
-	bigBtn.MouseButton1Click:Once(function()
-		usados[firma] = true
+	-- IMPORTANTE: limpiar clicks previos
+	for _,c in ipairs(getconnections(bigBtn.MouseButton1Click)) do
+		c:Disable()
+	end
+
+	bigBtn.MouseButton1Click:Connect(function()
+		usados[mejor.firma] = true
 		bigBtn.Visible = false
 
 		local inner = mejor.frame:FindFirstChildWhichIsA("Frame")
-		if not inner then return end
+		if not inner then
+			warn("Inner Frame no encontrado")
+			return
+		end
 
 		local joinBtn = inner:FindFirstChildWhichIsA("TextButton")
-		if not joinBtn then return end
+		if not joinBtn then
+			warn("JOIN no encontrado")
+			return
+		end
 
+		-- 🔥 CLIC REAL (SOLUCIÓN DEFINITIVA)
 		pcall(function()
-	for _,c in ipairs(getconnections(joinBtn.MouseButton1Click)) do
-		c:Fire()
-	end
-end)
+			for _,conn in ipairs(getconnections(joinBtn.MouseButton1Click)) do
+				conn:Fire()
+			end
+		end)
+	end)
+end
 
 -- ================= TRIGGER =================
 scrolling.ChildAdded:Connect(function()
