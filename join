@@ -7,9 +7,8 @@ local petMenu = player.PlayerGui:WaitForChild("PetMenu")
 local mainFrame = petMenu:WaitForChild("Frame")
 local scrolling = mainFrame:WaitForChild("ScrollingFrame")
 
--- 🔴 persistente entre activaciones del menú
-local usados = _G.__SERVIDORES_USADOS or {}
-_G.__SERVIDORES_USADOS = usados
+-- Ignorados MANUALES (no se tocan solos)
+local ignorados = {}
 
 -- ================= UTILS =================
 local function parseValor(txt)
@@ -27,15 +26,16 @@ local function parseValor(txt)
 	return nil
 end
 
--- ================= JOIN GUI =================
+-- ================= GUI =================
 local gui = Instance.new("ScreenGui")
-gui.Name = "BIG_JOIN_GUI"
+gui.Name = "JOIN_HELPER_GUI"
 gui.ResetOnSpawn = false
 gui.Parent = player.PlayerGui
 
+-- JOIN BUTTON (NO SE TOCA FUNCIONALIDAD)
 local bigBtn = Instance.new("TextButton")
-bigBtn.Size = UDim2.new(0, 200, 0, 60) -- 🔹 más pequeño
-bigBtn.Position = UDim2.new(1, -220, 0, 20) -- 🔹 arriba derecha sin tocar bordes
+bigBtn.Size = UDim2.new(0, 200, 0, 60)
+bigBtn.Position = UDim2.new(1, -220, 0, 20)
 bigBtn.BackgroundColor3 = Color3.fromRGB(0,170,0)
 bigBtn.TextColor3 = Color3.new(1,1,1)
 bigBtn.TextScaled = true
@@ -43,8 +43,30 @@ bigBtn.Font = Enum.Font.SourceSansBold
 bigBtn.Visible = false
 bigBtn.Parent = gui
 
+-- 📋 LISTA DE IGNORAR (ARRIBA DEL JOIN)
+local listFrame = Instance.new("Frame")
+listFrame.Size = UDim2.new(0, 200, 0, 140)
+listFrame.Position = UDim2.new(1, -220, 0, 90)
+listFrame.BackgroundTransparency = 1
+listFrame.Parent = gui
+
+local layout = Instance.new("UIListLayout")
+layout.Padding = UDim.new(0, 6)
+layout.Parent = listFrame
+
+-- Limpia la lista visual
+local function limpiarLista()
+	for _,c in ipairs(listFrame:GetChildren()) do
+		if c:IsA("TextButton") then
+			c:Destroy()
+		end
+	end
+end
+
 -- ================= CORE =================
 local function escanear()
+	limpiarLista()
+
 	local lista = {}
 	local vistos = 0
 
@@ -77,20 +99,38 @@ local function escanear()
 		return
 	end
 
+	-- Crear BOTONES DE IGNORAR
+	for _,srv in ipairs(lista) do
+		local btn = Instance.new("TextButton")
+		btn.Size = UDim2.new(1, 0, 0, 24)
+		btn.BackgroundColor3 = Color3.fromRGB(60,60,60)
+		btn.TextColor3 = Color3.new(1,1,1)
+		btn.TextScaled = true
+		btn.Font = Enum.Font.SourceSans
+		btn.Text = srv.texto
+		btn.Parent = listFrame
+
+		btn.MouseButton1Click:Connect(function()
+			ignorados[srv.valor] = true
+			btn.Text = srv.texto .. " (IGNORADO)"
+			btn.BackgroundColor3 = Color3.fromRGB(120,60,60)
+			print("[Auto] Servidor ignorado:", srv.texto)
+		end)
+	end
+
 	table.sort(lista, function(a,b)
 		return a.valor > b.valor
 	end)
 
 	local mejor = lista[1]
 
-	-- 🔴 ahora SÍ recuerda que ya entraste
-	if usados[mejor.valor] then
-		print("[Auto] Servidor ya usado:", mejor.texto)
+	if ignorados[mejor.valor] then
+		print("[Auto] Mejor servidor está ignorado:", mejor.texto)
 		bigBtn.Visible = false
 		return
 	end
 
-	print("[Auto] Mejor servidor NUEVO:", mejor.texto)
+	print("[Auto] Mejor servidor:", mejor.texto)
 
 	bigBtn.Text = "JOIN " .. mejor.texto
 	bigBtn.Visible = true
@@ -100,7 +140,6 @@ local function escanear()
 	end
 
 	bigBtn.MouseButton1Click:Connect(function()
-		usados[mejor.valor] = true
 		bigBtn.Visible = false
 
 		local inner = mejor.frame:FindFirstChildWhichIsA("Frame")
@@ -109,7 +148,6 @@ local function escanear()
 		local joinBtn = inner:FindFirstChildWhichIsA("TextButton")
 		if not joinBtn then return end
 
-		-- 🔥 JOIN REAL (NO TOCADO)
 		for _,conn in ipairs(getconnections(joinBtn.MouseButton1Click)) do
 			conn:Fire()
 		end
@@ -122,13 +160,14 @@ scrolling.ChildAdded:Connect(function()
 	if escaneando then return end
 	escaneando = true
 
-	task.wait(0.4) -- un poco más rápido
+	task.wait(0.4)
 	escanear()
 
 	escaneando = false
 end)
 
-print("[Auto] Script listo.")
+print("[Auto] Script listo con lista de ignorar.")
+
 
 
 
