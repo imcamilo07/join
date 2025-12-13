@@ -40,7 +40,6 @@ local function guardarUsados()
 end
 
 cargarUsados()
--- ================================================
 
 -- ================= UTILS =================
 local function parseValor(txt)
@@ -51,9 +50,7 @@ local function parseValor(txt)
 	for num, suf in txt:gmatch("([%d%.]+)([MB])") do
 		local n = tonumber(num)
 		if n then
-			local value
-			if suf == "B" then value = n * 1e9
-			elseif suf == "M" then value = n * 1e6 end
+			local value = (suf == "B" and n * 1e9) or (suf == "M" and n * 1e6)
 			if value and (not maxValue or value > maxValue) then
 				maxValue = value
 			end
@@ -67,7 +64,6 @@ local gui = Instance.new("ScreenGui")
 gui.Name = "AUTO_JOIN_GUI"
 gui.ResetOnSpawn = false
 gui.DisplayOrder = 999999
-gui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 gui.Parent = PlayerGui
 
 local bigBtn = Instance.new("TextButton")
@@ -92,6 +88,7 @@ Instance.new("UICorner", listFrame).CornerRadius = UDim.new(0,12)
 local listScroll = Instance.new("ScrollingFrame")
 listScroll.Size = UDim2.new(1,-8,1,-8)
 listScroll.Position = UDim2.new(0,4,0,4)
+listScroll.CanvasSize = UDim2.new(0,0,0,0)
 listScroll.Parent = listFrame
 
 local layout = Instance.new("UIListLayout", listScroll)
@@ -103,7 +100,9 @@ end)
 -- ================= CORE =================
 local function limpiarLista()
 	for _,c in ipairs(listScroll:GetChildren()) do
-		if c:IsA("TextButton") then c:Destroy() end
+		if c:IsA("TextButton") then
+			c:Destroy()
+		end
 	end
 end
 
@@ -125,7 +124,7 @@ local function escanear()
 							frame = obj,
 							valor = valor,
 							texto = lbl.Text,
-							firma = obj:GetDebugId() -- ✅ FIX REAL
+							firma = lbl.Text .. "|" .. tostring(obj) -- 🔧 ÚNICA CORRECCIÓN
 						})
 					end
 				end
@@ -134,7 +133,8 @@ local function escanear()
 		if vistos >= MAX_SERVERS then break end
 	end
 
-	if vistos < MAX_SERVERS or #lista == 0 then
+	if vistos < MAX_SERVERS then return end
+	if #lista == 0 then
 		bigBtn.Visible = false
 		listFrame.Visible = false
 		return
@@ -149,13 +149,16 @@ local function escanear()
 		item.Text = srv.texto
 		item.TextScaled = true
 		item.Font = Enum.Font.SourceSans
-		item.BackgroundColor3 = usados[srv.firma] and Color3.fromRGB(90,40,40) or Color3.fromRGB(60,60,60)
+		item.BackgroundColor3 = usados[srv.firma]
+			and Color3.fromRGB(90,40,40)
+			or Color3.fromRGB(60,60,60)
 		item.TextColor3 = Color3.new(1,1,1)
 		item.Parent = listScroll
 
 		item.MouseButton1Click:Connect(function()
 			usados[srv.firma] = true
 			guardarUsados()
+			item.BackgroundColor3 = Color3.fromRGB(90,40,40)
 			escanear()
 		end)
 	end
@@ -176,12 +179,11 @@ local function escanear()
 				joinLock = true
 				bigBtn.Visible = false
 
-				local inner = srv.frame:FindFirstChildWhichIsA("Frame")
-				local joinBtn = inner and inner:FindFirstChildWhichIsA("TextButton")
-				if joinBtn then
-					for _,conn in ipairs(getconnections(joinBtn.MouseButton1Click)) do
-						conn:Fire()
-					end
+				local joinBtn = srv.frame:FindFirstChildWhichIsA("TextButton", true)
+				if not joinBtn then joinLock = false return end
+
+				for _,conn in ipairs(getconnections(joinBtn.MouseButton1Click)) do
+					conn:Fire()
 				end
 
 				task.delay(0.3,function()
