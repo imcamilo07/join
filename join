@@ -1,0 +1,128 @@
+-- ================= CONFIG =================
+local MAX_FRAMES_A_LEER = 5
+local OBJETIVO_MINIMO = nil -- nil = mejor servidor | ejemplo: 50e6 para 50M
+
+-- ================= SETUP =================
+local player = game.Players.LocalPlayer
+local gui = player.PlayerGui:WaitForChild("PetMenu")
+local mainFrame = gui:WaitForChild("Frame")
+local refreshBtn = mainFrame:FindFirstChildWhichIsA("Frame"):FindFirstChild("TextButton")
+local scrolling = mainFrame:WaitForChild("ScrollingFrame")
+
+local usados = {} -- firmas usadas
+
+-- ================= UTILS =================
+local function parseValor(txt)
+	if not txt then return 0 end
+	txt = txt:gsub("%s","")
+	local num = tonumber(txt:match("[%d%.]+"))
+	if not num then return 0 end
+	if txt:find("B") then
+		return num * 1e9
+	elseif txt:find("M") then
+		return num * 1e6
+	end
+	return num
+end
+
+local function firmaServidor(frame, index)
+	local lbl = frame:FindFirstChildWhichIsA("TextLabel")
+	if not lbl then return nil end
+	return lbl.Text .. "|" .. tostring(index)
+end
+
+-- ================= GUI JOIN GIGANTE =================
+local bigGui = Instance.new("ScreenGui")
+bigGui.Name = "BIG_JOIN_GUI"
+bigGui.ResetOnSpawn = false
+bigGui.Parent = player.PlayerGui
+
+local bigBtn = Instance.new("TextButton")
+bigBtn.Size = UDim2.new(0, 300, 0, 120)
+bigBtn.Position = UDim2.new(0.5, -150, 0.7, 0)
+bigBtn.BackgroundColor3 = Color3.fromRGB(0, 170, 0)
+bigBtn.TextColor3 = Color3.new(1,1,1)
+bigBtn.TextScaled = true
+bigBtn.Font = Enum.Font.SourceSansBold
+bigBtn.Visible = false
+bigBtn.Parent = bigGui
+
+-- ================= CORE =================
+local function buscarServidor()
+	local encontrados = {}
+	local index = 0
+
+	for _,obj in ipairs(scrolling:GetChildren()) do
+		if obj:IsA("Frame") and obj:FindFirstChildWhichIsA("TextLabel") then
+			index += 1
+			if index > MAX_FRAMES_A_LEER then break end
+
+			local lbl = obj:FindFirstChildWhichIsA("TextLabel")
+			local valor = parseValor(lbl.Text)
+			local firma = firmaServidor(obj, index)
+
+			if firma and not usados[firma] then
+				table.insert(encontrados, {
+					frame = obj,
+					valor = valor,
+					firma = firma
+				})
+			end
+		end
+	end
+
+	if #encontrados == 0 then return nil end
+
+	if OBJETIVO_MINIMO then
+		for _,v in ipairs(encontrados) do
+			if v.valor >= OBJETIVO_MINIMO then
+				return v
+			end
+		end
+		return nil
+	end
+
+	table.sort(encontrados, function(a,b)
+		return a.valor > b.valor
+	end)
+
+	return encontrados[1]
+end
+
+-- ================= ACTIVACIÓN =================
+local actual = nil
+
+local function activar()
+	actual = buscarServidor()
+	if not actual then
+		bigBtn.Visible = false
+		return
+	end
+
+	bigBtn.Text = "JOIN " .. tostring(actual.valor)
+	bigBtn.Visible = true
+end
+
+bigBtn.MouseButton1Click:Connect(function()
+	if not actual then return end
+
+	local inner = actual.frame:FindFirstChildWhichIsA("Frame")
+	if not inner then return end
+
+	local joinBtn = inner:FindFirstChildWhichIsA("TextButton")
+	if not joinBtn then return end
+
+	usados[actual.firma] = true
+	bigBtn.Visible = false
+
+	pcall(function()
+		joinBtn:Activate()
+	end)
+end)
+
+-- ================= MANUAL =================
+print("[Auto] Script listo. Refresca manualmente.")
+scrolling.ChildAdded:Connect(function()
+	task.wait(0.2)
+	activar()
+end)
