@@ -3,13 +3,19 @@ local MAX_SERVERS = 5
 
 -- ================= SETUP =================
 local player = game.Players.LocalPlayer
-local petMenu = player.PlayerGui:WaitForChild("PetMenu", 10)
-if not petMenu then return end
+local PlayerGui = player:WaitForChild("PlayerGui")
+
+-- Esperar a que exista PetMenu (sin romper nada)
+local petMenu
+repeat
+	petMenu = PlayerGui:FindFirstChild("PetMenu")
+	task.wait()
+until petMenu
 
 local mainFrame = petMenu:WaitForChild("Frame")
 local scrolling = mainFrame:WaitForChild("ScrollingFrame")
 
-local usados = {}
+local usados = {} -- ignorados
 
 -- ================= UTILS =================
 local function parseValor(txt)
@@ -24,17 +30,18 @@ local function parseValor(txt)
 	elseif txt:find("M") then
 		return num * 1e6
 	end
+	return nil
 end
 
--- ================= BIG JOIN =================
+-- ================= BIG JOIN GUI (NO SE MUEVE) =================
 local gui = Instance.new("ScreenGui")
 gui.Name = "BIG_JOIN_GUI"
 gui.ResetOnSpawn = false
-gui.Parent = player.PlayerGui
+gui.Parent = PlayerGui
 
 local bigBtn = Instance.new("TextButton")
-bigBtn.Size = UDim2.new(0, 220, 0, 75)
-bigBtn.Position = UDim2.new(1, -240, 0.48, 0)
+bigBtn.Size = UDim2.new(0, 320, 0, 120)
+bigBtn.Position = UDim2.new(0.5, -160, 0.7, 0) -- MISMA POSICIÓN
 bigBtn.BackgroundColor3 = Color3.fromRGB(0,170,0)
 bigBtn.TextColor3 = Color3.new(1,1,1)
 bigBtn.TextScaled = true
@@ -42,50 +49,38 @@ bigBtn.Font = Enum.Font.SourceSansBold
 bigBtn.Visible = false
 bigBtn.Parent = gui
 
--- ================= IGNORE LIST (PEQUEÑA) =================
-local ignoreFrame = Instance.new("Frame")
-ignoreFrame.Size = UDim2.new(0, 220, 0, 120)
-ignoreFrame.Position = UDim2.new(1, -240, 0.32, 0)
-ignoreFrame.BackgroundTransparency = 0.2
-ignoreFrame.BackgroundColor3 = Color3.fromRGB(25,25,25)
-ignoreFrame.Parent = gui
-
-local layout = Instance.new("UIListLayout", ignoreFrame)
-layout.Padding = UDim.new(0, 4)
-
 -- ================= CORE =================
 local function escanear()
 	local lista = {}
-	local index = 0
+	local vistos = 0
 
-	print("----- [Auto] Escaneo rápido (5 servidores) -----")
+	print("----- [Auto] Escaneando servidores (solo 5) -----")
 
 	for _,obj in ipairs(scrolling:GetChildren()) do
 		if obj:IsA("Frame") then
-			for _,child in ipairs(obj:GetChildren()) do
-				if child:IsA("TextLabel") then
-					local valor = parseValor(child.Text)
-					if valor then
-						index += 1
-						if index > MAX_SERVERS then break end
+			local lbl = obj:FindFirstChildWhichIsA("TextLabel")
+			if lbl then
+				local valor = parseValor(lbl.Text)
+				if valor then
+					vistos += 1
+					print("[Scan #" .. vistos .. "]", lbl.Text)
 
-						print("[Scan #" .. index .. "]", child.Text)
-
-						table.insert(lista,{
+					if vistos <= MAX_SERVERS then
+						table.insert(lista, {
 							frame = obj,
 							valor = valor,
-							texto = child.Text,
-							firma = index .. "_" .. child.Text
+							texto = lbl.Text,
+							firma = vistos .. "_" .. lbl.Text
 						})
-						break
 					end
 				end
 			end
 		end
-		if index >= MAX_SERVERS then break end
+		if vistos >= MAX_SERVERS then break end
 	end
 
 	if #lista == 0 then
+		print("[Auto] Ningún servidor válido")
 		bigBtn.Visible = false
 		return
 	end
@@ -94,60 +89,69 @@ local function escanear()
 		return a.valor > b.valor
 	end)
 
-	local mejor
+	local mejor = nil
 	for _,srv in ipairs(lista) do
 		if not usados[srv.firma] then
 			mejor = srv
 			break
+		else
+			print("[Auto] Ignorado:", srv.texto)
 		end
 	end
 
 	if not mejor then
+		print("[Auto] Todos los servidores visibles están ignorados")
 		bigBtn.Visible = false
 		return
 	end
 
+	print("[Auto] Mejor servidor:", mejor.texto)
+
 	bigBtn.Text = "JOIN " .. mejor.texto
 	bigBtn.Visible = true
 
+	-- limpiar conexiones viejas
 	for _,c in ipairs(getconnections(bigBtn.MouseButton1Click)) do
 		c:Disable()
 	end
 
 	bigBtn.MouseButton1Click:Connect(function()
 		usados[mejor.firma] = true
-		print("[Auto] Ignorado:", mejor.texto)
+		print("[Auto] Marcado como ignorado:", mejor.texto)
+
 		bigBtn.Visible = false
 
 		local inner = mejor.frame:FindFirstChildWhichIsA("Frame")
-		if not inner then return end
+		if not inner then
+			warn("Inner Frame no encontrado")
+			return
+		end
 
 		local joinBtn = inner:FindFirstChildWhichIsA("TextButton")
-		if not joinBtn then return end
-
-		for _,conn in ipairs(getconnections(joinBtn.MouseButton1Click)) do
-			conn:Fire()
+		if not joinBtn then
+			warn("JOIN no encontrado")
+			return
 		end
+
+		-- 🔥 JOIN REAL (NO SE TOCA)
+		pcall(function()
+			for _,conn in ipairs(getconnections(joinBtn.MouseButton1Click)) do
+				conn:Fire()
+			end
+		end)
 	end)
 end
 
--- ================= REFRESH DETECT =================
-for _,obj in ipairs(mainFrame:GetDescendants()) do
-	if obj:IsA("TextButton") and obj.Text:lower():find("refresh") then
-		obj.MouseButton1Click:Connect(function()
-			task.wait(0.05)
-			escanear()
-		end)
-	end
-end
+-- ================= TRIGGERS =================
 
--- fallback ultra rápido
+-- Escaneo rápido al refrescar (sin mover nada)
 scrolling.ChildAdded:Connect(function()
 	task.wait(0.05)
 	escanear()
 end)
 
-print("[Auto] Script listo (Refresh instantáneo)")
+print("[Auto] Script listo. Usa Refresh manual.")
+
 
 
 
