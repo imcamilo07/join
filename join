@@ -16,7 +16,7 @@ local mainFrame = petMenu:WaitForChild("Frame")
 local scrolling = mainFrame:WaitForChild("ScrollingFrame")
 
 local usados = {} -- ignorados persistentes
-local joinBloqueado = false -- 🔒 FIX: evita spam JOIN
+local joinLock = false -- 🔒 FIX anti-spam JOIN (ÚNICO CAMBIO)
 
 -- ================= UTILS =================
 local function parseValor(txt)
@@ -109,7 +109,6 @@ local function escanear()
 	end
 
 	if vistos < MAX_SERVERS then return end
-
 	if #lista == 0 then
 		bigBtn.Visible = false
 		listFrame.Visible = false
@@ -152,26 +151,36 @@ local function escanear()
 				c:Disable()
 			end
 
+			-- 🔧 FIX ÚNICO AQUÍ
 			bigBtn.MouseButton1Click:Connect(function()
-				if joinBloqueado then return end -- 🔒 FIX
-				joinBloqueado = true -- 🔒 FIX
-
-				usados[srv.firma] = true
+				if joinLock then return end
+				joinLock = true
 				bigBtn.Visible = false
 
 				local inner = srv.frame:FindFirstChildWhichIsA("Frame")
-				if not inner then return end
-				local joinBtn = inner:FindFirstChildWhichIsA("TextButton")
-				if not joinBtn then return end
+				if not inner then
+					joinLock = false
+					return
+				end
 
+				local joinBtn = inner:FindFirstChildWhichIsA("TextButton")
+				if not joinBtn then
+					joinLock = false
+					return
+				end
+
+				-- 🚀 entra inmediato
 				for _,conn in ipairs(getconnections(joinBtn.MouseButton1Click)) do
 					conn:Fire()
 				end
 
-				task.delay(1.2, function()
-					joinBloqueado = false
+				-- ⏱️ ignorar DESPUÉS (no por spam)
+				task.delay(0.3, function()
+					usados[srv.firma] = true
+					joinLock = false
 				end)
 			end)
+
 			return
 		end
 	end
