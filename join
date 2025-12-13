@@ -1,6 +1,5 @@
 -- ================= CONFIG =================
 local MAX_SERVERS = 5
-local SCAN_DELAY = 0.1 -- más rápido
 
 -- ================= SETUP =================
 local player = game.Players.LocalPlayer
@@ -8,10 +7,8 @@ local petMenu = player.PlayerGui:WaitForChild("PetMenu")
 local mainFrame = petMenu:WaitForChild("Frame")
 local scrolling = mainFrame:WaitForChild("ScrollingFrame")
 
--- servidores ya usados
-local usados = {}
--- servidores del escaneo anterior
-local prevScan = {}
+-- 🔴 ahora guardamos VALORES, no frames
+local usados = {} -- usados[valorNumerico] = true
 
 -- ================= UTILS =================
 local function parseValor(txt)
@@ -26,6 +23,8 @@ local function parseValor(txt)
 	elseif txt:find("M") then
 		return num * 1e6
 	end
+
+	return nil
 end
 
 -- ================= BIG JOIN GUI =================
@@ -36,7 +35,7 @@ gui.Parent = player.PlayerGui
 
 local bigBtn = Instance.new("TextButton")
 bigBtn.Size = UDim2.new(0, 320, 0, 120)
-bigBtn.Position = UDim2.new(1, -340, 0.5, -60) -- CENTRO DERECHA
+bigBtn.Position = UDim2.new(1, -360, 0.5, -60) -- centro derecha
 bigBtn.BackgroundColor3 = Color3.fromRGB(0,170,0)
 bigBtn.TextColor3 = Color3.new(1,1,1)
 bigBtn.TextScaled = true
@@ -48,7 +47,6 @@ bigBtn.Parent = gui
 local function escanear()
 	local lista = {}
 	local vistos = 0
-	local actualScan = {}
 
 	print("----- [Auto] Escaneando servidores -----")
 
@@ -61,11 +59,7 @@ local function escanear()
 					vistos += 1
 					print("[Scan #" .. vistos .. "]", lbl.Text)
 
-					-- guardar firma del escaneo actual
-					actualScan[obj] = true
-
-					-- ignorar servidores viejos
-					if not prevScan[obj] and vistos <= MAX_SERVERS then
+					if vistos <= MAX_SERVERS then
 						table.insert(lista, {
 							frame = obj,
 							valor = valor,
@@ -78,10 +72,7 @@ local function escanear()
 		if vistos >= MAX_SERVERS then break end
 	end
 
-	prevScan = actualScan
-
 	if #lista == 0 then
-		print("[Auto] Ningún servidor nuevo válido")
 		bigBtn.Visible = false
 		return
 	end
@@ -92,24 +83,24 @@ local function escanear()
 
 	local mejor = lista[1]
 
-	if usados[mejor.frame] then
+	-- 🔴 AQUÍ ESTÁ LA CORRECCIÓN IMPORTANTE
+	if usados[mejor.valor] then
 		print("[Auto] Servidor ya usado:", mejor.texto)
 		bigBtn.Visible = false
 		return
 	end
 
-	print("[Auto] Mejor servidor:", mejor.texto)
+	print("[Auto] Mejor servidor NUEVO:", mejor.texto)
 
 	bigBtn.Text = "JOIN " .. mejor.texto
 	bigBtn.Visible = true
 
-	-- limpiar conexiones previas
 	for _,c in ipairs(getconnections(bigBtn.MouseButton1Click)) do
 		c:Disable()
 	end
 
 	bigBtn.MouseButton1Click:Connect(function()
-		usados[mejor.frame] = true
+		usados[mejor.valor] = true -- 🔒 se marca como usado
 		bigBtn.Visible = false
 
 		local inner = mejor.frame:FindFirstChildWhichIsA("Frame")
@@ -118,22 +109,27 @@ local function escanear()
 		local joinBtn = inner:FindFirstChildWhichIsA("TextButton")
 		if not joinBtn then return end
 
-		-- JOIN REAL (NO TOCAR)
-		pcall(function()
-			for _,conn in ipairs(getconnections(joinBtn.MouseButton1Click)) do
-				conn:Fire()
-			end
-		end)
+		-- 🔥 JOIN REAL (NO TOCADO)
+		for _,conn in ipairs(getconnections(joinBtn.MouseButton1Click)) do
+			conn:Fire()
+		end
 	end)
 end
 
 -- ================= TRIGGER =================
+local escaneando = false
 scrolling.ChildAdded:Connect(function()
-	task.wait(SCAN_DELAY)
+	if escaneando then return end
+	escaneando = true
+
+	task.wait(0.5)
 	escanear()
+
+	escaneando = false
 end)
 
 print("[Auto] Script listo. Refresca manualmente.")
+
 
 
 
