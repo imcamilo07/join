@@ -98,7 +98,7 @@ local function escanear()
 							frame = obj,
 							valor = valor,
 							texto = lbl.Text,
-							firma = vistos .. "_" .. lbl.Text -- FIRMA ESTABLE
+							firma = lbl.Text -- 🔧 FIX FINAL (ANTES usaba vistos)
 						})
 					end
 				end
@@ -107,10 +107,7 @@ local function escanear()
 		if vistos >= MAX_SERVERS then break end
 	end
 
-	-- 🔒 NO tocar ignorados si el refresh fue incompleto (spam fix)
-	if vistos < MAX_SERVERS then
-		return
-	end
+	if vistos < MAX_SERVERS then return end
 
 	if #lista == 0 then
 		bigBtn.Visible = false
