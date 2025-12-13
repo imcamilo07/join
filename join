@@ -1,5 +1,6 @@
 -- ================= CONFIG =================
 local MAX_SERVERS = 5
+local MIN_VALUE = 150 * 1e6 -- 🔧 mínimo para mostrar JOIN
 
 -- ================= SETUP =================
 local player = game.Players.LocalPlayer
@@ -75,6 +76,10 @@ layout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
 end)
 
 -- ================= CORE =================
+local lastScan = 0
+local SCAN_COOLDOWN = 0.15 -- 🔧 anti-spam refresh
+local joining = false     -- 🔧 anti-spam join
+
 local function limpiarLista()
 	for _,c in ipairs(listScroll:GetChildren()) do
 		if c:IsA("TextButton") then
@@ -84,11 +89,16 @@ local function limpiarLista()
 end
 
 local function escanear()
+	-- 🔧 FIX: anti-spam escaneo
+	local now = tick()
+	if now - lastScan < SCAN_COOLDOWN then return end
+	lastScan = now
+
 	limpiarLista()
 
 	local lista = {}
 	local vistos = 0
-	local firmasActuales = {} -- 🔧 FIX: firmas visibles actuales
+	local firmasActuales = {}
 
 	print("----- [Auto] Escaneando 5 servidores -----")
 
@@ -102,13 +112,13 @@ local function escanear()
 					print("[Scan #" .. vistos .. "]", lbl.Text)
 
 					if vistos <= MAX_SERVERS then
-						firmasActuales[lbl.Text] = true -- 🔧 FIX
+						firmasActuales[lbl.Text] = true
 
 						table.insert(lista, {
 							frame = obj,
 							valor = valor,
 							texto = lbl.Text,
-							firma = lbl.Text -- 🔧 FIX (clave real)
+							firma = lbl.Text
 						})
 					end
 				end
@@ -157,7 +167,7 @@ local function escanear()
 	end
 
 	for _,srv in ipairs(lista) do
-		if not usados[srv.firma] then
+		if not usados[srv.firma] and srv.valor >= MIN_VALUE then
 			print("[Auto] Mejor servidor:", srv.texto)
 			bigBtn.Text = "JOIN " .. srv.texto
 			bigBtn.Visible = true
@@ -167,23 +177,27 @@ local function escanear()
 			end
 
 			bigBtn.MouseButton1Click:Connect(function()
-				usados[srv.firma] = true
+				if joining then return end
+				joining = true
+
 				bigBtn.Visible = false
 
 				local inner = srv.frame:FindFirstChildWhichIsA("Frame")
-				if not inner then return end
+				if not inner then joining = false return end
 				local joinBtn = inner:FindFirstChildWhichIsA("TextButton")
-				if not joinBtn then return end
+				if not joinBtn then joining = false return end
 
 				for _,conn in ipairs(getconnections(joinBtn.MouseButton1Click)) do
 					conn:Fire()
 				end
+
+				usados[srv.firma] = true
 			end)
 			return
 		end
 	end
 
-	print("[Auto] Todos los servidores visibles ignorados")
+	print("[Auto] Todos los servidores visibles ignorados o < MIN")
 	bigBtn.Visible = false
 end
 
@@ -193,7 +207,8 @@ scrolling.ChildAdded:Connect(function()
 	escanear()
 end)
 
-print("[Auto] Script listo. Refresh manual.")
+print("[Auto] Script listo. Estable.")
+
 
 
 
