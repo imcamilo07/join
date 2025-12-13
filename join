@@ -7,8 +7,9 @@ local petMenu = player.PlayerGui:WaitForChild("PetMenu")
 local mainFrame = petMenu:WaitForChild("Frame")
 local scrolling = mainFrame:WaitForChild("ScrollingFrame")
 
--- 🔴 ahora guardamos VALORES, no frames
-local usados = {} -- usados[valorNumerico] = true
+-- 🔴 persistente entre activaciones del menú
+local usados = _G.__SERVIDORES_USADOS or {}
+_G.__SERVIDORES_USADOS = usados
 
 -- ================= UTILS =================
 local function parseValor(txt)
@@ -23,19 +24,18 @@ local function parseValor(txt)
 	elseif txt:find("M") then
 		return num * 1e6
 	end
-
 	return nil
 end
 
--- ================= BIG JOIN GUI =================
+-- ================= JOIN GUI =================
 local gui = Instance.new("ScreenGui")
 gui.Name = "BIG_JOIN_GUI"
 gui.ResetOnSpawn = false
 gui.Parent = player.PlayerGui
 
 local bigBtn = Instance.new("TextButton")
-bigBtn.Size = UDim2.new(0, 320, 0, 120)
-bigBtn.Position = UDim2.new(1, -360, 0.5, -60) -- centro derecha
+bigBtn.Size = UDim2.new(0, 200, 0, 60) -- 🔹 más pequeño
+bigBtn.Position = UDim2.new(1, -220, 0, 20) -- 🔹 arriba derecha sin tocar bordes
 bigBtn.BackgroundColor3 = Color3.fromRGB(0,170,0)
 bigBtn.TextColor3 = Color3.new(1,1,1)
 bigBtn.TextScaled = true
@@ -83,7 +83,7 @@ local function escanear()
 
 	local mejor = lista[1]
 
-	-- 🔴 AQUÍ ESTÁ LA CORRECCIÓN IMPORTANTE
+	-- 🔴 ahora SÍ recuerda que ya entraste
 	if usados[mejor.valor] then
 		print("[Auto] Servidor ya usado:", mejor.texto)
 		bigBtn.Visible = false
@@ -100,7 +100,7 @@ local function escanear()
 	end
 
 	bigBtn.MouseButton1Click:Connect(function()
-		usados[mejor.valor] = true -- 🔒 se marca como usado
+		usados[mejor.valor] = true
 		bigBtn.Visible = false
 
 		local inner = mejor.frame:FindFirstChildWhichIsA("Frame")
@@ -122,13 +122,13 @@ scrolling.ChildAdded:Connect(function()
 	if escaneando then return end
 	escaneando = true
 
-	task.wait(0.5)
+	task.wait(0.4) -- un poco más rápido
 	escanear()
 
 	escaneando = false
 end)
 
-print("[Auto] Script listo. Refresca manualmente.")
+print("[Auto] Script listo.")
 
 
 
