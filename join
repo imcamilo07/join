@@ -14,16 +14,13 @@ local function parseValor(txt)
 	if not txt then return nil end
 	txt = txt:gsub("%s","")
 
-	local num, suf = txt:match("([%d%.]+)([MB])")
-	if not num or not suf then return nil end
-
-	num = tonumber(num)
+	local num = tonumber(txt:match("[%d%.]+"))
 	if not num then return nil end
 
-	if suf == "B" then
-		return num * 1e9, num .. "B"
-	else
-		return num * 1e6, num .. "M"
+	if txt:find("B") then
+		return num * 1e9
+	elseif txt:find("M") then
+		return num * 1e6
 	end
 end
 
@@ -35,7 +32,7 @@ gui.Parent = player.PlayerGui
 
 local bigBtn = Instance.new("TextButton")
 bigBtn.Size = UDim2.new(0, 320, 0, 120)
-bigBtn.Position = UDim2.new(1, -340, 0.5, -60) -- derecha-centro (iPhone friendly)
+bigBtn.Position = UDim2.new(0.5, -160, 0.7, 0)
 bigBtn.BackgroundColor3 = Color3.fromRGB(0,170,0)
 bigBtn.TextColor3 = Color3.new(1,1,1)
 bigBtn.TextScaled = true
@@ -54,7 +51,7 @@ local function escanear()
 		if obj:IsA("Frame") then
 			local lbl = obj:FindFirstChildWhichIsA("TextLabel")
 			if lbl then
-				local valor, textoLimpio = parseValor(lbl.Text)
+				local valor = parseValor(lbl.Text)
 				if valor then
 					vistos += 1
 					print("[Scan #" .. vistos .. "]", lbl.Text)
@@ -63,8 +60,8 @@ local function escanear()
 						table.insert(lista, {
 							frame = obj,
 							valor = valor,
-							texto = textoLimpio,
-							firma = textoLimpio
+							texto = lbl.Text,
+							firma = lbl.Text .. "_" .. tostring(vistos)
 						})
 					end
 				end
@@ -96,7 +93,6 @@ local function escanear()
 	bigBtn.Text = "JOIN " .. mejor.texto
 	bigBtn.Visible = true
 
-	-- limpiar conexiones viejas
 	for _,c in ipairs(getconnections(bigBtn.MouseButton1Click)) do
 		c:Disable()
 	end
@@ -106,31 +102,33 @@ local function escanear()
 		bigBtn.Visible = false
 
 		local inner = mejor.frame:FindFirstChildWhichIsA("Frame")
-		if not inner then
-			warn("Inner Frame no encontrado")
-			return
-		end
+		if not inner then return end
 
 		local joinBtn = inner:FindFirstChildWhichIsA("TextButton")
-		if not joinBtn then
-			warn("JOIN no encontrado")
-			return
-		end
+		if not joinBtn then return end
 
-		print("[Auto] Ejecutando JOIN real:", mejor.texto)
-
-		-- 🔥 JOIN REAL (EL QUE SÍ FUNCIONA)
-		for _,conn in ipairs(getconnections(joinBtn.MouseButton1Click)) do
-			conn:Fire()
-		end
+		pcall(function()
+			for _,conn in ipairs(getconnections(joinBtn.MouseButton1Click)) do
+				conn:Fire()
+			end
+		end)
 	end)
 end
 
--- ================= TRIGGER =================
+-- ================= TRIGGER (CORREGIDO) =================
+local escaneando = false
+
 scrolling.ChildAdded:Connect(function()
-	task.wait(0.3)
+	if escaneando then return end
+	escaneando = true
+
+	task.wait(0.5) -- espera a que el texto se estabilice
 	escanear()
+
+	escaneando = false
 end)
+
+print("[Auto] Script listo. Refresca manualmente.")
 
 print("[Auto] Script listo. Refresca manualmente.")
 
