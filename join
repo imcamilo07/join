@@ -16,19 +16,32 @@ local mainFrame = petMenu:WaitForChild("Frame")
 local scrolling = mainFrame:WaitForChild("ScrollingFrame")
 
 local usados = {} -- ignorados persistentes
-local joinLock = false -- 🔒 FIX anti-spam JOIN (ÚNICO CAMBIO)
+local joinLock = false -- 🔒 FIX anti-spam JOIN
 
 -- ================= UTILS =================
 local function parseValor(txt)
 	if not txt then return nil end
-	txt = txt:gsub("%s","")
-	local num = tonumber(txt:match("[%d%.]+"))
-	if not num then return nil end
-	if txt:find("B") then
-		return num * 1e9
-	elseif txt:find("M") then
-		return num * 1e6
+	txt = txt:gsub("%s+", "")
+
+	local maxValue = nil
+
+	for num, suf in txt:gmatch("([%d%.]+)([MB])") do
+		local n = tonumber(num)
+		if n then
+			local value
+			if suf == "B" then
+				value = n * 1e9
+			elseif suf == "M" then
+				value = n * 1e6
+			end
+
+			if value and (not maxValue or value > maxValue) then
+				maxValue = value
+			end
+		end
 	end
+
+	return maxValue
 end
 
 -- ================= GUI =================
@@ -151,30 +164,21 @@ local function escanear()
 				c:Disable()
 			end
 
-			-- 🔧 FIX ÚNICO AQUÍ
 			bigBtn.MouseButton1Click:Connect(function()
 				if joinLock then return end
 				joinLock = true
 				bigBtn.Visible = false
 
 				local inner = srv.frame:FindFirstChildWhichIsA("Frame")
-				if not inner then
-					joinLock = false
-					return
-				end
+				if not inner then joinLock = false return end
 
 				local joinBtn = inner:FindFirstChildWhichIsA("TextButton")
-				if not joinBtn then
-					joinLock = false
-					return
-				end
+				if not joinBtn then joinLock = false return end
 
-				-- 🚀 entra inmediato
 				for _,conn in ipairs(getconnections(joinBtn.MouseButton1Click)) do
 					conn:Fire()
 				end
 
-				-- ⏱️ ignorar DESPUÉS (no por spam)
 				task.delay(0.3, function()
 					usados[srv.firma] = true
 					joinLock = false
