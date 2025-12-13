@@ -51,7 +51,12 @@ local function parseValor(txt)
 	for num, suf in txt:gmatch("([%d%.]+)([MB])") do
 		local n = tonumber(num)
 		if n then
-			local value = (suf == "B") and n * 1e9 or (suf == "M") and n * 1e6
+			local value
+			if suf == "B" then
+				value = n * 1e9
+			elseif suf == "M" then
+				value = n * 1e6
+			end
 			if value and (not maxValue or value > maxValue) then
 				maxValue = value
 			end
@@ -127,7 +132,7 @@ local function escanear()
 							frame = obj,
 							valor = valor,
 							texto = lbl.Text,
-							firma = obj:GetDebugId() -- ✅ FIX ÚNICO
+							firma = obj:GetDebugId() -- ✅ ÚNICO FIX
 						})
 					end
 				end
@@ -221,6 +226,7 @@ scrolling.ChildAdded:Connect(function()
 end)
 
 print("[Auto] Script listo.")
+
 
 
 
