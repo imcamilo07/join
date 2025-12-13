@@ -7,7 +7,8 @@ local petMenu = player.PlayerGui:WaitForChild("PetMenu")
 local mainFrame = petMenu:WaitForChild("Frame")
 local scrolling = mainFrame:WaitForChild("ScrollingFrame")
 
-local ignorados = {}
+-- Servidores usados / ignorados
+local usados = {}
 
 -- ================= UTILS =================
 local function parseValor(txt)
@@ -22,155 +23,133 @@ local function parseValor(txt)
 	elseif txt:find("M") then
 		return num * 1e6
 	end
+
+	return nil
 end
 
--- ================= GUI =================
+-- ================= BIG JOIN GUI =================
 local gui = Instance.new("ScreenGui")
-gui.Name = "JOIN_HELPER_GUI"
+gui.Name = "BIG_JOIN_GUI"
 gui.ResetOnSpawn = false
 gui.Parent = player.PlayerGui
 
--- JOIN (NO SE MUEVE)
-local joinBtnUI = Instance.new("TextButton")
-joinBtnUI.Size = UDim2.new(0, 200, 0, 60)
-joinBtnUI.Position = UDim2.new(1, -220, 0, 20)
-joinBtnUI.BackgroundColor3 = Color3.fromRGB(0,170,0)
-joinBtnUI.TextColor3 = Color3.new(1,1,1)
-joinBtnUI.TextScaled = true
-joinBtnUI.Font = Enum.Font.SourceSansBold
-joinBtnUI.Visible = false
-joinBtnUI.Parent = gui
-
--- BOTÓN DESPLEGABLE
-local toggleBtn = Instance.new("TextButton")
-toggleBtn.Size = UDim2.new(0, 200, 0, 28)
-toggleBtn.Position = UDim2.new(1, -220, 0, -14)
-toggleBtn.AnchorPoint = Vector2.new(0,1)
-toggleBtn.Text = "IGNORADOS ▲"
-toggleBtn.TextScaled = true
-toggleBtn.BackgroundColor3 = Color3.fromRGB(50,50,50)
-toggleBtn.TextColor3 = Color3.new(1,1,1)
-toggleBtn.Parent = gui
-
--- LISTA (HACIA ARRIBA)
-local listFrame = Instance.new("Frame")
-listFrame.Size = UDim2.new(0, 200, 0, 120)
-listFrame.Position = UDim2.new(1, -220, 0, -14)
-listFrame.AnchorPoint = Vector2.new(0,1)
-listFrame.BackgroundTransparency = 0.1
-listFrame.Visible = false
-listFrame.Parent = gui
-
-local layout = Instance.new("UIListLayout")
-layout.Padding = UDim.new(0, 4)
-layout.Parent = listFrame
-
-toggleBtn.MouseButton1Click:Connect(function()
-	listFrame.Visible = not listFrame.Visible
-	toggleBtn.Text = listFrame.Visible and "IGNORADOS ▼" or "IGNORADOS ▲"
-end)
-
-local function limpiarLista()
-	for _,c in ipairs(listFrame:GetChildren()) do
-		if c:IsA("TextButton") then
-			c:Destroy()
-		end
-	end
-end
+local bigBtn = Instance.new("TextButton")
+bigBtn.Size = UDim2.new(0, 260, 0, 90)
+bigBtn.Position = UDim2.new(1, -280, 0.5, -45) -- centro derecha
+bigBtn.BackgroundColor3 = Color3.fromRGB(0,170,0)
+bigBtn.TextColor3 = Color3.new(1,1,1)
+bigBtn.TextScaled = true
+bigBtn.Font = Enum.Font.SourceSansBold
+bigBtn.Visible = false
+bigBtn.Parent = gui
 
 -- ================= CORE =================
 local function escanear()
-	limpiarLista()
 	local lista = {}
+	local contados = 0
+
+	print("----- [Auto] Escaneando SOLO los primeros 5 servidores -----")
 
 	for _,obj in ipairs(scrolling:GetChildren()) do
 		if obj:IsA("Frame") then
-			local lbl = obj:FindFirstChildWhichIsA("TextLabel")
-			if lbl then
-				local valor = parseValor(lbl.Text)
-				if valor then
-					table.insert(lista, {
-						frame = obj,
-						valor = valor,
-						texto = lbl.Text
-					})
+			-- Buscar el TextLabel de valor (90M, 1B, etc)
+			for _,child in ipairs(obj:GetChildren()) do
+				if child:IsA("TextLabel") then
+					local valor = parseValor(child.Text)
+					if valor then
+						contados += 1
+
+						print("[Scan #" .. contados .. "]", child.Text)
+
+						table.insert(lista, {
+							frame = obj,
+							valor = valor,
+							texto = child.Text,
+							firma = child.Text .. "_" .. tostring(contados)
+						})
+
+						break
+					end
 				end
 			end
 		end
-	end
 
-	if #lista == 0 then
-		joinBtnUI.Visible = false
-		return
-	end
-
-	-- botones ignorar
-	for _,srv in ipairs(lista) do
-		local b = Instance.new("TextButton")
-		b.Size = UDim2.new(1,0,0,22)
-		b.Text = srv.texto
-		b.TextScaled = true
-		b.BackgroundColor3 = Color3.fromRGB(70,70,70)
-		b.TextColor3 = Color3.new(1,1,1)
-		b.Parent = listFrame
-
-		b.MouseButton1Click:Connect(function()
-			ignorados[srv.valor] = true
-			b.Text = srv.texto .. " (IGN)"
-			print("[Auto] Ignorado:", srv.texto)
-		end)
-	end
-
-	-- ORDENAR
-	table.sort(lista, function(a,b)
-		return a.valor > b.valor
-	end)
-
-	-- 🔥 BUSCAR EL MEJOR NO IGNORADO
-	local elegido = nil
-	for _,srv in ipairs(lista) do
-		if not ignorados[srv.valor] then
-			elegido = srv
+		if contados >= MAX_SERVERS then
 			break
 		end
 	end
 
-	if not elegido then
-		print("[Auto] Todos los servidores ignorados")
-		joinBtnUI.Visible = false
+	if #lista == 0 then
+		print("[Auto] Ningún servidor válido")
+		bigBtn.Visible = false
 		return
 	end
 
-	joinBtnUI.Text = "JOIN " .. elegido.texto
-	joinBtnUI.Visible = true
+	-- Ordenar de mayor a menor
+	table.sort(lista, function(a,b)
+		return a.valor > b.valor
+	end)
 
-	for _,c in ipairs(getconnections(joinBtnUI.MouseButton1Click)) do
+	-- Elegir el mejor NO ignorado
+	local mejor = nil
+	for _,srv in ipairs(lista) do
+		if not usados[srv.firma] then
+			mejor = srv
+			break
+		end
+	end
+
+	if not mejor then
+		print("[Auto] Todos los servidores escaneados están ignorados")
+		bigBtn.Visible = false
+		return
+	end
+
+	print("[Auto] Mejor servidor:", mejor.texto)
+
+	bigBtn.Text = "JOIN " .. mejor.texto
+	bigBtn.Visible = true
+
+	-- Limpiar conexiones previas
+	for _,c in ipairs(getconnections(bigBtn.MouseButton1Click)) do
 		c:Disable()
 	end
 
-	joinBtnUI.MouseButton1Click:Connect(function()
-		joinBtnUI.Visible = false
-		local inner = elegido.frame:FindFirstChildWhichIsA("Frame")
-		if not inner then return end
-		local realJoin = inner:FindFirstChildWhichIsA("TextButton")
-		if not realJoin then return end
-		for _,conn in ipairs(getconnections(realJoin.MouseButton1Click)) do
-			conn:Fire()
+	bigBtn.MouseButton1Click:Connect(function()
+		usados[mejor.firma] = true
+		print("[Auto] Ignorado:", mejor.texto)
+
+		bigBtn.Visible = false
+
+		local inner = mejor.frame:FindFirstChildWhichIsA("Frame")
+		if not inner then
+			warn("Inner Frame no encontrado")
+			return
 		end
+
+		local joinBtn = inner:FindFirstChildWhichIsA("TextButton")
+		if not joinBtn then
+			warn("JOIN no encontrado")
+			return
+		end
+
+		-- 🔥 JOIN REAL (NO TOCAR)
+		pcall(function()
+			for _,conn in ipairs(getconnections(joinBtn.MouseButton1Click)) do
+				conn:Fire()
+			end
+		end)
 	end)
 end
 
--- ================= TRIGGER =================
-local lock = false
+-- ================= TRIGGERS =================
 scrolling.ChildAdded:Connect(function()
-	if lock then return end
-	lock = true
-	task.wait(0.3)
+	task.wait(0.15) -- más rápido
 	escanear()
-	lock = false
 end)
 
-print("[Auto] Script listo (lista arriba + mejor no ignorado).")
+print("[Auto] Script listo. Refresca manualmente.")
+
 
 
 
