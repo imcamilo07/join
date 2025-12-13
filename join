@@ -1,6 +1,6 @@
 -- ================= CONFIG =================
 local MAX_SERVERS = 5
-local MIN_JOIN_VALUE = 50e6 -- 150M mínimo para mostrar JOIN
+local MIN_JOIN_VALUE = 150e6 -- 150M mínimo para mostrar JOIN
 
 -- ================= SETUP =================
 local player = game.Players.LocalPlayer
