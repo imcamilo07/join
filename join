@@ -1,143 +1,149 @@
--- =========================================
--- AUTO SERVER SCANNER + JOIN (FINAL)
--- =========================================
+-- =========================
+-- CONFIG
+-- =========================
+local SCAN_DELAY = 1.5 -- segundos entre escaneos
+local MAX_SCANS = 5
 
-local player = game.Players.LocalPlayer
-local gui = player:WaitForChild("PlayerGui")
+-- =========================
+-- SERVICES
+-- =========================
+local Players = game:GetService("Players")
+local player = Players.LocalPlayer
 
--- ===== CONFIG =====
-local MAX_SERVERS_SCAN = 5
-local AUTO_ENABLED = false
-local lastJoinedValue = nil
+-- =========================
+-- GUI REFERENCES (AJUSTA SI ES NECESARIO)
+-- =========================
+local playerGui = player:WaitForChild("PlayerGui")
+local petMenu = playerGui:WaitForChild("PetMenu")
+local serversFrame = petMenu.Frame.ScrollingFrame
 
--- ===== PET MENU =====
-local petMenu = gui:WaitForChild("PetMenu")
-local mainFrame = petMenu:WaitForChild("Frame")
-local scrolling = mainFrame:WaitForChild("ScrollingFrame")
+-- BOTONES PROPIOS
+local joinButton = petMenu:WaitForChild("JoinButton") -- TU botón gigante
+local toggleButton = petMenu:WaitForChild("ToggleButton") -- ON / OFF
 
-print("[Auto] Script listo. Refresca manualmente.")
+-- =========================
+-- STATE
+-- =========================
+local autoEnabled = false
+local usedServers = {} -- guarda valores ya usados
+local scanning = false
 
--- ===== UTIL =====
+-- =========================
+-- UTILS
+-- =========================
 local function parseValue(text)
-	if not text then return 0 end
+	if not text then return nil end
+
 	text = tostring(text):upper():gsub(" ", "")
+	local number, unit = text:match("([%d%.]+)([MB])")
+	if not number or not unit then return nil end
 
-	local num = tonumber(text:match("[%d%.]+"))
-	if not num then return 0 end
+	number = tonumber(number)
+	if not number then return nil end
 
-	if text:find("B") then
-		return num * 1_000_000_000
-	elseif text:find("M") then
-		return num * 1_000_000
+	if unit == "B" then
+		return number * 1_000_000_000, text
+	elseif unit == "M" then
+		return number * 1_000_000, text
 	end
 
-	return num
+	return nil
 end
 
--- ===== GUI =====
-local controlGui = Instance.new("ScreenGui", gui)
-controlGui.Name = "AutoServerGUI"
-
-local toggle = Instance.new("TextButton", controlGui)
-toggle.Size = UDim2.fromScale(0.18, 0.07)
-toggle.Position = UDim2.fromScale(0.8, 0.45)
-toggle.Text = "AUTO: OFF"
-toggle.BackgroundColor3 = Color3.fromRGB(150, 0, 0)
-toggle.TextScaled = true
-
-toggle.MouseButton1Click:Connect(function()
-	AUTO_ENABLED = not AUTO_ENABLED
-	if AUTO_ENABLED then
-		toggle.Text = "AUTO: ON"
-		toggle.BackgroundColor3 = Color3.fromRGB(0, 150, 0)
-	else
-		toggle.Text = "AUTO: OFF"
-		toggle.BackgroundColor3 = Color3.fromRGB(150, 0, 0)
-	end
-end)
-
--- ===== JOIN BUTTON =====
-local joinGui = Instance.new("TextButton", controlGui)
-joinGui.Size = UDim2.fromScale(0.22, 0.08)
-joinGui.Position = UDim2.fromScale(0.76, 0.55)
-joinGui.Text = "JOIN"
-joinGui.Visible = false
-joinGui.TextScaled = true
-joinGui.BackgroundColor3 = Color3.fromRGB(0, 120, 255)
-
-local currentJoinButton = nil
-
-joinGui.MouseButton1Click:Connect(function()
-	if currentJoinButton then
-		print("[Auto] Ejecutando JOIN real")
-		currentJoinButton:MouseButton1Click()
-	end
-end)
-
--- ===== SCAN =====
+-- =========================
+-- SCAN SERVERS
+-- =========================
 local function scanServers()
-	if not AUTO_ENABLED then return end
-
-	local bestValue = 0
-	local bestFrame = nil
-	local scanned = 0
+	if scanning or not autoEnabled then return end
+	scanning = true
 
 	print("----- [Auto] Escaneando servidores -----")
 
-	for _, child in ipairs(scrolling:GetChildren()) do
-		if child:IsA("Frame") and scanned < MAX_SERVERS_SCAN then
-			scanned += 1
+	local bestValue = 0
+	local bestText = nil
+	local bestJoinButton = nil
 
-			local valueLabel = child:FindFirstChildWhichIsA("TextLabel")
-			if valueLabel then
-				local raw = valueLabel.Text or valueLabel.ContentText
-				local value = parseValue(raw)
+	for scanIndex = 1, MAX_SCANS do
+		print("[Scan #" .. scanIndex .. "]")
 
-				print("[Scan #" .. scanned .. "]", raw)
+		for _, frame in ipairs(serversFrame:GetChildren()) do
+			if frame:IsA("Frame") then
+				local valueText = nil
+				local realJoinButton = nil
 
-				if value > bestValue then
-					bestValue = value
-					bestFrame = child
+				for _, obj in ipairs(frame:GetDescendants()) do
+					if obj:IsA("TextLabel") then
+						local value, originalText = parseValue(obj.Text)
+						if value and not usedServers[originalText] then
+							if value > (valueText and valueText.value or 0) then
+								valueText = {
+									value = value,
+									text = originalText
+								}
+							end
+						end
+					elseif obj:IsA("TextButton") and obj.Text:upper():find("JOIN") then
+						realJoinButton = obj
+					end
+				end
+
+				if valueText and realJoinButton then
+					if valueText.value > bestValue then
+						bestValue = valueText.value
+						bestText = valueText.text
+						bestJoinButton = realJoinButton
+					end
 				end
 			end
 		end
+
+		task.wait(0.2)
 	end
 
-	if not bestFrame or bestValue == 0 then
-		print("[Auto] No se encontró servidor válido.")
-		return
+	if bestJoinButton and bestText then
+		print("[Auto] Mejor servidor:", bestText)
+
+		joinButton.Text = "JOIN " .. bestText
+		joinButton.Visible = true
+
+		joinButton.MouseButton1Click:Once(function()
+			print("[Auto] Ejecutando JOIN real")
+			usedServers[bestText] = true
+
+			-- CLICK REAL (EL QUE SÍ FUNCIONA)
+			pcall(function()
+				bestJoinButton:Activate()
+			end)
+		end)
+	else
+		print("[Auto] No se encontró servidor válido")
 	end
 
-	if lastJoinedValue == bestValue then
-		print("[Auto] Servidor ya usado:", bestValue)
-		return
-	end
-
-	local inner = bestFrame:FindFirstChildWhichIsA("Frame")
-	if not inner then return end
-
-	local joinBtn = inner:FindFirstChildWhichIsA("TextButton")
-	if not joinBtn then return end
-
-	lastJoinedValue = bestValue
-	currentJoinButton = joinBtn
-
-	local display =
-		bestValue >= 1_000_000_000 and
-		(tostring(bestValue / 1_000_000_000) .. "B")
-		or
-		(tostring(bestValue / 1_000_000) .. "M")
-
-	joinGui.Text = "JOIN " .. display
-	joinGui.Visible = true
-
-	print("[Auto] Mejor servidor:", display)
+	scanning = false
 end
 
--- ===== REFRESH LISTENER =====
-scrolling.ChildAdded:Connect(function()
-	task.wait(0.2)
-	scanServers()
+-- =========================
+-- TOGGLE ON / OFF
+-- =========================
+toggleButton.MouseButton1Click:Connect(function()
+	autoEnabled = not autoEnabled
+	toggleButton.Text = autoEnabled and "AUTO: ON" or "AUTO: OFF"
+
+	if autoEnabled then
+		task.spawn(function()
+			while autoEnabled do
+				scanServers()
+				task.wait(SCAN_DELAY)
+			end
+		end)
+	end
 end)
+
+-- =========================
+-- INIT
+-- =========================
+joinButton.Visible = false
+toggleButton.Text = "AUTO: OFF"
+
 
 
