@@ -1,6 +1,5 @@
 -- ================= CONFIG =================
 local MAX_SERVERS = 5
-local MIN_VALUE = 150 * 1e6 -- 🔧 mínimo para mostrar JOIN
 
 -- ================= SETUP =================
 local player = game.Players.LocalPlayer
@@ -34,9 +33,9 @@ end
 local gui = Instance.new("ScreenGui")
 gui.Name = "AUTO_JOIN_GUI"
 gui.ResetOnSpawn = false
-gui.DisplayOrder = 999999
-gui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
-gui.Enabled = true
+gui.DisplayOrder = 999999 -- 🔧 FIX
+gui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling -- 🔧 FIX
+gui.Enabled = true -- 🔧 FIX
 gui.Parent = PlayerGui
 
 -- 🔹 JOIN (CENTRO DERECHA)
@@ -50,7 +49,7 @@ bigBtn.Font = Enum.Font.SourceSansBold
 bigBtn.Visible = false
 bigBtn.Parent = gui
 
--- 🔹 LISTA ARRIBA DEL JOIN
+-- 🔹 LISTA ARRIBA DEL JOIN (SCROLLABLE)
 local listFrame = Instance.new("Frame")
 listFrame.Size = UDim2.new(0, 260, 0, 150)
 listFrame.Position = UDim2.new(1, -280, 0.5, -210)
@@ -76,10 +75,6 @@ layout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
 end)
 
 -- ================= CORE =================
-local lastScan = 0
-local SCAN_COOLDOWN = 0.15 -- 🔧 anti-spam refresh
-local joining = false     -- 🔧 anti-spam join
-
 local function limpiarLista()
 	for _,c in ipairs(listScroll:GetChildren()) do
 		if c:IsA("TextButton") then
@@ -89,16 +84,10 @@ local function limpiarLista()
 end
 
 local function escanear()
-	-- 🔧 FIX: anti-spam escaneo
-	local now = tick()
-	if now - lastScan < SCAN_COOLDOWN then return end
-	lastScan = now
-
 	limpiarLista()
 
 	local lista = {}
 	local vistos = 0
-	local firmasActuales = {}
 
 	print("----- [Auto] Escaneando 5 servidores -----")
 
@@ -112,26 +101,17 @@ local function escanear()
 					print("[Scan #" .. vistos .. "]", lbl.Text)
 
 					if vistos <= MAX_SERVERS then
-						firmasActuales[lbl.Text] = true
-
 						table.insert(lista, {
 							frame = obj,
 							valor = valor,
 							texto = lbl.Text,
-							firma = lbl.Text
+							firma = vistos .. "_" .. lbl.Text
 						})
 					end
 				end
 			end
 		end
 		if vistos >= MAX_SERVERS then break end
-	end
-
-	-- 🔧 FIX: limpiar ignorados que ya no están en los 5 frames
-	for firma in pairs(usados) do
-		if not firmasActuales[firma] then
-			usados[firma] = nil
-		end
 	end
 
 	if #lista == 0 then
@@ -167,7 +147,7 @@ local function escanear()
 	end
 
 	for _,srv in ipairs(lista) do
-		if not usados[srv.firma] and srv.valor >= MIN_VALUE then
+		if not usados[srv.firma] then
 			print("[Auto] Mejor servidor:", srv.texto)
 			bigBtn.Text = "JOIN " .. srv.texto
 			bigBtn.Visible = true
@@ -177,27 +157,23 @@ local function escanear()
 			end
 
 			bigBtn.MouseButton1Click:Connect(function()
-				if joining then return end
-				joining = true
-
+				usados[srv.firma] = true
 				bigBtn.Visible = false
 
 				local inner = srv.frame:FindFirstChildWhichIsA("Frame")
-				if not inner then joining = false return end
+				if not inner then return end
 				local joinBtn = inner:FindFirstChildWhichIsA("TextButton")
-				if not joinBtn then joining = false return end
+				if not joinBtn then return end
 
 				for _,conn in ipairs(getconnections(joinBtn.MouseButton1Click)) do
 					conn:Fire()
 				end
-
-				usados[srv.firma] = true
 			end)
 			return
 		end
 	end
 
-	print("[Auto] Todos los servidores visibles ignorados o < MIN")
+	print("[Auto] Todos los servidores visibles ignorados")
 	bigBtn.Visible = false
 end
 
@@ -207,7 +183,7 @@ scrolling.ChildAdded:Connect(function()
 	escanear()
 end)
 
-print("[Auto] Script listo. Estable.")
+print("[Auto] Script listo. Refresh manual.")
 
 
 
