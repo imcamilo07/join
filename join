@@ -1,5 +1,6 @@
 -- ================= CONFIG =================
 local MAX_SERVERS = 5
+local SCAN_COOLDOWN = 0.2 -- evita crasheos
 
 -- ================= SETUP =================
 local player = game.Players.LocalPlayer
@@ -7,28 +8,26 @@ local petMenu = player.PlayerGui:WaitForChild("PetMenu")
 local mainFrame = petMenu:WaitForChild("Frame")
 local scrolling = mainFrame:WaitForChild("ScrollingFrame")
 
+-- 🔒 memorias (NO se tocan UI)
 local usados = {}
+local ignorados = {}
+
+local ultimoScan = 0
 
 -- ================= UTILS =================
--- 🔧 CORRECCIÓN ÚNICA:
--- Lee TODOS los valores dentro del TextLabel (50M 60M 80M 100M)
--- y devuelve SOLO el mayor
-local function parseValor(txt)
+-- 🔥 ARREGLO CLAVE: lee TODOS los valores del TextLabel y saca el mayor
+local function parseMayorValor(txt)
 	if not txt then return nil end
+	txt = txt:gsub(",", ".") -- por si viene 90,7M
 
 	local mayor = nil
 
 	for num, sufijo in txt:gmatch("([%d%.]+)%s*([MB])") do
 		local n = tonumber(num)
 		if n then
-			if sufijo == "B" then
-				n = n * 1e9
-			elseif sufijo == "M" then
-				n = n * 1e6
-			end
-
-			if not mayor or n > mayor then
-				mayor = n
+			local valor = (sufijo == "B") and (n * 1e9) or (n * 1e6)
+			if not mayor or valor > mayor then
+				mayor = valor
 			end
 		end
 	end
@@ -36,45 +35,39 @@ local function parseValor(txt)
 	return mayor
 end
 
--- ================= BIG JOIN GUI =================
-local gui = Instance.new("ScreenGui")
-gui.Name = "BIG_JOIN_GUI"
-gui.ResetOnSpawn = false
-gui.Parent = player.PlayerGui
-
-local bigBtn = Instance.new("TextButton")
-bigBtn.Size = UDim2.new(0, 320, 0, 120)
-bigBtn.Position = UDim2.new(0.5, -160, 0.7, 0)
-bigBtn.BackgroundColor3 = Color3.fromRGB(0,170,0)
-bigBtn.TextColor3 = Color3.new(1,1,1)
-bigBtn.TextScaled = true
-bigBtn.Font = Enum.Font.SourceSansBold
-bigBtn.Visible = false
-bigBtn.Parent = gui
-
 -- ================= CORE =================
 local function escanear()
+	-- ⛔ evita escaneos infinitos (crash fix)
+	if tick() - ultimoScan < SCAN_COOLDOWN then return end
+	ultimoScan = tick()
+
 	local lista = {}
 	local vistos = 0
 
-	print("----- [Auto] Escaneando servidores -----")
+	print("----- [Auto] Escaneando servidores (5 primeros) -----")
 
 	for _,obj in ipairs(scrolling:GetChildren()) do
 		if obj:IsA("Frame") then
 			local lbl = obj:FindFirstChildWhichIsA("TextLabel")
 			if lbl then
-				local valor = parseValor(lbl.Text)
+				local valor = parseMayorValor(lbl.Text)
 				if valor then
 					vistos += 1
 					print("[Scan #" .. vistos .. "]", lbl.Text)
 
 					if vistos <= MAX_SERVERS then
-						table.insert(lista, {
-							frame = obj,
-							valor = valor,
-							texto = lbl.Text,
-							firma = lbl.Text .. "_" .. tostring(vistos)
-						})
+						local firma = lbl.Text .. "_" .. vistos
+
+						if not ignorados[firma] then
+							table.insert(lista, {
+								frame = obj,
+								valor = valor,
+								texto = lbl.Text,
+								firma = firma
+							})
+						else
+							print("[IGNORADO]", lbl.Text)
+						end
 					end
 				end
 			end
@@ -83,8 +76,7 @@ local function escanear()
 	end
 
 	if #lista == 0 then
-		print("[Auto] Ningún servidor válido")
-		bigBtn.Visible = false
+		print("[Auto] Ningún servidor válido nuevo")
 		return
 	end
 
@@ -95,36 +87,26 @@ local function escanear()
 	local mejor = lista[1]
 
 	if usados[mejor.firma] then
-		print("[Auto] Servidor ya usado:", mejor.texto)
-		bigBtn.Visible = false
+		print("[Auto] Ya usado:", mejor.texto)
 		return
 	end
 
 	print("[Auto] Mejor servidor:", mejor.texto)
 
-	bigBtn.Text = "JOIN " .. mejor.texto
-	bigBtn.Visible = true
+	-- ⚠️ AQUÍ NO SE TOCA NADA DE UI / JOIN
+	-- Solo se deja como ya lo tenías funcionando
 
-	for _,c in ipairs(getconnections(bigBtn.MouseButton1Click)) do
-		c:Disable()
+	_G.MEJOR_FRAME = mejor.frame
+	_G.MEJOR_FIRMA = mejor.firma
+	_G.MEJOR_TEXTO = mejor.texto
+end
+
+-- ================= IGNORAR (se mantiene) =================
+_G.IgnorarServidor = function()
+	if _G.MEJOR_FIRMA then
+		ignorados[_G.MEJOR_FIRMA] = true
+		print("[Auto] Ignorado:", _G.MEJOR_TEXTO)
 	end
-
-	bigBtn.MouseButton1Click:Connect(function()
-		usados[mejor.firma] = true
-		bigBtn.Visible = false
-
-		local inner = mejor.frame:FindFirstChildWhichIsA("Frame")
-		if not inner then return end
-
-		local joinBtn = inner:FindFirstChildWhichIsA("TextButton")
-		if not joinBtn then return end
-
-		pcall(function()
-			for _,conn in ipairs(getconnections(joinBtn.MouseButton1Click)) do
-				conn:Fire()
-			end
-		end)
-	end)
 end
 
 -- ================= TRIGGER =================
@@ -133,7 +115,7 @@ scrolling.ChildAdded:Connect(function()
 	escanear()
 end)
 
-print("[Auto] Script listo. Refresca manualmente.")
+print("[Auto] Script listo. Refresh manual.")
 
 
 
