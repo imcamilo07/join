@@ -16,6 +16,7 @@ local mainFrame = petMenu:WaitForChild("Frame")
 local scrolling = mainFrame:WaitForChild("ScrollingFrame")
 
 local usados = {} -- ignorados persistentes
+local joinEnProceso = false -- 🔒 FIX spam JOIN (ÚNICO CAMBIO)
 
 -- ================= UTILS =================
 local function parseValor(txt)
@@ -98,7 +99,7 @@ local function escanear()
 							frame = obj,
 							valor = valor,
 							texto = lbl.Text,
-							firma = lbl.Text -- 🔧 FIX FINAL (ANTES usaba vistos)
+							firma = vistos .. "_" .. lbl.Text
 						})
 					end
 				end
@@ -108,7 +109,6 @@ local function escanear()
 	end
 
 	if vistos < MAX_SERVERS then return end
-
 	if #lista == 0 then
 		bigBtn.Visible = false
 		listFrame.Visible = false
@@ -152,6 +152,9 @@ local function escanear()
 			end
 
 			bigBtn.MouseButton1Click:Connect(function()
+				if joinEnProceso then return end
+				joinEnProceso = true
+
 				usados[srv.firma] = true
 				bigBtn.Visible = false
 
@@ -163,6 +166,10 @@ local function escanear()
 				for _,conn in ipairs(getconnections(joinBtn.MouseButton1Click)) do
 					conn:Fire()
 				end
+
+				task.delay(1.5, function()
+					joinEnProceso = false
+				end)
 			end)
 			return
 		end
@@ -176,6 +183,7 @@ scrolling.ChildAdded:Connect(function()
 end)
 
 print("[Auto] Script listo.")
+
 
 
 
