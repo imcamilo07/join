@@ -1,5 +1,6 @@
 -- ================= CONFIG =================
 local MAX_SERVERS = 5
+local MIN_JOIN_VALUE = 150e6 -- 150M mínimo para mostrar JOIN
 
 -- ================= SETUP =================
 local player = game.Players.LocalPlayer
@@ -14,7 +15,7 @@ until petMenu
 local mainFrame = petMenu:WaitForChild("Frame")
 local scrolling = mainFrame:WaitForChild("ScrollingFrame")
 
-local usados = {}
+local usados = {} -- ignorados persistentes
 
 -- ================= UTILS =================
 local function parseValor(txt)
@@ -33,12 +34,11 @@ end
 local gui = Instance.new("ScreenGui")
 gui.Name = "AUTO_JOIN_GUI"
 gui.ResetOnSpawn = false
-gui.DisplayOrder = 999999 -- 🔧 FIX
-gui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling -- 🔧 FIX
-gui.Enabled = true -- 🔧 FIX
+gui.DisplayOrder = 999999
+gui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+gui.Enabled = true
 gui.Parent = PlayerGui
 
--- 🔹 JOIN (CENTRO DERECHA)
 local bigBtn = Instance.new("TextButton")
 bigBtn.Size = UDim2.new(0, 260, 0, 90)
 bigBtn.Position = UDim2.new(1, -280, 0.5, -45)
@@ -49,7 +49,6 @@ bigBtn.Font = Enum.Font.SourceSansBold
 bigBtn.Visible = false
 bigBtn.Parent = gui
 
--- 🔹 LISTA ARRIBA DEL JOIN (SCROLLABLE)
 local listFrame = Instance.new("Frame")
 listFrame.Size = UDim2.new(0, 260, 0, 150)
 listFrame.Position = UDim2.new(1, -280, 0.5, -210)
@@ -57,8 +56,7 @@ listFrame.BackgroundColor3 = Color3.fromRGB(35,35,35)
 listFrame.Visible = false
 listFrame.Parent = gui
 
-local corner = Instance.new("UICorner", listFrame)
-corner.CornerRadius = UDim.new(0,12)
+Instance.new("UICorner", listFrame).CornerRadius = UDim.new(0,12)
 
 local listScroll = Instance.new("ScrollingFrame")
 listScroll.Size = UDim2.new(1, -8, 1, -8)
@@ -69,7 +67,6 @@ listScroll.Parent = listFrame
 
 local layout = Instance.new("UIListLayout", listScroll)
 layout.Padding = UDim.new(0,6)
-
 layout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
 	listScroll.CanvasSize = UDim2.new(0,0,0,layout.AbsoluteContentSize.Y + 6)
 end)
@@ -89,8 +86,6 @@ local function escanear()
 	local lista = {}
 	local vistos = 0
 
-	print("----- [Auto] Escaneando 5 servidores -----")
-
 	for _,obj in ipairs(scrolling:GetChildren()) do
 		if obj:IsA("Frame") then
 			local lbl = obj:FindFirstChildWhichIsA("TextLabel")
@@ -98,20 +93,23 @@ local function escanear()
 				local valor = parseValor(lbl.Text)
 				if valor then
 					vistos += 1
-					print("[Scan #" .. vistos .. "]", lbl.Text)
-
 					if vistos <= MAX_SERVERS then
 						table.insert(lista, {
 							frame = obj,
 							valor = valor,
 							texto = lbl.Text,
-							firma = vistos .. "_" .. lbl.Text
+							firma = vistos .. "_" .. lbl.Text -- FIRMA ESTABLE
 						})
 					end
 				end
 			end
 		end
 		if vistos >= MAX_SERVERS then break end
+	end
+
+	-- 🔒 NO tocar ignorados si el refresh fue incompleto (spam fix)
+	if vistos < MAX_SERVERS then
+		return
 	end
 
 	if #lista == 0 then
@@ -140,15 +138,15 @@ local function escanear()
 
 		item.MouseButton1Click:Connect(function()
 			usados[srv.firma] = true
-			print("[Auto] Ignorado manualmente:", srv.texto)
 			item.BackgroundColor3 = Color3.fromRGB(90,40,40)
 			escanear()
 		end)
 	end
 
+	bigBtn.Visible = false
+
 	for _,srv in ipairs(lista) do
-		if not usados[srv.firma] then
-			print("[Auto] Mejor servidor:", srv.texto)
+		if not usados[srv.firma] and srv.valor >= MIN_JOIN_VALUE then
 			bigBtn.Text = "JOIN " .. srv.texto
 			bigBtn.Visible = true
 
@@ -172,9 +170,6 @@ local function escanear()
 			return
 		end
 	end
-
-	print("[Auto] Todos los servidores visibles ignorados")
-	bigBtn.Visible = false
 end
 
 -- ================= TRIGGER =================
@@ -183,7 +178,8 @@ scrolling.ChildAdded:Connect(function()
 	escanear()
 end)
 
-print("[Auto] Script listo. Refresh manual.")
+print("[Auto] Script listo.")
+
 
 
 
