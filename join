@@ -17,6 +17,7 @@ local scrolling = mainFrame:WaitForChild("ScrollingFrame")
 
 local usados = {} -- ignorados persistentes
 local joinLock = false -- 🔒 FIX anti-spam JOIN
+local joinedThisSession = false -- ✅ AÑADIDO: bloquea re-join al mismo server
 
 -- ================= PERSISTENCIA =================
 local FILE_NAME = "auto_join_usados.json"
@@ -124,7 +125,7 @@ local function escanear()
 							frame = obj,
 							valor = valor,
 							texto = lbl.Text,
-							firma = lbl.Text .. "|" .. tostring(obj) -- 🔧 ÚNICA CORRECCIÓN
+							firma = lbl.Text .. "|" .. tostring(obj)
 						})
 					end
 				end
@@ -175,7 +176,7 @@ local function escanear()
 			end
 
 			bigBtn.MouseButton1Click:Connect(function()
-				if joinLock then return end
+				if joinLock or joinedThisSession then return end -- ✅ AÑADIDO
 				joinLock = true
 				bigBtn.Visible = false
 
@@ -189,12 +190,13 @@ local function escanear()
 				task.delay(0.3,function()
 					usados[srv.firma] = true
 					guardarUsados()
+					joinedThisSession = true -- ✅ AÑADIDO
 					joinLock = false
 				end)
 			end)
 
 			task.defer(function()
-				if bigBtn.Visible and not joinLock then
+				if bigBtn.Visible and not joinLock and not joinedThisSession then
 					for _,conn in ipairs(getconnections(bigBtn.MouseButton1Click)) do
 						conn:Fire()
 					end
@@ -213,6 +215,7 @@ scrolling.ChildAdded:Connect(function()
 end)
 
 print("[Auto] Script listo.")
+
 
 
 
