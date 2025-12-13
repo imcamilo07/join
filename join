@@ -103,9 +103,11 @@ local function escanear()
 		local joinBtn = inner:FindFirstChildWhichIsA("TextButton")
 		if not joinBtn then return end
 
-		joinBtn:Activate()
-	end)
-end
+		pcall(function()
+	for _,c in ipairs(getconnections(joinBtn.MouseButton1Click)) do
+		c:Fire()
+	end
+end)
 
 -- ================= TRIGGER =================
 scrolling.ChildAdded:Connect(function()
