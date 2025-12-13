@@ -1,6 +1,5 @@
 -- ================= CONFIG =================
 local MAX_SERVERS = 5
-local MIN_JOIN_VALUE = 250e6 -- 🔧 mínimo para Join
 
 -- ================= SETUP =================
 local player = game.Players.LocalPlayer
@@ -39,7 +38,7 @@ gui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 gui.Enabled = true
 gui.Parent = PlayerGui
 
--- 🔹 JOIN
+-- 🔹 JOIN (CENTRO DERECHA)
 local bigBtn = Instance.new("TextButton")
 bigBtn.Size = UDim2.new(0, 260, 0, 90)
 bigBtn.Position = UDim2.new(1, -280, 0.5, -45)
@@ -50,7 +49,7 @@ bigBtn.Font = Enum.Font.SourceSansBold
 bigBtn.Visible = false
 bigBtn.Parent = gui
 
--- 🔹 LISTA
+-- 🔹 LISTA ARRIBA DEL JOIN (SCROLLABLE)
 local listFrame = Instance.new("Frame")
 listFrame.Size = UDim2.new(0, 260, 0, 150)
 listFrame.Position = UDim2.new(1, -280, 0.5, -210)
@@ -90,6 +89,8 @@ local function escanear()
 	local lista = {}
 	local vistos = 0
 
+	print("----- [Auto] Escaneando 5 servidores -----")
+
 	for _,obj in ipairs(scrolling:GetChildren()) do
 		if obj:IsA("Frame") then
 			local lbl = obj:FindFirstChildWhichIsA("TextLabel")
@@ -97,12 +98,14 @@ local function escanear()
 				local valor = parseValor(lbl.Text)
 				if valor then
 					vistos += 1
+					print("[Scan #" .. vistos .. "]", lbl.Text)
+
 					if vistos <= MAX_SERVERS then
 						table.insert(lista, {
 							frame = obj,
 							valor = valor,
 							texto = lbl.Text,
-							firma = vistos -- 🔧 FIX REAL (slot 1–5)
+							firma = obj -- 🔧 FIX ÚNICO
 						})
 					end
 				end
@@ -124,7 +127,63 @@ local function escanear()
 	listFrame.Visible = true
 
 	for _,srv in ipairs(lista) do
-		local item =
+		local item = Instance.new("TextButton")
+		item.Size = UDim2.new(1, -6, 0, 32)
+		item.Text = srv.texto
+		item.TextScaled = true
+		item.Font = Enum.Font.SourceSans
+		item.BackgroundColor3 = usados[srv.firma]
+			and Color3.fromRGB(90,40,40)
+			or Color3.fromRGB(60,60,60)
+		item.TextColor3 = Color3.new(1,1,1)
+		item.Parent = listScroll
+
+		item.MouseButton1Click:Connect(function()
+			usados[srv.firma] = true
+			print("[Auto] Ignorado manualmente:", srv.texto)
+			item.BackgroundColor3 = Color3.fromRGB(90,40,40)
+			escanear()
+		end)
+	end
+
+	for _,srv in ipairs(lista) do
+		if not usados[srv.firma] then
+			print("[Auto] Mejor servidor:", srv.texto)
+			bigBtn.Text = "JOIN " .. srv.texto
+			bigBtn.Visible = true
+
+			for _,c in ipairs(getconnections(bigBtn.MouseButton1Click)) do
+				c:Disable()
+			end
+
+			bigBtn.MouseButton1Click:Connect(function()
+				usados[srv.firma] = true
+				bigBtn.Visible = false
+
+				local inner = srv.frame:FindFirstChildWhichIsA("Frame")
+				if not inner then return end
+				local joinBtn = inner:FindFirstChildWhichIsA("TextButton")
+				if not joinBtn then return end
+
+				for _,conn in ipairs(getconnections(joinBtn.MouseButton1Click)) do
+					conn:Fire()
+				end
+			end)
+			return
+		end
+	end
+
+	print("[Auto] Todos los servidores visibles ignorados")
+	bigBtn.Visible = false
+end
+
+-- ================= TRIGGER =================
+scrolling.ChildAdded:Connect(function()
+	task.wait(0.05)
+	escanear()
+end)
+
+print("[Auto] Script listo. Refresh manual.")
 
 
 
