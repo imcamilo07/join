@@ -15,36 +15,30 @@ local mainFrame = petMenu:WaitForChild("Frame")
 local scrolling = mainFrame:WaitForChild("ScrollingFrame")
 
 local usados = {}
-local lastScan = 0
 
 -- ================= UTILS =================
--- 🔧 FIX: lee TODOS los valores del TextLabel y elige el mayor
 local function parseValor(txt)
 	if not txt then return nil end
-	txt = txt:gsub(",", ".") -- 90,7M -> 90.7M
-
-	local mayor = nil
-
-	for num, sufijo in txt:gmatch("([%d%.]+)%s*([MB])") do
-		local n = tonumber(num)
-		if n then
-			local valor = (sufijo == "B") and (n * 1e9) or (n * 1e6)
-			if not mayor or valor > mayor then
-				mayor = valor
-			end
-		end
+	txt = txt:gsub("%s","")
+	local num = tonumber(txt:match("[%d%.]+"))
+	if not num then return nil end
+	if txt:find("B") then
+		return num * 1e9
+	elseif txt:find("M") then
+		return num * 1e6
 	end
-
-	return mayor
 end
 
 -- ================= GUI =================
 local gui = Instance.new("ScreenGui")
 gui.Name = "AUTO_JOIN_GUI"
 gui.ResetOnSpawn = false
+gui.DisplayOrder = 999999 -- 🔧 FIX
+gui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling -- 🔧 FIX
+gui.Enabled = true -- 🔧 FIX
 gui.Parent = PlayerGui
 
--- 🔹 JOIN (CENTRO DERECHA)  ⛔ NO TOCADO
+-- 🔹 JOIN (CENTRO DERECHA)
 local bigBtn = Instance.new("TextButton")
 bigBtn.Size = UDim2.new(0, 260, 0, 90)
 bigBtn.Position = UDim2.new(1, -280, 0.5, -45)
@@ -55,7 +49,7 @@ bigBtn.Font = Enum.Font.SourceSansBold
 bigBtn.Visible = false
 bigBtn.Parent = gui
 
--- 🔹 LISTA ARRIBA DEL JOIN (NO TOCADA)
+-- 🔹 LISTA ARRIBA DEL JOIN (SCROLLABLE)
 local listFrame = Instance.new("Frame")
 listFrame.Size = UDim2.new(0, 260, 0, 150)
 listFrame.Position = UDim2.new(1, -280, 0.5, -210)
@@ -63,7 +57,8 @@ listFrame.BackgroundColor3 = Color3.fromRGB(35,35,35)
 listFrame.Visible = false
 listFrame.Parent = gui
 
-Instance.new("UICorner", listFrame).CornerRadius = UDim.new(0,12)
+local corner = Instance.new("UICorner", listFrame)
+corner.CornerRadius = UDim.new(0,12)
 
 local listScroll = Instance.new("ScrollingFrame")
 listScroll.Size = UDim2.new(1, -8, 1, -8)
@@ -89,10 +84,6 @@ local function limpiarLista()
 end
 
 local function escanear()
-	-- 🔧 FIX crash / lag
-	if tick() - lastScan < 0.1 then return end
-	lastScan = tick()
-
 	limpiarLista()
 
 	local lista = {}
@@ -193,6 +184,7 @@ scrolling.ChildAdded:Connect(function()
 end)
 
 print("[Auto] Script listo. Refresh manual.")
+
 
 
 
