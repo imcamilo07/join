@@ -1,5 +1,6 @@
 -- ================= CONFIG =================
 local MAX_SERVERS = 5
+local MIN_JOIN_VALUE = 150e6 -- 🔧 MINIMO PARA JOIN (150M). Ej: 20e6 = 20M
 
 -- ================= SETUP =================
 local player = game.Players.LocalPlayer
@@ -33,9 +34,9 @@ end
 local gui = Instance.new("ScreenGui")
 gui.Name = "AUTO_JOIN_GUI"
 gui.ResetOnSpawn = false
-gui.DisplayOrder = 999999 -- 🔧 FIX
-gui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling -- 🔧 FIX
-gui.Enabled = true -- 🔧 FIX
+gui.DisplayOrder = 999999
+gui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+gui.Enabled = true
 gui.Parent = PlayerGui
 
 -- 🔹 JOIN (CENTRO DERECHA)
@@ -49,7 +50,7 @@ bigBtn.Font = Enum.Font.SourceSansBold
 bigBtn.Visible = false
 bigBtn.Parent = gui
 
--- 🔹 LISTA ARRIBA DEL JOIN (SCROLLABLE)
+-- 🔹 LISTA ARRIBA DEL JOIN
 local listFrame = Instance.new("Frame")
 listFrame.Size = UDim2.new(0, 260, 0, 150)
 listFrame.Position = UDim2.new(1, -280, 0.5, -210)
@@ -105,7 +106,7 @@ local function escanear()
 							frame = obj,
 							valor = valor,
 							texto = lbl.Text,
-							firma = vistos .. "_" .. lbl.Text
+							firma = tostring(obj) -- 🔧 FIX: firma estable
 						})
 					end
 				end
@@ -147,7 +148,7 @@ local function escanear()
 	end
 
 	for _,srv in ipairs(lista) do
-		if not usados[srv.firma] then
+		if not usados[srv.firma] and srv.valor >= MIN_JOIN_VALUE then
 			print("[Auto] Mejor servidor:", srv.texto)
 			bigBtn.Text = "JOIN " .. srv.texto
 			bigBtn.Visible = true
