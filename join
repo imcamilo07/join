@@ -1,36 +1,29 @@
--- ===============================
--- CONFIG
--- ===============================
-local MAX_SERVERS = 5
-local SCAN_DELAY = 0.4
+-- =========================================
+-- AUTO SERVER SCANNER + JOIN (FINAL)
+-- =========================================
 
--- ===============================
--- SERVICES
--- ===============================
-local Players = game:GetService("Players")
-local player = Players.LocalPlayer
+local player = game.Players.LocalPlayer
 local gui = player:WaitForChild("PlayerGui")
 
--- ===============================
--- STATE
--- ===============================
-local enabled = true
-local scanning = false
-local usedValues = {} -- servidores ya usados
+-- ===== CONFIG =====
+local MAX_SERVERS_SCAN = 5
+local AUTO_ENABLED = false
+local lastJoinedValue = nil
 
--- ===============================
--- UTILS
--- ===============================
-local function log(msg)
-	print("[Auto] "..msg)
-end
+-- ===== PET MENU =====
+local petMenu = gui:WaitForChild("PetMenu")
+local mainFrame = petMenu:WaitForChild("Frame")
+local scrolling = mainFrame:WaitForChild("ScrollingFrame")
 
+print("[Auto] Script listo. Refresca manualmente.")
+
+-- ===== UTIL =====
 local function parseValue(text)
-	if not text then return nil end
-	text = tostring(text)
+	if not text then return 0 end
+	text = tostring(text):upper():gsub(" ", "")
 
 	local num = tonumber(text:match("[%d%.]+"))
-	if not num then return nil end
+	if not num then return 0 end
 
 	if text:find("B") then
 		return num * 1_000_000_000
@@ -38,136 +31,113 @@ local function parseValue(text)
 		return num * 1_000_000
 	end
 
-	return nil
+	return num
 end
 
--- ===============================
--- FIND GUI
--- ===============================
-local function getPetMenu()
-	return gui:WaitForChild("PetMenu", 5)
-end
+-- ===== GUI =====
+local controlGui = Instance.new("ScreenGui", gui)
+controlGui.Name = "AutoServerGUI"
 
-local function getScrollingFrame()
-	local menu = getPetMenu()
-	if not menu then return end
-	return menu.Frame:FindFirstChild("ScrollingFrame", true)
-end
+local toggle = Instance.new("TextButton", controlGui)
+toggle.Size = UDim2.fromScale(0.18, 0.07)
+toggle.Position = UDim2.fromScale(0.8, 0.45)
+toggle.Text = "AUTO: OFF"
+toggle.BackgroundColor3 = Color3.fromRGB(150, 0, 0)
+toggle.TextScaled = true
 
--- ===============================
--- SERVER SCAN
--- ===============================
-local function scanServers()
-	if not enabled or scanning then return end
-	scanning = true
-
-	task.wait(SCAN_DELAY)
-
-	local scrolling = getScrollingFrame()
-	if not scrolling then
-		log("No se encontró ScrollingFrame")
-		scanning = false
-		return
-	end
-
-	log("----- Escaneando servidores -----")
-
-	local servers = {}
-	for _, child in ipairs(scrolling:GetChildren()) do
-		if child:IsA("Frame") then
-			table.insert(servers, child)
-		end
-	end
-
-	local bestValue = 0
-	local bestServer = nil
-	local bestJoinBtn = nil
-
-	for i = 1, math.min(MAX_SERVERS, #servers) do
-		local server = servers[i]
-		local highestInServer = 0
-
-		for _, d in ipairs(server:GetDescendants()) do
-			if d:IsA("TextLabel") then
-				local v = parseValue(d.Text)
-				if v and v > highestInServer then
-					highestInServer = v
-				end
-			end
-		end
-
-		log(string.format("[Scan #%d] %s", i, highestInServer > 0 and highestInServer or "N/A"))
-
-		if highestInServer > bestValue and not usedValues[highestInServer] then
-			local joinBtn = server:FindFirstChildWhichIsA("TextButton", true)
-			if joinBtn and joinBtn.Text:upper():find("JOIN") then
-				bestValue = highestInServer
-				bestServer = server
-				bestJoinBtn = joinBtn
-			end
-		end
-	end
-
-	if bestServer and bestJoinBtn then
-		log("Mejor servidor: "..bestValue)
-		createBigJoin(bestJoinBtn, bestValue)
+toggle.MouseButton1Click:Connect(function()
+	AUTO_ENABLED = not AUTO_ENABLED
+	if AUTO_ENABLED then
+		toggle.Text = "AUTO: ON"
+		toggle.BackgroundColor3 = Color3.fromRGB(0, 150, 0)
 	else
-		log("No se encontró servidor válido")
-	end
-
-	scanning = false
-end
-
--- ===============================
--- BIG JOIN BUTTON
--- ===============================
-function createBigJoin(realJoin, value)
-	if gui:FindFirstChild("AutoBigJoin") then
-		gui.AutoBigJoin:Destroy()
-	end
-
-	local sg = Instance.new("ScreenGui")
-	sg.Name = "AutoBigJoin"
-	sg.Parent = gui
-
-	local btn = Instance.new("TextButton")
-	btn.Size = UDim2.fromScale(0.25, 0.12)
-	btn.Position = UDim2.fromScale(0.72, 0.44) -- centro derecha
-	btn.Text = "JOIN ("..value..")"
-	btn.TextScaled = true
-	btn.BackgroundColor3 = Color3.fromRGB(0, 170, 255)
-	btn.TextColor3 = Color3.new(1,1,1)
-	btn.Parent = sg
-
-	btn.MouseButton1Click:Connect(function()
-		usedValues[value] = true
-		pcall(function()
-			realJoin:Activate()
-		end)
-		sg:Destroy()
-	end)
-end
-
--- ===============================
--- REFRESH HOOK
--- ===============================
-task.spawn(function()
-	local menu = getPetMenu()
-	if not menu then return end
-
-	for _, btn in ipairs(menu:GetDescendants()) do
-		if btn:IsA("TextButton") and btn.Text:upper():find("REFRESH") then
-			btn.MouseButton1Click:Connect(function()
-				if enabled then
-					scanServers()
-				end
-			end)
-			log("Refresh conectado")
-			break
-		end
+		toggle.Text = "AUTO: OFF"
+		toggle.BackgroundColor3 = Color3.fromRGB(150, 0, 0)
 	end
 end)
 
-log("Script listo. Refresca manualmente.")
+-- ===== JOIN BUTTON =====
+local joinGui = Instance.new("TextButton", controlGui)
+joinGui.Size = UDim2.fromScale(0.22, 0.08)
+joinGui.Position = UDim2.fromScale(0.76, 0.55)
+joinGui.Text = "JOIN"
+joinGui.Visible = false
+joinGui.TextScaled = true
+joinGui.BackgroundColor3 = Color3.fromRGB(0, 120, 255)
+
+local currentJoinButton = nil
+
+joinGui.MouseButton1Click:Connect(function()
+	if currentJoinButton then
+		print("[Auto] Ejecutando JOIN real")
+		currentJoinButton:MouseButton1Click()
+	end
+end)
+
+-- ===== SCAN =====
+local function scanServers()
+	if not AUTO_ENABLED then return end
+
+	local bestValue = 0
+	local bestFrame = nil
+	local scanned = 0
+
+	print("----- [Auto] Escaneando servidores -----")
+
+	for _, child in ipairs(scrolling:GetChildren()) do
+		if child:IsA("Frame") and scanned < MAX_SERVERS_SCAN then
+			scanned += 1
+
+			local valueLabel = child:FindFirstChildWhichIsA("TextLabel")
+			if valueLabel then
+				local raw = valueLabel.Text or valueLabel.ContentText
+				local value = parseValue(raw)
+
+				print("[Scan #" .. scanned .. "]", raw)
+
+				if value > bestValue then
+					bestValue = value
+					bestFrame = child
+				end
+			end
+		end
+	end
+
+	if not bestFrame or bestValue == 0 then
+		print("[Auto] No se encontró servidor válido.")
+		return
+	end
+
+	if lastJoinedValue == bestValue then
+		print("[Auto] Servidor ya usado:", bestValue)
+		return
+	end
+
+	local inner = bestFrame:FindFirstChildWhichIsA("Frame")
+	if not inner then return end
+
+	local joinBtn = inner:FindFirstChildWhichIsA("TextButton")
+	if not joinBtn then return end
+
+	lastJoinedValue = bestValue
+	currentJoinButton = joinBtn
+
+	local display =
+		bestValue >= 1_000_000_000 and
+		(tostring(bestValue / 1_000_000_000) .. "B")
+		or
+		(tostring(bestValue / 1_000_000) .. "M")
+
+	joinGui.Text = "JOIN " .. display
+	joinGui.Visible = true
+
+	print("[Auto] Mejor servidor:", display)
+end
+
+-- ===== REFRESH LISTENER =====
+scrolling.ChildAdded:Connect(function()
+	task.wait(0.2)
+	scanServers()
+end)
 
 
