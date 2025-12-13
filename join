@@ -5,7 +5,6 @@ local MAX_SERVERS = 5
 local player = game.Players.LocalPlayer
 local PlayerGui = player:WaitForChild("PlayerGui")
 
--- Esperar a que exista PetMenu (sin romper nada)
 local petMenu
 repeat
 	petMenu = PlayerGui:FindFirstChild("PetMenu")
@@ -15,33 +14,31 @@ until petMenu
 local mainFrame = petMenu:WaitForChild("Frame")
 local scrolling = mainFrame:WaitForChild("ScrollingFrame")
 
-local usados = {} -- ignorados
+local usados = {}
 
 -- ================= UTILS =================
 local function parseValor(txt)
 	if not txt then return nil end
 	txt = txt:gsub("%s","")
-
 	local num = tonumber(txt:match("[%d%.]+"))
 	if not num then return nil end
-
 	if txt:find("B") then
 		return num * 1e9
 	elseif txt:find("M") then
 		return num * 1e6
 	end
-	return nil
 end
 
--- ================= BIG JOIN GUI (NO SE MUEVE) =================
+-- ================= GUI =================
 local gui = Instance.new("ScreenGui")
-gui.Name = "BIG_JOIN_GUI"
+gui.Name = "AUTO_JOIN_GUI"
 gui.ResetOnSpawn = false
 gui.Parent = PlayerGui
 
+-- 🔹 JOIN (CENTRO DERECHA)
 local bigBtn = Instance.new("TextButton")
-bigBtn.Size = UDim2.new(0, 320, 0, 120)
-bigBtn.Position = UDim2.new(0.5, -160, 0.7, 0) -- MISMA POSICIÓN
+bigBtn.Size = UDim2.new(0, 260, 0, 90)
+bigBtn.Position = UDim2.new(1, -280, 0.5, -45)
 bigBtn.BackgroundColor3 = Color3.fromRGB(0,170,0)
 bigBtn.TextColor3 = Color3.new(1,1,1)
 bigBtn.TextScaled = true
@@ -49,12 +46,47 @@ bigBtn.Font = Enum.Font.SourceSansBold
 bigBtn.Visible = false
 bigBtn.Parent = gui
 
+-- 🔹 LISTA ARRIBA DEL JOIN (SCROLLABLE)
+local listFrame = Instance.new("Frame")
+listFrame.Size = UDim2.new(0, 260, 0, 150)
+listFrame.Position = UDim2.new(1, -280, 0.5, -210)
+listFrame.BackgroundColor3 = Color3.fromRGB(35,35,35)
+listFrame.Visible = false
+listFrame.Parent = gui
+
+local corner = Instance.new("UICorner", listFrame)
+corner.CornerRadius = UDim.new(0,12)
+
+local listScroll = Instance.new("ScrollingFrame")
+listScroll.Size = UDim2.new(1, -8, 1, -8)
+listScroll.Position = UDim2.new(0,4,0,4)
+listScroll.CanvasSize = UDim2.new(0,0,0,0)
+listScroll.ScrollBarImageTransparency = 0.3
+listScroll.Parent = listFrame
+
+local layout = Instance.new("UIListLayout", listScroll)
+layout.Padding = UDim.new(0,6)
+
+layout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
+	listScroll.CanvasSize = UDim2.new(0,0,0,layout.AbsoluteContentSize.Y + 6)
+end)
+
 -- ================= CORE =================
+local function limpiarLista()
+	for _,c in ipairs(listScroll:GetChildren()) do
+		if c:IsA("TextButton") then
+			c:Destroy()
+		end
+	end
+end
+
 local function escanear()
+	limpiarLista()
+
 	local lista = {}
 	local vistos = 0
 
-	print("----- [Auto] Escaneando servidores (solo 5) -----")
+	print("----- [Auto] Escaneando 5 servidores -----")
 
 	for _,obj in ipairs(scrolling:GetChildren()) do
 		if obj:IsA("Frame") then
@@ -80,8 +112,8 @@ local function escanear()
 	end
 
 	if #lista == 0 then
-		print("[Auto] Ningún servidor válido")
 		bigBtn.Visible = false
+		listFrame.Visible = false
 		return
 	end
 
@@ -89,68 +121,67 @@ local function escanear()
 		return a.valor > b.valor
 	end)
 
-	local mejor = nil
+	listFrame.Visible = true
+
+	for _,srv in ipairs(lista) do
+		local item = Instance.new("TextButton")
+		item.Size = UDim2.new(1, -6, 0, 32)
+		item.Text = srv.texto
+		item.TextScaled = true
+		item.Font = Enum.Font.SourceSans
+		item.BackgroundColor3 = usados[srv.firma]
+			and Color3.fromRGB(90,40,40)
+			or Color3.fromRGB(60,60,60)
+		item.TextColor3 = Color3.new(1,1,1)
+		item.Parent = listScroll
+
+		item.MouseButton1Click:Connect(function()
+			usados[srv.firma] = true
+			print("[Auto] Ignorado manualmente:", srv.texto)
+			item.BackgroundColor3 = Color3.fromRGB(90,40,40)
+			escanear()
+		end)
+	end
+
 	for _,srv in ipairs(lista) do
 		if not usados[srv.firma] then
-			mejor = srv
-			break
-		else
-			print("[Auto] Ignorado:", srv.texto)
-		end
-	end
+			print("[Auto] Mejor servidor:", srv.texto)
+			bigBtn.Text = "JOIN " .. srv.texto
+			bigBtn.Visible = true
 
-	if not mejor then
-		print("[Auto] Todos los servidores visibles están ignorados")
-		bigBtn.Visible = false
-		return
-	end
-
-	print("[Auto] Mejor servidor:", mejor.texto)
-
-	bigBtn.Text = "JOIN " .. mejor.texto
-	bigBtn.Visible = true
-
-	-- limpiar conexiones viejas
-	for _,c in ipairs(getconnections(bigBtn.MouseButton1Click)) do
-		c:Disable()
-	end
-
-	bigBtn.MouseButton1Click:Connect(function()
-		usados[mejor.firma] = true
-		print("[Auto] Marcado como ignorado:", mejor.texto)
-
-		bigBtn.Visible = false
-
-		local inner = mejor.frame:FindFirstChildWhichIsA("Frame")
-		if not inner then
-			warn("Inner Frame no encontrado")
-			return
-		end
-
-		local joinBtn = inner:FindFirstChildWhichIsA("TextButton")
-		if not joinBtn then
-			warn("JOIN no encontrado")
-			return
-		end
-
-		-- 🔥 JOIN REAL (NO SE TOCA)
-		pcall(function()
-			for _,conn in ipairs(getconnections(joinBtn.MouseButton1Click)) do
-				conn:Fire()
+			for _,c in ipairs(getconnections(bigBtn.MouseButton1Click)) do
+				c:Disable()
 			end
-		end)
-	end)
+
+			bigBtn.MouseButton1Click:Connect(function()
+				usados[srv.firma] = true
+				bigBtn.Visible = false
+
+				local inner = srv.frame:FindFirstChildWhichIsA("Frame")
+				if not inner then return end
+				local joinBtn = inner:FindFirstChildWhichIsA("TextButton")
+				if not joinBtn then return end
+
+				for _,conn in ipairs(getconnections(joinBtn.MouseButton1Click)) do
+					conn:Fire()
+				end
+			end)
+			return
+		end
+	end
+
+	print("[Auto] Todos los servidores visibles ignorados")
+	bigBtn.Visible = false
 end
 
--- ================= TRIGGERS =================
-
--- Escaneo rápido al refrescar (sin mover nada)
+-- ================= TRIGGER =================
 scrolling.ChildAdded:Connect(function()
 	task.wait(0.05)
 	escanear()
 end)
 
-print("[Auto] Script listo. Usa Refresh manual.")
+print("[Auto] Script listo. Refresh manual.")
+
 
 
 
