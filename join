@@ -325,55 +325,46 @@ end)
 
 -- ================= CLEAN USADOS GUI =================
 
-local HttpService = game:GetService("HttpService")
-local FILE_NAME = "auto_join_usados.json"
-
--- GUI contenedor
 local cleanGui = Instance.new("Frame")
-cleanGui.Size = UDim2.new(0,140,0,60)
-cleanGui.Position = UDim2.new(1,-600,0.5,120)
-cleanGui.BackgroundColor3 = Color3.fromRGB(35,35,35)
+cleanGui.Size = UDim2.new(0,140,0,50)
+cleanGui.Position = UDim2.new(0,20,0.5,-25)
+cleanGui.BackgroundColor3 = Color3.fromRGB(120,30,30)
 cleanGui.Active = true
 cleanGui.Draggable = true
 cleanGui.Parent = gui
 
-Instance.new("UICorner", cleanGui).CornerRadius = UDim.new(0,12)
+Instance.new("UICorner", cleanGui)
 
--- Botón CLEAN
 local cleanBtn = Instance.new("TextButton")
 cleanBtn.Size = UDim2.new(1,-10,1,-10)
 cleanBtn.Position = UDim2.new(0,5,0,5)
 cleanBtn.Text = "CLEAN"
 cleanBtn.TextScaled = true
 cleanBtn.Font = Enum.Font.SourceSansBold
-cleanBtn.BackgroundColor3 = Color3.fromRGB(170,60,60)
+cleanBtn.BackgroundColor3 = Color3.fromRGB(180,50,50)
 cleanBtn.TextColor3 = Color3.new(1,1,1)
 cleanBtn.Parent = cleanGui
 
--- Acción CLEAN
 cleanBtn.MouseButton1Click:Connect(function()
 	-- limpiar tabla en memoria
-	table.clear(usados)
+	usados = {}
 
-	-- borrar archivo
+	-- borrar archivo si existe
 	if isfile(FILE_NAME) then
 		pcall(function()
 			delfile(FILE_NAME)
 		end)
 	end
 
-	-- feedback visual
-	cleanBtn.Text = "CLEANED"
-	cleanBtn.BackgroundColor3 = Color3.fromRGB(60,170,60)
-
-	task.delay(0.8,function()
-		cleanBtn.Text = "CLEAN"
-		cleanBtn.BackgroundColor3 = Color3.fromRGB(170,60,60)
-	end)
-
-	-- refrescar lista
+	-- refrescar UI
 	escanear()
+
+	cleanBtn.Text = "CLEANED"
+	task.delay(1,function()
+		cleanBtn.Text = "CLEAN"
+	end)
 end)
+
 
 
 
