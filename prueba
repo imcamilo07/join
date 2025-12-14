@@ -190,12 +190,9 @@ local function escanear()
 			bigBtn.Text = "JOIN " .. srv.texto
 			bigBtn.Visible = true
 
-			local conns = getconnections and getconnections(bigBtn.MouseButton1Click)
-if type(conns) == "table" then
-	for _,c in ipairs(conns) do
-		c:Disable()
-	end
-end
+			for _,c in ipairs(getconnections(bigBtn.MouseButton1Click)) do
+				c:Disable()
+			end
 
 			bigBtn.MouseButton1Click:Connect(function()
 	if joinLock then return end
@@ -218,12 +215,11 @@ end
 	end
 
 	-- ✅ JOIN REAL
-local joinConns = getconnections and getconnections(joinBtn.MouseButton1Click)
-if type(joinConns) == "table" then
-	for _,conn in ipairs(joinConns) do
+	for _,conn in ipairs(getconnections(joinBtn.MouseButton1Click)) do
 		conn:Fire()
 	end
-end
+end)
+
 
 			task.defer(function()
 				if bigBtn.Visible and not joinLock then
