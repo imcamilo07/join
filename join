@@ -1,6 +1,6 @@
 -- ================= CONFIG =================
 local MAX_SERVERS = 5
-local MIN_JOIN_VALUE = 200e6 -- 150M mínimo para mostrar JOIN
+local MIN_JOIN_VALUE = 200e6 -- 200M mínimo para mostrar JOIN
 
 -- ================= SETUP =================
 local player = game.Players.LocalPlayer
@@ -183,9 +183,7 @@ local function escanear()
 	bigBtn.Visible = false
 
 	for _,srv in ipairs(lista) do
-	if not usados[srv.firma]
-		and srv.valor >= MIN_JOIN_VALUE then
-
+		if not usados[srv.firma] and srv.valor >= MIN_JOIN_VALUE then
 
 			bigBtn.Text = "JOIN " .. srv.texto
 			bigBtn.Visible = true
@@ -195,31 +193,48 @@ local function escanear()
 			end
 
 			bigBtn.MouseButton1Click:Connect(function()
-	if joinLock then return end
-	joinLock = true
-	bigBtn.Visible = false
+				if joinLock then return end
+				joinLock = true
+				bigBtn.Visible = false
 
-	local inner = srv.frame:FindFirstChildWhichIsA("Frame")
-	if not inner then joinLock = false return end
+				local inner = srv.frame:FindFirstChildWhichIsA("Frame")
+				if not inner then 
+					joinLock = false -- Desbloqueo rápido si falla estructura
+					return 
+				end
 
-	local joinBtn = inner:FindFirstChildWhichIsA("TextButton")
-	if not joinBtn then joinLock = false return end
+				local joinBtn = inner:FindFirstChildWhichIsA("TextButton")
+				if not joinBtn then 
+					joinLock = false -- Desbloqueo rápido
+					return 
+				end
 
-	-- ✅ MARCAR COMO USADO ANTES DE SALIR
-	usados[srv.firma] = true
-	guardarUsados()
+				-- ✅ MARCAR COMO USADO ANTES DE SALIR
+				usados[srv.firma] = true
+				guardarUsados()
 
-	-- (opcional, no rompe nada)
-	if game.JobId and game.JobId ~= "" then
-		servidoresVisitados[game.JobId] = true
-	end
+				-- (opcional, no rompe nada)
+				if game.JobId and game.JobId ~= "" then
+					servidoresVisitados[game.JobId] = true
+				end
 
-	-- ✅ JOIN REAL
-	for _,conn in ipairs(getconnections(joinBtn.MouseButton1Click)) do
-		conn:Fire()
-	end
-end)
-
+				-- ✅ JOIN REAL
+				for _,conn in ipairs(getconnections(joinBtn.MouseButton1Click)) do
+					conn:Fire()
+				end
+				
+				-- 🔥🔥🔥 FIX CRÍTICO: DESBLOQUEO DE SEGURIDAD 🔥🔥🔥
+				-- Si el servidor está lleno y no te teletransportas en 5 segundos,
+				-- esto reinicia el script para que siga buscando.
+				task.delay(4, function()
+					if joinLock then
+						print("⚠️ Fallo al unir (posiblemente servidor lleno). Reiniciando búsqueda...")
+						joinLock = false
+						-- Si el Auto estaba prendido, forzar un escaneo inmediato
+						escanear()
+					end
+				end)
+			end)
 
 			task.defer(function()
 				if bigBtn.Visible and not joinLock then
@@ -364,7 +379,6 @@ cleanBtn.MouseButton1Click:Connect(function()
 		cleanBtn.Text = "CLEAN"
 	end)
 end)
-
 
 
 
