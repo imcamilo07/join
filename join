@@ -190,9 +190,12 @@ local function escanear()
 			bigBtn.Text = "JOIN " .. srv.texto
 			bigBtn.Visible = true
 
-			for _,c in ipairs(getconnections(bigBtn.MouseButton1Click)) do
-				c:Disable()
-			end
+			local conns = getconnections and getconnections(bigBtn.MouseButton1Click)
+if type(conns) == "table" then
+	for _,c in ipairs(conns) do
+		c:Disable()
+	end
+end
 
 			bigBtn.MouseButton1Click:Connect(function()
 	if joinLock then return end
@@ -215,17 +218,12 @@ local function escanear()
 	end
 
 	-- ✅ JOIN REAL
-for _,conn in ipairs(getconnections(joinBtn.MouseButton1Click)) do
-	conn:Fire()
-end
-
--- 🔓 FAILSAFE: si el servidor estaba lleno y NO hubo teleport,
--- liberar el lock para que todo siga funcionando
-task.delay(1.2, function()
-	if joinLock then
-		joinLock = false
+local joinConns = getconnections and getconnections(joinBtn.MouseButton1Click)
+if type(joinConns) == "table" then
+	for _,conn in ipairs(joinConns) do
+		conn:Fire()
 	end
-end)
+end
 
 			task.defer(function()
 				if bigBtn.Visible and not joinLock then
