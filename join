@@ -238,15 +238,89 @@ scrolling.ChildAdded:Connect(function()
 	escanear()
 end)
 
--- ================= AUTO REFRESH (AÑADIDO) =================
+-- ================= AUTO REFRESH GUI =================
+
+-- buscar el botón Refresh del PetMenu
+local function getRefreshButton()
+	for _,obj in ipairs(mainFrame:GetDescendants()) do
+		if obj:IsA("TextButton") then
+			if obj.Text == "Refresh" or obj.ContentText == "Refresh" then
+				return obj
+			end
+		end
+	end
+end
+
+-- disparar el refresh real
+local function fireRefresh()
+	local btn = getRefreshButton()
+	if not btn then return end
+
+	for _,conn in ipairs(getconnections(btn.MouseButton1Click)) do
+		conn:Fire()
+	end
+end
+
+-- ================= GUI AUTO REFRESH =================
+
+local refreshGui = Instance.new("Frame")
+refreshGui.Size = UDim2.new(0,160,0,90)
+refreshGui.Position = UDim2.new(1,-450,0.5,-45) -- a la IZQUIERDA del panel
+refreshGui.BackgroundColor3 = Color3.fromRGB(30,30,30)
+refreshGui.Active = true
+refreshGui.Draggable = true
+refreshGui.Parent = gui
+
+Instance.new("UICorner", refreshGui)
+
+-- botón Refresh manual
+local refreshBtn = Instance.new("TextButton")
+refreshBtn.Size = UDim2.new(1,-10,0,32)
+refreshBtn.Position = UDim2.new(0,5,0,6)
+refreshBtn.Text = "REFRESH"
+refreshBtn.TextScaled = true
+refreshBtn.Font = Enum.Font.SourceSansBold
+refreshBtn.BackgroundColor3 = Color3.fromRGB(70,70,70)
+refreshBtn.TextColor3 = Color3.new(1,1,1)
+refreshBtn.Parent = refreshGui
+
+refreshBtn.MouseButton1Click:Connect(function()
+	fireRefresh()
+end)
+
+-- botón Auto ON/OFF
+local autoBtn = Instance.new("TextButton")
+autoBtn.Size = UDim2.new(1,-10,0,30)
+autoBtn.Position = UDim2.new(0,5,0,46)
+autoBtn.Text = "AUTO: OFF"
+autoBtn.TextScaled = true
+autoBtn.Font = Enum.Font.SourceSansBold
+autoBtn.BackgroundColor3 = Color3.fromRGB(50,50,50)
+autoBtn.TextColor3 = Color3.new(1,1,1)
+autoBtn.Parent = refreshGui
+
+local autoRefresh = false
+
+autoBtn.MouseButton1Click:Connect(function()
+	autoRefresh = not autoRefresh
+	autoBtn.Text = autoRefresh and "AUTO: ON" or "AUTO: OFF"
+end)
+
+-- ================= LOOP AUTO REFRESH =================
+-- sincronizado: primero escanea, luego refresca si NO hay server bueno
+
 task.spawn(function()
 	while true do
-		task.wait(0.15) -- auto-refresh rápido
-		pcall(escanear)
+		if autoRefresh and not joinLock then
+			-- solo refrescar si NO hay JOIN visible
+			if not bigBtn.Visible then
+				fireRefresh()
+			end
+		end
+		task.wait(0.15) -- rápido pero estable
 	end
 end)
 
-print("[Auto] Script listo.")
 
 
 
