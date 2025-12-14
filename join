@@ -184,8 +184,7 @@ local function escanear()
 
 	for _,srv in ipairs(lista) do
 	if not usados[srv.firma]
-		and srv.valor >= MIN_JOIN_VALUE
-		and not servidoresVisitados[game.JobId] then
+		and srv.valor >= MIN_JOIN_VALUE then
 
 
 			bigBtn.Text = "JOIN " .. srv.texto
