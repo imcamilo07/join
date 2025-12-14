@@ -317,7 +317,7 @@ task.spawn(function()
 				fireRefresh()
 			end
 		end
-		task.wait(0.15) -- rápido pero estable
+		task.wait(0.12) -- rápido pero estable
 	end
 end)
 
