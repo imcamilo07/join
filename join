@@ -215,11 +215,17 @@ local function escanear()
 	end
 
 	-- ✅ JOIN REAL
-	for _,conn in ipairs(getconnections(joinBtn.MouseButton1Click)) do
-		conn:Fire()
+for _,conn in ipairs(getconnections(joinBtn.MouseButton1Click)) do
+	conn:Fire()
+end
+
+-- 🔓 FAILSAFE: si el servidor estaba lleno y NO hubo teleport,
+-- liberar el lock para que todo siga funcionando
+task.delay(1.2, function()
+	if joinLock then
+		joinLock = false
 	end
 end)
-
 
 			task.defer(function()
 				if bigBtn.Visible and not joinLock then
