@@ -218,15 +218,16 @@ local function escanear()
 	for _,conn in ipairs(getconnections(joinBtn.MouseButton1Click)) do
 		conn:Fire()
 	end
-
-
-task.defer(function()
-	if bigBtn.Visible and not joinLock then
-		for _,conn in ipairs(getconnections(bigBtn.MouseButton1Click)) do
-			conn:Fire()
-		end
-	end
 end)
+
+
+			task.defer(function()
+				if bigBtn.Visible and not joinLock then
+					for _,conn in ipairs(getconnections(bigBtn.MouseButton1Click)) do
+						conn:Fire()
+					end
+				end
+			end)
 
 			return
 		end
