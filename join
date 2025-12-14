@@ -67,20 +67,21 @@ local function parseValor(txt)
 	return maxValue
 end
 
--- 🔒 SAFE FIRE (NO TOCAR)
+-- 🔒 SAFE FIRE (PC + MOBILE)
 local function safeFire(signal)
 	if not signal then return end
 
-	local cons = getconnections and getconnections(signal)
-	if not cons then return end
-
-	for _,conn in ipairs(cons) do
-		pcall(function()
-			if conn.Fire then
+	-- PC executors
+	if getconnections then
+		for _,conn in ipairs(getconnections(signal)) do
+			pcall(function()
 				conn:Fire()
-			elseif conn.Function then
-				conn:Function()
-			end
+			end)
+		end
+	else
+		-- Mobile executors (fallback)
+		pcall(function()
+			signal:Fire()
 		end)
 	end
 end
