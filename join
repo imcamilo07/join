@@ -67,25 +67,6 @@ local function parseValor(txt)
 	return maxValue
 end
 
--- 🔒 SAFE FIRE (PC + MOBILE)
-local function safeFire(signal)
-	if not signal then return end
-
-	-- PC executors
-	if getconnections then
-		for _,conn in ipairs(getconnections(signal)) do
-			pcall(function()
-				conn:Fire()
-			end)
-		end
-	else
-		-- Mobile executors (fallback)
-		pcall(function()
-			signal:Fire()
-		end)
-	end
-end
-
 -- ================= GUI =================
 local gui = Instance.new("ScreenGui")
 gui.Name = "AUTO_JOIN_GUI"
@@ -233,26 +214,18 @@ local function escanear()
 		servidoresVisitados[game.JobId] = true
 	end
 
-	-- ✅ JOIN REAL + FAILSAFE
-local currentJobId = game.JobId
-safeFire(joinBtn.MouseButton1Click)
-
-task.delay(2.5, function()
-	-- si seguimos en el mismo servidor → join falló
-	if game.JobId == currentJobId then
-		joinLock = false
-
-		-- reactivar autorefresh automáticamente
-		if autoRefresh then
-			fireRefresh()
-		end
+	-- ✅ JOIN REAL
+	for _,conn in ipairs(getconnections(joinBtn.MouseButton1Click)) do
+		conn:Fire()
 	end
 end)
 
+
 			task.defer(function()
 				if bigBtn.Visible and not joinLock then
-					safeFire(bigBtn.MouseButton1Click)
-
+					for _,conn in ipairs(getconnections(bigBtn.MouseButton1Click)) do
+						conn:Fire()
+					end
 				end
 			end)
 
@@ -285,8 +258,9 @@ local function fireRefresh()
 	local btn = getRefreshButton()
 	if not btn then return end
 
-	safeFire(btn.MouseButton1Click)
-
+	for _,conn in ipairs(getconnections(btn.MouseButton1Click)) do
+		conn:Fire()
+	end
 end
 
 -- ================= GUI AUTO REFRESH =================
