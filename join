@@ -195,30 +195,31 @@ local function escanear()
 			end
 
 			bigBtn.MouseButton1Click:Connect(function()
-				if joinLock then return end
-				joinLock = true
-				bigBtn.Visible = false
+	if joinLock then return end
+	joinLock = true
+	bigBtn.Visible = false
 
-				local inner = srv.frame:FindFirstChildWhichIsA("Frame")
-				if not inner then joinLock = false return end
+	local inner = srv.frame:FindFirstChildWhichIsA("Frame")
+	if not inner then joinLock = false return end
 
-				local joinBtn = inner:FindFirstChildWhichIsA("TextButton")
-				if not joinBtn then joinLock = false return end
+	local joinBtn = inner:FindFirstChildWhichIsA("TextButton")
+	if not joinBtn then joinLock = false return end
 
-				for _,conn in ipairs(getconnections(joinBtn.MouseButton1Click)) do
-					conn:Fire()
-				end
+	-- ✅ MARCAR COMO USADO ANTES DE SALIR
+	usados[srv.firma] = true
+	guardarUsados()
 
-				if game.JobId and game.JobId ~= "" then
-					servidoresVisitados[game.JobId] = true
-				end
+	-- (opcional, no rompe nada)
+	if game.JobId and game.JobId ~= "" then
+		servidoresVisitados[game.JobId] = true
+	end
 
-				task.delay(0.3,function()
-					usados[srv.firma] = true
-					guardarUsados()
-					joinLock = false
-				end)
-			end)
+	-- ✅ JOIN REAL
+	for _,conn in ipairs(getconnections(joinBtn.MouseButton1Click)) do
+		conn:Fire()
+	end
+end)
+
 
 			task.defer(function()
 				if bigBtn.Visible and not joinLock then
