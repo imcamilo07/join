@@ -226,7 +226,7 @@ local function escanear()
 				-- 🔥🔥🔥 FIX CRÍTICO: DESBLOQUEO DE SEGURIDAD 🔥🔥🔥
 				-- Si el servidor está lleno y no te teletransportas en 5 segundos,
 				-- esto reinicia el script para que siga buscando.
-				task.delay(4, function()
+				task.delay(2.5, function()
 					if joinLock then
 						print("⚠️ Fallo al unir (posiblemente servidor lleno). Reiniciando búsqueda...")
 						joinLock = false
