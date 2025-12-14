@@ -23,7 +23,6 @@ local servidoresVisitados = {}
 
 -- ================= PERSISTENCIA =================
 local FILE_NAME = "auto_join_usados.json"
-local FILE_MIN = "auto_join_min.json" -- 🔹 AÑADIDO
 local HttpService = game:GetService("HttpService")
 
 local function cargarUsados()
@@ -43,26 +42,7 @@ local function guardarUsados()
 	end)
 end
 
--- 🔹 AÑADIDO: cargar MIN_JOIN_VALUE persistente
-local function cargarMin()
-	if isfile(FILE_MIN) then
-		local ok, data = pcall(function()
-			return HttpService:JSONDecode(readfile(FILE_MIN))
-		end)
-		if ok and tonumber(data) then
-			MIN_JOIN_VALUE = tonumber(data)
-		end
-	end
-end
-
-local function guardarMin()
-	pcall(function()
-		writefile(FILE_MIN, HttpService:JSONEncode(MIN_JOIN_VALUE))
-	end)
-end
-
 cargarUsados()
-cargarMin()
 
 -- marcar el servidor actual como visitado (NO AFECTA AUTOJOIN)
 if game.JobId and game.JobId ~= "" then
@@ -93,6 +73,7 @@ gui.Name = "AUTO_JOIN_GUI"
 gui.ResetOnSpawn = false
 gui.DisplayOrder = 999999
 gui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+gui.Enabled = true
 gui.Parent = PlayerGui
 
 local bigBtn = Instance.new("TextButton")
@@ -112,11 +93,12 @@ listFrame.BackgroundColor3 = Color3.fromRGB(35,35,35)
 listFrame.Visible = false
 listFrame.Parent = gui
 
-Instance.new("UICorner", listFrame)
+Instance.new("UICorner", listFrame).CornerRadius = UDim.new(0,12)
 
 local listScroll = Instance.new("ScrollingFrame")
 listScroll.Size = UDim2.new(1,-8,1,-8)
 listScroll.Position = UDim2.new(0,4,0,4)
+listScroll.CanvasSize = UDim2.new(0,0,0,0)
 listScroll.ScrollBarImageTransparency = 0.3
 listScroll.Parent = listFrame
 
@@ -180,6 +162,7 @@ local function escanear()
 		item.Size = UDim2.new(1,-6,0,32)
 		item.Text = srv.texto
 		item.TextScaled = true
+		item.Font = Enum.Font.SourceSans
 		item.BackgroundColor3 = usados[srv.firma]
 			and Color3.fromRGB(90,40,40)
 			or Color3.fromRGB(60,60,60)
@@ -187,7 +170,11 @@ local function escanear()
 		item.Parent = listScroll
 
 		item.MouseButton1Click:Connect(function()
-			usados[srv.firma] = not usados[srv.firma] or nil
+			if usados[srv.firma] then
+				usados[srv.firma] = nil
+			else
+				usados[srv.firma] = true
+			end
 			guardarUsados()
 			escanear()
 		end)
@@ -196,7 +183,9 @@ local function escanear()
 	bigBtn.Visible = false
 
 	for _,srv in ipairs(lista) do
-		if not usados[srv.firma] and srv.valor >= MIN_JOIN_VALUE then
+		if not usados[srv.firma]
+			and srv.valor >= MIN_JOIN_VALUE then
+
 			bigBtn.Text = "JOIN " .. srv.texto
 			bigBtn.Visible = true
 
@@ -209,11 +198,18 @@ local function escanear()
 				joinLock = true
 				bigBtn.Visible = false
 
-				local joinBtn = srv.frame:FindFirstChildWhichIsA("TextButton", true)
-				if joinBtn then
-					for _,c in ipairs(getconnections(joinBtn.MouseButton1Click)) do
-						c:Fire()
-					end
+				local inner = srv.frame:FindFirstChildWhichIsA("Frame")
+				if not inner then joinLock = false return end
+
+				local joinBtn = inner:FindFirstChildWhichIsA("TextButton")
+				if not joinBtn then joinLock = false return end
+
+				for _,conn in ipairs(getconnections(joinBtn.MouseButton1Click)) do
+					conn:Fire()
+				end
+
+				if game.JobId and game.JobId ~= "" then
+					servidoresVisitados[game.JobId] = true
 				end
 
 				task.delay(0.3,function()
@@ -225,8 +221,8 @@ local function escanear()
 
 			task.defer(function()
 				if bigBtn.Visible and not joinLock then
-					for _,c in ipairs(getconnections(bigBtn.MouseButton1Click)) do
-						c:Fire()
+					for _,conn in ipairs(getconnections(bigBtn.MouseButton1Click)) do
+						conn:Fire()
 					end
 				end
 			end)
@@ -242,61 +238,16 @@ scrolling.ChildAdded:Connect(function()
 	escanear()
 end)
 
--- ================= 🔹 AUTO REFRESH (AÑADIDO) =================
-local function getRefreshButton()
-	for _,obj in ipairs(mainFrame:GetDescendants()) do
-		if obj:IsA("TextButton") and (obj.Text == "Refresh" or obj.ContentText == "Refresh") then
-			return obj
-		end
-	end
-end
-
-local function fireRefresh()
-	local btn = getRefreshButton()
-	if not btn then return end
-	for _,c in ipairs(getconnections(btn.MouseButton1Click)) do
-		c:Fire()
-	end
-end
-
-local refreshGui = Instance.new("Frame", gui)
-refreshGui.Size = UDim2.new(0,160,0,90)
-refreshGui.Position = UDim2.new(0,20,0.5,-45)
-refreshGui.BackgroundColor3 = Color3.fromRGB(30,30,30)
-refreshGui.Active = true
-refreshGui.Draggable = true
-Instance.new("UICorner", refreshGui)
-
-local refreshBtn = Instance.new("TextButton", refreshGui)
-refreshBtn.Size = UDim2.new(1,-10,0,30)
-refreshBtn.Position = UDim2.new(0,5,0,5)
-refreshBtn.Text = "REFRESH"
-refreshBtn.TextScaled = true
-refreshBtn.MouseButton1Click:Connect(fireRefresh)
-
-local autoBtn = Instance.new("TextButton", refreshGui)
-autoBtn.Size = UDim2.new(1,-10,0,25)
-autoBtn.Position = UDim2.new(0,5,0,40)
-autoBtn.Text = "AUTO: OFF"
-autoBtn.TextScaled = true
-
-local autoRefresh = false
-autoBtn.MouseButton1Click:Connect(function()
-	autoRefresh = not autoRefresh
-	autoBtn.Text = autoRefresh and "AUTO: ON" or "AUTO: OFF"
-end)
-
--- 🔹 velocidad alta (~8–10 refresh/seg)
+-- ================= AUTO REFRESH (AÑADIDO) =================
 task.spawn(function()
 	while true do
-		if autoRefresh and not joinLock then
-			fireRefresh()
-		end
-		task.wait(0.12)
+		task.wait(0.15) -- auto-refresh rápido
+		pcall(escanear)
 	end
 end)
 
-print("[Auto] Script listo + AutoRefresh + Min persistente")
+print("[Auto] Script listo.")
+
 
 
 
