@@ -1,6 +1,6 @@
 -- ================= CONFIG =================
 local MAX_SERVERS = 5
-local MIN_JOIN_VALUE = 200e6 -- 150M mínimo para mostrar JOIN
+local MIN_JOIN_VALUE = 200e6
 
 -- ================= SETUP =================
 local player = game.Players.LocalPlayer
@@ -15,11 +15,42 @@ until petMenu
 local mainFrame = petMenu:WaitForChild("Frame")
 local scrolling = mainFrame:WaitForChild("ScrollingFrame")
 
-local usados = {} -- ignorados persistentes
-local joinLock = false -- 🔒 FIX anti-spam JOIN
-
--- 🔹🔹🔹 AÑADIDO: servidores ya visitados (por JobId)
+local usados = {}
+local joinLock = false
 local servidoresVisitados = {}
+
+-- ================= SAFE CLICK =================
+local function safeClick(signal)
+	if getconnections then
+		local conns = getconnections(signal)
+		if type(conns) == "table" then
+			for _,c in ipairs(conns) do
+				pcall(function()
+					if c.Enabled then
+						c:Fire()
+					end
+				end)
+			end
+			return
+		end
+	end
+	pcall(function()
+		signal:Connect(function() end)
+	end)
+end
+
+local function safeDisable(signal)
+	if getconnections then
+		local conns = getconnections(signal)
+		if type(conns) == "table" then
+			for _,c in ipairs(conns) do
+				pcall(function()
+					c:Disable()
+				end)
+			end
+		end
+	end
+end
 
 -- ================= PERSISTENCIA =================
 local FILE_NAME = "auto_join_usados.json"
@@ -44,7 +75,6 @@ end
 
 cargarUsados()
 
--- marcar el servidor actual como visitado (NO AFECTA AUTOJOIN)
 if game.JobId and game.JobId ~= "" then
 	servidoresVisitados[game.JobId] = true
 end
@@ -53,14 +83,13 @@ end
 local function parseValor(txt)
 	if not txt then return nil end
 	txt = txt:gsub("%s+", "")
-
-	local maxValue = nil
+	local maxValue
 	for num, suf in txt:gmatch("([%d%.]+)([MB])") do
 		local n = tonumber(num)
 		if n then
-			local value = (suf == "B" and n * 1e9) or (suf == "M" and n * 1e6)
-			if value and (not maxValue or value > maxValue) then
-				maxValue = value
+			local v = (suf == "B" and n * 1e9) or (suf == "M" and n * 1e6)
+			if not maxValue or v > maxValue then
+				maxValue = v
 			end
 		end
 	end
@@ -72,8 +101,6 @@ local gui = Instance.new("ScreenGui")
 gui.Name = "AUTO_JOIN_GUI"
 gui.ResetOnSpawn = false
 gui.DisplayOrder = 999999
-gui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
-gui.Enabled = true
 gui.Parent = PlayerGui
 
 local bigBtn = Instance.new("TextButton")
@@ -93,13 +120,11 @@ listFrame.BackgroundColor3 = Color3.fromRGB(35,35,35)
 listFrame.Visible = false
 listFrame.Parent = gui
 
-Instance.new("UICorner", listFrame).CornerRadius = UDim.new(0,12)
+Instance.new("UICorner", listFrame)
 
 local listScroll = Instance.new("ScrollingFrame")
 listScroll.Size = UDim2.new(1,-8,1,-8)
 listScroll.Position = UDim2.new(0,4,0,4)
-listScroll.CanvasSize = UDim2.new(0,0,0,0)
-listScroll.ScrollBarImageTransparency = 0.3
 listScroll.Parent = listFrame
 
 local layout = Instance.new("UIListLayout", listScroll)
@@ -144,191 +169,83 @@ local function escanear()
 		if vistos >= MAX_SERVERS then break end
 	end
 
-	if vistos < MAX_SERVERS then return end
 	if #lista == 0 then
 		bigBtn.Visible = false
 		listFrame.Visible = false
 		return
 	end
 
-	table.sort(lista,function(a,b)
-		return a.valor > b.valor
-	end)
-
+	table.sort(lista,function(a,b) return a.valor > b.valor end)
 	listFrame.Visible = true
-
-	for _,srv in ipairs(lista) do
-		local item = Instance.new("TextButton")
-		item.Size = UDim2.new(1,-6,0,32)
-		item.Text = srv.texto
-		item.TextScaled = true
-		item.Font = Enum.Font.SourceSans
-		item.BackgroundColor3 = usados[srv.firma]
-			and Color3.fromRGB(90,40,40)
-			or Color3.fromRGB(60,60,60)
-		item.TextColor3 = Color3.new(1,1,1)
-		item.Parent = listScroll
-
-		item.MouseButton1Click:Connect(function()
-			if usados[srv.firma] then
-				usados[srv.firma] = nil
-			else
-				usados[srv.firma] = true
-			end
-			guardarUsados()
-			escanear()
-		end)
-	end
-
 	bigBtn.Visible = false
 
 	for _,srv in ipairs(lista) do
-	if not usados[srv.firma]
-		and srv.valor >= MIN_JOIN_VALUE then
-
-
+		if not usados[srv.firma] and srv.valor >= MIN_JOIN_VALUE then
 			bigBtn.Text = "JOIN " .. srv.texto
 			bigBtn.Visible = true
 
-			local conns = getconnections and getconnections(bigBtn.MouseButton1Click)
-if type(conns) == "table" then
-	for _,c in ipairs(conns) do
-		c:Disable()
-	end
-end
+			safeDisable(bigBtn.MouseButton1Click)
 
 			bigBtn.MouseButton1Click:Connect(function()
-	if joinLock then return end
-	joinLock = true
-	bigBtn.Visible = false
+				if joinLock then return end
+				joinLock = true
+				bigBtn.Visible = false
 
-	local inner = srv.frame:FindFirstChildWhichIsA("Frame")
-	if not inner then joinLock = false return end
+				local inner = srv.frame:FindFirstChildWhichIsA("Frame")
+				if not inner then return end
+				local joinBtn = inner:FindFirstChildWhichIsA("TextButton")
+				if not joinBtn then return end
 
-	local joinBtn = inner:FindFirstChildWhichIsA("TextButton")
-	if not joinBtn then joinLock = false return end
+				usados[srv.firma] = true
+				guardarUsados()
 
-	-- ✅ MARCAR COMO USADO ANTES DE SALIR
-	usados[srv.firma] = true
-	guardarUsados()
-
-	-- (opcional, no rompe nada)
-	if game.JobId and game.JobId ~= "" then
-		servidoresVisitados[game.JobId] = true
-	end
-
-	-- ✅ JOIN REAL
-local joinConns = getconnections and getconnections(joinBtn.MouseButton1Click)
-if type(joinConns) == "table" then
-	for _,conn in ipairs(joinConns) do
-		conn:Fire()
-	end
-end
+				safeClick(joinBtn.MouseButton1Click)
+			end)
 
 			task.defer(function()
 				if bigBtn.Visible and not joinLock then
-					for _,conn in ipairs(getconnections(bigBtn.MouseButton1Click)) do
-						conn:Fire()
-					end
+					safeClick(bigBtn.MouseButton1Click)
 				end
 			end)
-
 			return
 		end
 	end
 end
 
--- ================= TRIGGER =================
 scrolling.ChildAdded:Connect(function()
 	task.wait()
 	escanear()
 end)
 
--- ================= AUTO REFRESH GUI =================
-
--- buscar el botón Refresh del PetMenu
+-- ================= REFRESH =================
 local function getRefreshButton()
 	for _,obj in ipairs(mainFrame:GetDescendants()) do
-		if obj:IsA("TextButton") then
-			if obj.Text == "Refresh" or obj.ContentText == "Refresh" then
-				return obj
-			end
+		if obj:IsA("TextButton") and (obj.Text == "Refresh" or obj.ContentText == "Refresh") then
+			return obj
 		end
 	end
 end
 
--- disparar el refresh real
 local function fireRefresh()
 	local btn = getRefreshButton()
-	if not btn then return end
-
-	for _,conn in ipairs(getconnections(btn.MouseButton1Click)) do
-		conn:Fire()
+	if btn then
+		safeClick(btn.MouseButton1Click)
 	end
 end
 
--- ================= GUI AUTO REFRESH =================
-
-local refreshGui = Instance.new("Frame")
-refreshGui.Size = UDim2.new(0,160,0,90)
-refreshGui.Position = UDim2.new(1,-450,0.5,-45) -- a la IZQUIERDA del panel
-refreshGui.BackgroundColor3 = Color3.fromRGB(30,30,30)
-refreshGui.Active = true
-refreshGui.Draggable = true
-refreshGui.Parent = gui
-
-Instance.new("UICorner", refreshGui)
-
--- botón Refresh manual
-local refreshBtn = Instance.new("TextButton")
-refreshBtn.Size = UDim2.new(1,-10,0,32)
-refreshBtn.Position = UDim2.new(0,5,0,6)
-refreshBtn.Text = "REFRESH"
-refreshBtn.TextScaled = true
-refreshBtn.Font = Enum.Font.SourceSansBold
-refreshBtn.BackgroundColor3 = Color3.fromRGB(70,70,70)
-refreshBtn.TextColor3 = Color3.new(1,1,1)
-refreshBtn.Parent = refreshGui
-
-refreshBtn.MouseButton1Click:Connect(function()
-	fireRefresh()
-end)
-
--- botón Auto ON/OFF
-local autoBtn = Instance.new("TextButton")
-autoBtn.Size = UDim2.new(1,-10,0,30)
-autoBtn.Position = UDim2.new(0,5,0,46)
-autoBtn.Text = "AUTO: OFF"
-autoBtn.TextScaled = true
-autoBtn.Font = Enum.Font.SourceSansBold
-autoBtn.BackgroundColor3 = Color3.fromRGB(50,50,50)
-autoBtn.TextColor3 = Color3.new(1,1,1)
-autoBtn.Parent = refreshGui
-
+-- ================= AUTO REFRESH =================
 local autoRefresh = false
-
-autoBtn.MouseButton1Click:Connect(function()
-	autoRefresh = not autoRefresh
-	autoBtn.Text = autoRefresh and "AUTO: ON" or "AUTO: OFF"
-end)
-
--- ================= LOOP AUTO REFRESH =================
--- sincronizado: primero escanea, luego refresca si NO hay server bueno
 
 task.spawn(function()
 	while true do
-		if autoRefresh and not joinLock then
-			-- solo refrescar si NO hay JOIN visible
-			if not bigBtn.Visible then
-				fireRefresh()
-			end
+		if autoRefresh and not joinLock and not bigBtn.Visible then
+			fireRefresh()
 		end
-		task.wait(0.12) -- rápido pero estable
+		task.wait(0.12)
 	end
 end)
 
--- ================= CLEAN USADOS GUI =================
-
+-- ================= CLEAN =================
 local cleanGui = Instance.new("Frame")
 cleanGui.Size = UDim2.new(0,140,0,50)
 cleanGui.Position = UDim2.new(0,20,0.5,-25)
@@ -350,24 +267,11 @@ cleanBtn.TextColor3 = Color3.new(1,1,1)
 cleanBtn.Parent = cleanGui
 
 cleanBtn.MouseButton1Click:Connect(function()
-	-- limpiar tabla en memoria
 	usados = {}
-
-	-- borrar archivo si existe
-	if isfile(FILE_NAME) then
-		pcall(function()
-			delfile(FILE_NAME)
-		end)
-	end
-
-	-- refrescar UI
+	if isfile(FILE_NAME) then pcall(delfile, FILE_NAME) end
 	escanear()
-
-	cleanBtn.Text = "CLEANED"
-	task.delay(1,function()
-		cleanBtn.Text = "CLEAN"
-	end)
 end)
+
 
 
 
