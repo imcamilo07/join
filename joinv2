@@ -1,0 +1,280 @@
+-- ================= CONFIG =================
+local MAX_SERVERS_A_ESCANEAR = 5 -- Revisar solo los primeros N servidores
+local MIN_JOIN_VALUE = 200e6 -- 200M mínimo
+
+-- ================= SETUP =================
+local player = game.Players.LocalPlayer
+local PlayerGui = player:WaitForChild("PlayerGui")
+
+local petMenu
+repeat
+	petMenu = PlayerGui:FindFirstChild("PetMenu")
+	task.wait()
+until petMenu
+
+local mainFrame = petMenu:WaitForChild("Frame")
+local scrolling = mainFrame:WaitForChild("ScrollingFrame")
+
+local usados = {} 
+local joinLock = false 
+local servidoresVisitados = {}
+local cachedRefreshBtn = nil 
+
+-- ================= PERSISTENCIA =================
+local FILE_NAME = "auto_join_usados.json"
+local HttpService = game:GetService("HttpService")
+
+local function cargarUsados()
+	if isfile(FILE_NAME) then
+		local ok, data = pcall(function()
+			return HttpService:JSONDecode(readfile(FILE_NAME))
+		end)
+		if ok and type(data) == "table" then
+			usados = data
+		end
+	end
+end
+
+local function guardarUsados()
+	pcall(function()
+		writefile(FILE_NAME, HttpService:JSONEncode(usados))
+	end)
+end
+
+cargarUsados()
+
+if game.JobId and game.JobId ~= "" then
+	servidoresVisitados[game.JobId] = true
+end
+
+-- ================= UTILS =================
+local function parseValor(txt)
+	if not txt then return nil end
+	local clean = string.gsub(txt, "%s+", "") 
+	for num, suf in string.gmatch(clean, "([%d%.]+)([MB])") do
+		local n = tonumber(num)
+		if n then
+			if suf == "B" then return n * 1e9 end
+			if suf == "M" then return n * 1e6 end
+		end
+	end
+	return nil
+end
+
+-- ================= GUI =================
+local gui = Instance.new("ScreenGui")
+gui.Name = "AUTO_JOIN_STABLE"
+gui.ResetOnSpawn = false
+gui.DisplayOrder = 999999
+gui.Enabled = true
+gui.Parent = PlayerGui
+
+local bigBtn = Instance.new("TextButton")
+bigBtn.Size = UDim2.new(0,260,0,90)
+bigBtn.Position = UDim2.new(1,-280,0.5,-45)
+bigBtn.BackgroundColor3 = Color3.fromRGB(0,170,0)
+bigBtn.TextColor3 = Color3.new(1,1,1)
+bigBtn.TextScaled = true
+bigBtn.Font = Enum.Font.SourceSansBold
+bigBtn.Visible = false
+bigBtn.Parent = gui
+
+-- ================= CORE (SNIPER ORDENADO) =================
+
+local function intentarUnirse(frame, firma)
+	if joinLock then return end
+	joinLock = true
+	bigBtn.Visible = false
+
+	local inner = frame:FindFirstChildWhichIsA("Frame")
+	if not inner then joinLock = false return end
+
+	local joinBtn = inner:FindFirstChildWhichIsA("TextButton")
+	if not joinBtn then joinLock = false return end
+
+	-- 1. Marcar usado
+	usados[firma] = true
+	
+	-- 2. DISPARAR JOIN (Máxima prioridad de velocidad)
+	for _,conn in ipairs(getconnections(joinBtn.MouseButton1Click)) do
+		conn:Fire()
+	end
+	
+	-- 3. Guardar datos en segundo plano
+	task.spawn(guardarUsados)
+	print("🎯 JOIN SELECCIONADO: " .. firma)
+
+	-- FIX: Desbloqueo si la unión falla después de 2.5s
+	task.delay(2.5, function()
+		if joinLock then
+			print("⚠️ Unión fallida. Desbloqueando búsqueda.")
+			joinLock = false
+		end
+	end)
+end
+
+local function escanearYOrdenarTop5()
+	local lista = {}
+	local hijos = scrolling:GetChildren()
+	local contador = 0
+	
+	for _,obj in ipairs(hijos) do
+		if obj:IsA("Frame") then
+			contador = contador + 1
+			
+			-- 🛑 LÍMITE: Revisar solo los primeros N
+			if contador > MAX_SERVERS_A_ESCANEAR then
+				break 
+			end
+
+			local lbl = obj:FindFirstChildWhichIsA("TextLabel")
+			if lbl and lbl.Text then
+				local texto = lbl.Text
+				
+				if not usados[texto] then
+					local valor = parseValor(texto)
+					
+					if valor and valor >= MIN_JOIN_VALUE then
+						-- Añadir a la lista para ordenar
+						table.insert(lista, {
+							frame = obj,
+							valor = valor,
+							firma = texto
+						})
+					end
+				end
+			end
+		end
+	end
+
+	-- Si encontramos candidatos:
+	if #lista > 0 then
+		-- 🚀 OPTIMIZACIÓN: Ordenamos para encontrar el MEJOR
+		table.sort(lista, function(a, b)
+			return a.valor > b.valor
+		end)
+		
+		local mejorServer = lista[1]
+		
+		-- Actualizar el botón visible (si el JOIN falla, el usuario puede hacer clic)
+		bigBtn.Text = "JOIN " .. mejorServer.firma
+		bigBtn.Visible = true
+
+		-- Desactivar conexiones viejas
+		for _,c in ipairs(getconnections(bigBtn.MouseButton1Click)) do
+			c:Disable()
+		end
+
+		-- Conectar la acción de unir al botón de la GUI
+		bigBtn.MouseButton1Click:Connect(function()
+			intentarUnirse(mejorServer.frame, mejorServer.firma)
+		end)
+		
+		-- 🔫 AUTOCLICK INMEDIATO
+		task.defer(function()
+			if bigBtn.Visible and not joinLock then
+				intentarUnirse(mejorServer.frame, mejorServer.firma)
+			end
+		end)
+
+		return true -- Encontramos y disparamos
+	else
+		bigBtn.Visible = false
+		return false
+	end
+end
+
+-- ================= TRIGGER =================
+scrolling.ChildAdded:Connect(function()
+	if not joinLock then escanearYOrdenarTop5() end
+end)
+
+-- ================= REFRESH LOGIC =================
+
+local function buscarBotonRefresh()
+	for _,obj in ipairs(mainFrame:GetDescendants()) do
+		if obj:IsA("TextButton") and (obj.Text == "Refresh" or obj.ContentText == "Refresh") then
+			return obj
+		end
+	end
+	return nil
+end
+
+local function fireRefresh()
+	if not cachedRefreshBtn or not cachedRefreshBtn.Parent then
+		cachedRefreshBtn = buscarBotonRefresh()
+	end
+	if cachedRefreshBtn then
+		for _,conn in ipairs(getconnections(cachedRefreshBtn.MouseButton1Click)) do
+			conn:Fire()
+		end
+	end
+end
+
+-- ================= GUI CONTROLS =================
+
+local refreshGui = Instance.new("Frame")
+refreshGui.Size = UDim2.new(0,160,0,90)
+refreshGui.Position = UDim2.new(1,-450,0.5,-45)
+refreshGui.BackgroundColor3 = Color3.fromRGB(20,20,20)
+refreshGui.Active = true
+refreshGui.Draggable = true
+refreshGui.Parent = gui
+Instance.new("UICorner", refreshGui)
+
+local autoBtn = Instance.new("TextButton")
+autoBtn.Size = UDim2.new(1,-10,0,30)
+autoBtn.Position = UDim2.new(0,5,0,46)
+autoBtn.Text = "SNIPER: OFF"
+autoBtn.TextScaled = true
+autoBtn.BackgroundColor3 = Color3.fromRGB(150,50,50)
+autoBtn.TextColor3 = Color3.new(1,1,1)
+autoBtn.Parent = refreshGui
+
+local cleanBtn = Instance.new("TextButton")
+cleanBtn.Size = UDim2.new(1,-10,0,30)
+cleanBtn.Position = UDim2.new(0,5,0,6)
+cleanBtn.Text = "CLEAN DATA"
+cleanBtn.TextScaled = true
+cleanBtn.BackgroundColor3 = Color3.fromRGB(60,60,60)
+cleanBtn.TextColor3 = Color3.new(1,1,1)
+cleanBtn.Parent = refreshGui
+
+local autoRefresh = false
+
+autoBtn.MouseButton1Click:Connect(function()
+	autoRefresh = not autoRefresh
+	autoBtn.Text = autoRefresh and "SNIPER: ON" or "SNIPER: OFF"
+	autoBtn.BackgroundColor3 = autoRefresh and Color3.fromRGB(0,150,0) or Color3.fromRGB(150,50,50)
+	-- Al activar, intentamos escanear inmediatamente
+	if autoRefresh then
+		escanearYOrdenarTop5()
+	end
+end)
+
+cleanBtn.MouseButton1Click:Connect(function()
+	usados = {}
+	if isfile(FILE_NAME) then delfile(FILE_NAME) end
+	cleanBtn.Text = "LIMPIO"
+	task.delay(1, function() cleanBtn.Text = "CLEAN DATA" end)
+end)
+
+-- ================= LOOP ESTABLE (CELULAR) =================
+
+task.spawn(function()
+	while true do
+		if autoRefresh and not joinLock then
+			-- 1. CLIC REFRESH
+			fireRefresh()
+			
+			-- 2. 🐢 ESPERA CRÍTICA DE CARGA DE UI (Aumentado para estabilidad en móvil)
+			task.wait(0.3) 
+			
+			-- 3. ESCANEO (Busca el mejor de los 5 y ejecuta JOIN)
+			escanearYOrdenarTop5()
+		end
+		
+		-- Pausa ligera para no saturar el dispositivo entre ciclos de refresh
+		task.wait(0.1) 
+	end
+end)
