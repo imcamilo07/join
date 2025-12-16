@@ -1,5 +1,5 @@
 -- ================= CONFIG =================
-local MAX_SERVERS_A_ESCANEAR = 5 
+local MAX_SERVERS_A_ESCANEAR = 5 -- Revisar solo los primeros N servidores
 local MIN_JOIN_VALUE = 200e6 -- 200M mínimo
 
 -- ================= SETUP =================
@@ -35,18 +35,32 @@ end
 
 cargarUsados()
 
--- ================= UTILS =================
+-- ================= UTILS: PARSEO ROBUSTO RESTAURADO =================
 local function parseValor(txt)
-	if not txt then return nil end
-	local clean = string.gsub(txt, "%s+", "") 
-	for num, suf in string.gmatch(clean, "([%d%.]+)([MB])") do
-		local n = tonumber(num)
-		if n then
-			if suf == "B" then return n * 1e9 end
-			if suf == "M" then return n * 1e6 end
-		end
-	end
-	return nil
+    if not txt then return nil end
+    -- Eliminar espacios para simplificar el parseo
+    txt = txt:gsub("%s+", "")
+
+    local maxValue = 0 -- Inicializar con 0 para encontrar el máximo
+    local foundValue = false
+
+    -- Buscar todos los patrones como 65M, 420B, etc.
+    for num, suf in txt:gmatch("([%d%.]+)([MB])") do
+        local n = tonumber(num)
+        if n then
+            local value = (suf == "B" and n * 1e9) or (suf == "M" and n * 1e6)
+            
+            if value then
+                foundValue = true
+                if value > maxValue then
+                    maxValue = value
+                end
+            end
+        end
+    end
+    
+    -- Devolver nil si no se encontró ningún valor, o el valor máximo encontrado
+    return foundValue and maxValue or nil
 end
 
 -- ================= GUI PRINCIPAL =================
@@ -56,7 +70,6 @@ gui.ResetOnSpawn = false
 gui.DisplayOrder = 999999
 gui.Parent = PlayerGui
 
--- Botón Grande de JOIN (Feedback visual)
 local bigBtn = Instance.new("TextButton")
 bigBtn.Size = UDim2.new(0,260,0,90)
 bigBtn.Position = UDim2.new(1,-280,0.5,-45)
@@ -67,12 +80,12 @@ bigBtn.Font = Enum.Font.SourceSansBold
 bigBtn.Visible = false
 bigBtn.Parent = gui
 
--- ================= GUI LOGS (LO QUE PEDISTE) =================
+-- ================= GUI LOGS =================
 local logsFrame = Instance.new("Frame")
 logsFrame.Size = UDim2.new(0,200,0,180)
-logsFrame.Position = UDim2.new(0, 10, 0.5, 50) -- Abajo a la izquierda
+logsFrame.Position = UDim2.new(0, 10, 0.5, 50) 
 logsFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
-logsFrame.Visible = false -- Oculto por defecto
+logsFrame.Visible = false 
 logsFrame.Parent = gui
 Instance.new("UICorner", logsFrame)
 
@@ -97,16 +110,20 @@ logsText.Font = Enum.Font.Code
 logsText.TextSize = 12
 logsText.Parent = logsFrame
 
--- Actualizar el texto del log visual
-local function updateLogs(servidores)
+local function updateLogs(servidores, waitTime)
 	local txt = ""
 	for i, srv in ipairs(servidores) do
 		local estado = "✅"
 		if srv.usado then estado = "⛔(Usado)" end
 		if srv.valor < MIN_JOIN_VALUE then estado = "🔻(Bajo)" end
 		
-		txt = txt .. i .. ". " .. srv.firma .. " " .. estado .. "\n"
+		txt = txt .. i .. ". " .. srv.firma .. " | " .. math.floor(srv.valor / 1e6) .. "M " .. estado .. "\n"
 	end
+	
+	if waitTime then
+		txt = txt .. "--- \nTiempo de carga: " .. string.format("%.3f", waitTime) .. "s"
+	end
+	
 	logsText.Text = txt
 end
 
@@ -122,11 +139,10 @@ local function intentarUnirse(frame, firma)
 	local joinBtn = inner:FindFirstChildWhichIsA("TextButton")
 	if not joinBtn then joinLock = false return end
 
-	-- 1. Marcar como usado inmediatamente para no repetir
 	usados[firma] = true
 	task.spawn(guardarUsados)
 	
-	-- 2. CLICK
+	-- 2. CLICK (LA MÁXIMA VELOCIDAD AQUÍ)
 	for _,conn in ipairs(getconnections(joinBtn.MouseButton1Click)) do
 		conn:Fire()
 	end
@@ -136,15 +152,18 @@ local function intentarUnirse(frame, firma)
 	-- FIX: Si falla, desbloquear rápido
 	task.delay(2.5, function()
 		if joinLock then
+			print("⚠️ Fallo, desbloqueando...")
 			joinLock = false
 		end
 	end)
 end
 
 local function escanearSmart()
+	if joinLock then return end
+	
 	local hijos = scrolling:GetChildren()
 	local candidatos = {}
-	local logsData = {} -- Para la GUI desplegable
+	local logsData = {} 
 	
 	local count = 0
 	for _,obj in ipairs(hijos) do
@@ -161,7 +180,6 @@ local function escanearSmart()
 				-- Guardar info para el LOG VISUAL
 				table.insert(logsData, {firma = txt, valor = val, usado = isUsed})
 
-				-- Si es válido y no usado, añadir a candidatos
 				if val >= MIN_JOIN_VALUE and not isUsed then
 					table.insert(candidatos, {
 						frame = obj,
@@ -173,12 +191,12 @@ local function escanearSmart()
 		end
 	end
 	
-	-- Actualizar GUI Desplegable
+	-- Actualizar GUI Desplegable (Sin el tiempo de espera, se agrega después)
 	updateLogs(logsData)
 
 	-- Lógica de Selección
 	if #candidatos > 0 then
-		-- Ordenar de Mayor a Menor
+		-- Ordenar de Mayor a Menor (NECESARIO)
 		table.sort(candidatos, function(a,b) return a.valor > b.valor end)
 		
 		local mejor = candidatos[1]
@@ -187,7 +205,7 @@ local function escanearSmart()
 		bigBtn.Text = "JOIN " .. mejor.firma
 		bigBtn.Visible = true
 		
-		-- AUTO JOIN
+		-- 🔫 AUTO JOIN (Se ejecuta en la próxima iteración del bucle principal para no bloquear)
 		task.defer(function()
 			intentarUnirse(mejor.frame, mejor.firma)
 		end)
@@ -198,31 +216,22 @@ local function escanearSmart()
 	end
 end
 
--- ================= TRIGGER MANUAL =================
-scrolling.ChildAdded:Connect(function()
-	if not joinLock then 
-		-- Pequeña espera por si llegan en bloque
-		task.wait() 
-		escanearSmart() 
-	end
-end)
-
 -- ================= REFRESH =================
 
 local function getRefreshBtn()
+	if cachedRefreshBtn and cachedRefreshBtn.Parent then return cachedRefreshBtn end
 	for _,obj in ipairs(mainFrame:GetDescendants()) do
 		if obj:IsA("TextButton") and (obj.Text == "Refresh" or obj.ContentText == "Refresh") then
+			cachedRefreshBtn = obj -- Guardar en caché
 			return obj
 		end
 	end
 end
 
 local function fireRefresh()
-	if not cachedRefreshBtn or not cachedRefreshBtn.Parent then
-		cachedRefreshBtn = getRefreshBtn()
-	end
-	if cachedRefreshBtn then
-		for _,conn in ipairs(getconnections(cachedRefreshBtn.MouseButton1Click)) do
+	local btn = getRefreshBtn()
+	if btn then
+		for _,conn in ipairs(getconnections(btn.MouseButton1Click)) do
 			conn:Fire()
 		end
 	end
@@ -231,7 +240,7 @@ end
 -- ================= CONTROLES GUI =================
 
 local controlPanel = Instance.new("Frame")
-controlPanel.Size = UDim2.new(0,160,0,130) -- Más alto para el botón de logs
+controlPanel.Size = UDim2.new(0,160,0,130) 
 controlPanel.Position = UDim2.new(1,-450,0.5,-65)
 controlPanel.BackgroundColor3 = Color3.fromRGB(25,25,25)
 controlPanel.Active = true
@@ -239,7 +248,6 @@ controlPanel.Draggable = true
 controlPanel.Parent = gui
 Instance.new("UICorner", controlPanel)
 
--- Botón Logs
 local logsBtn = Instance.new("TextButton")
 logsBtn.Size = UDim2.new(1,-10,0,25)
 logsBtn.Position = UDim2.new(0,5,0,5)
@@ -248,12 +256,6 @@ logsBtn.BackgroundColor3 = Color3.fromRGB(200, 150, 0)
 logsBtn.TextColor3 = Color3.new(1,1,1)
 logsBtn.Parent = controlPanel
 
-logsBtn.MouseButton1Click:Connect(function()
-	logsFrame.Visible = not logsFrame.Visible
-	logsBtn.Text = logsFrame.Visible and "MOSTRAR LOGS: ON" or "MOSTRAR LOGS: OFF"
-end)
-
--- Botón Auto
 local autoBtn = Instance.new("TextButton")
 autoBtn.Size = UDim2.new(1,-10,0,40)
 autoBtn.Position = UDim2.new(0,5,0,35)
@@ -264,7 +266,6 @@ autoBtn.TextColor3 = Color3.new(1,1,1)
 autoBtn.Font = Enum.Font.SourceSansBold
 autoBtn.Parent = controlPanel
 
--- Botón Clean
 local cleanBtn = Instance.new("TextButton")
 cleanBtn.Size = UDim2.new(1,-10,0,30)
 cleanBtn.Position = UDim2.new(0,5,0,80)
@@ -275,21 +276,27 @@ cleanBtn.Parent = controlPanel
 
 local autoRefresh = false
 
+logsBtn.MouseButton1Click:Connect(function()
+	logsFrame.Visible = not logsFrame.Visible
+	logsBtn.Text = logsFrame.Visible and "MOSTRAR LOGS: ON" or "MOSTRAR LOGS: OFF"
+end)
+
 autoBtn.MouseButton1Click:Connect(function()
 	autoRefresh = not autoRefresh
 	autoBtn.Text = autoRefresh and "AUTO JOIN: ON" or "AUTO JOIN: OFF"
 	autoBtn.BackgroundColor3 = autoRefresh and Color3.fromRGB(0,150,0) or Color3.fromRGB(150,50,50)
+	if autoRefresh and not joinLock then escanearSmart() end
 end)
 
 cleanBtn.MouseButton1Click:Connect(function()
 	usados = {}
 	if isfile(FILE_NAME) then delfile(FILE_NAME) end
 	cleanBtn.Text = "¡DATOS BORRADOS!"
-	updateLogs({}) -- Limpiar visualmente
+	updateLogs({}) 
 	task.delay(1, function() cleanBtn.Text = "BORRAR DATOS (CLEAN)" end)
 end)
 
--- ================= LOOP INTELIGENTE =================
+-- ================= LOOP INTELIGENTE (MAX SPEED) =================
 
 task.spawn(function()
 	while true do
@@ -298,27 +305,40 @@ task.spawn(function()
 			-- 1. Disparar Refresh
 			fireRefresh()
 			
-			-- 2. SMART WAIT: Esperar hasta ver botones o Timeout
-			-- Esto hace que espere solo lo necesario. Si el celu es rápido, es rápido.
+			-- 2. ⚡ SMART WAIT (Calcula el tiempo de carga)
 			local start = tick()
 			local items = 0
 			
 			repeat 
 				items = 0
 				for _,c in ipairs(scrolling:GetChildren()) do
+					-- Contar solo los Frames de servidor
 					if c:IsA("Frame") then items = items + 1 end
 				end
-				task.wait() -- Check ultra rápido
-			until items >= MAX_SERVERS_A_ESCANEAR or (tick() - start) > 0.4 -- Max espera 0.4s
+				task.wait() -- Mínima pausa para evitar saturar el CPU
+			until items >= MAX_SERVERS_A_ESCANEAR or (tick() - start) > 0.5 -- Máximo 0.5s de espera
 			
-			-- Pequeña estabilización final (0.05s) para que el texto cargue
+			local waitTime = tick() - start
+			
+			-- 3. Pequeña estabilización final para asegurar la lectura del texto
 			task.wait(0.05)
 			
-			-- 3. Escanear
+			-- 4. Escanear
 			escanearSmart()
+			
+			-- 5. Actualizar Logs con el tiempo de espera real
+			if logsFrame.Visible then
+				local currentLogs = {}
+				for i=1, #logsText.Text:split("\n") do 
+					local line = logsText.Text:split("\n")[i]
+					if line:match("%d%..*") then table.insert(currentLogs, {firma=line}) end
+				end
+				-- Simplemente actualizamos el log con el tiempo. El escaner ya lo llenó.
+				updateLogs(logsData or {}, waitTime)
+			end
 		end
 		
-		-- Pausa mínima antes del siguiente refresh
-		task.wait(0.05)
+		-- PAUSA MÍNIMA DEL LOOP (0.01s - casi constante)
+		task.wait(0.01) 
 	end
 end)
