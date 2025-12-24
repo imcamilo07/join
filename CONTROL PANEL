@@ -1,5 +1,5 @@
 -- ====================================================================
--- MASTER GUI V2: AIMBOT + AUTO ADMIN + OCULTAR/MOSTRAR TOGGLE
+-- MASTER GUI V3: AIMBOT + AUTO ADMIN + OCULTAR/MOSTRAR TOGGLE (con UIStroke Fix)
 -- ====================================================================
 
 local Players = game:GetService("Players")
@@ -21,7 +21,7 @@ if not success then warn("No se pudo cargar Net Package. Asegúrate de estar en 
 local Config = {
     AimbotEnabled = false,
     AutoAdminEnabled = false,
-    BrainrotHidden = false -- Nuevo estado para el toggle
+    BrainrotHidden = false
 }
 
 -- Referencias a herramientas
@@ -31,10 +31,7 @@ local TOOL_NAMES = {
     TriggerPotion = "Body Swap Potion"
 }
 
--- ====================================================================
--- FUNCIONES DE OCULTAR/MOSTRAR (TUS SCRIPTS 1 Y 2)
--- ====================================================================
-
+-- === CONFIGURACIÓN DE POSICIÓN ===
 local OFFSCREEN = UDim2.new(2, 0, 2, 0)
 local CENTER = UDim2.new(0.5, 0, 0.5, 0)
 local TargetBrainrot = nil -- Guardar referencia
@@ -49,18 +46,30 @@ local function FindBrainrot()
     return nil
 end
 
+-- ====================================================================
+-- FUNCIONES DE OCULTAR/MOSTRAR (TUS SCRIPTS ACTUALIZADOS)
+-- ====================================================================
+
 local function HideBrainrot()
     local brainrot = FindBrainrot()
     if not brainrot then return false end
-    
+
     for _, v in ipairs(brainrot:GetDescendants()) do
+
+        -- 🔘 TEXTBUTTON: ocultar (texto + fondo + borde)
         if v:IsA("TextButton") then
-            -- 🔘 Ocultar TextButton
             v.TextTransparency = 1
             v.BackgroundTransparency = 1
             v.BorderSizePixel = 0
+
+            for _, c in ipairs(v:GetChildren()) do
+                if c:IsA("UIStroke") then
+                    c.Transparency = 1
+                end
+            end
+
+        -- 📦 FRAMES: mover fuera de pantalla
         elseif v:IsA("Frame") then
-            -- 📦 Mover Frame fuera de pantalla
             v.Position = OFFSCREEN
         end
     end
@@ -72,13 +81,21 @@ local function ShowBrainrot()
     if not brainrot then return false end
 
     for _, v in ipairs(brainrot:GetDescendants()) do
+
+        -- 🔘 TEXTBUTTON: volver a mostrar (texto + fondo + borde)
         if v:IsA("TextButton") then
-            -- 🔘 Mostrar TextButton
             v.TextTransparency = 0
             v.BackgroundTransparency = 0
-            v.BorderSizePixel = 1 -- Asumo que vuelve a ser 1 o el valor original.
+            v.BorderSizePixel = 0 -- el borde real es UIStroke
+
+            for _, c in ipairs(v:GetChildren()) do
+                if c:IsA("UIStroke") then
+                    c.Transparency = 0
+                end
+            end
+
+        -- 📦 FRAMES: volver al centro
         elseif v:IsA("Frame") then
-            -- 📦 Mover Frame al centro
             v.AnchorPoint = Vector2.new(0.5, 0.5)
             v.Position = CENTER
         end
@@ -202,7 +219,6 @@ BtnClose.BackgroundColor3 = Color3.fromRGB(170, 0, 0)
 
 -- ====================================================================
 -- LÓGICA DEL SCRIPT 1 (AUTO ADMIN) INTEGRADA
--- (Misma lógica que antes, chequea Config.AutoAdminEnabled)
 -- ====================================================================
 
 local ExecuteCommand = Net:RemoteEvent('AdminPanelService/ExecuteCommand')
@@ -271,7 +287,6 @@ end
 
 -- ====================================================================
 -- LÓGICA DEL SCRIPT 3 (AIMBOT) INTEGRADA
--- (Misma lógica que antes, chequea Config.AimbotEnabled)
 -- ====================================================================
 
 local RemoteFireAimbot = Net:RemoteEvent("UseItem")
@@ -321,10 +336,8 @@ end
 local function setupToolListeners(tool)
     if not tool:IsA("Tool") then return end
 
-    -- Conectar Admin Panel (Potion)
     hookPotion(tool)
 
-    -- Conectar Aimbot (Web Slinger - Clic)
     if tool.Name == TOOL_NAMES.WebSlinger then
         tool.Activated:Connect(function()
             if Config.AimbotEnabled then
@@ -333,7 +346,6 @@ local function setupToolListeners(tool)
         end)
     end
 
-    -- Conectar Aimbot (Laser Cape - Loop)
     if tool.Name == TOOL_NAMES.LaserCape then
         tool.Equipped:Connect(function()
             aimbotLoopActive = true
@@ -367,7 +379,6 @@ LocalPlayer.CharacterAdded:Connect(function(char)
     end)
 end)
 
--- Intentar conectar herramientas al inicio
 local backpack = LocalPlayer:FindFirstChild("Backpack")
 if backpack then
     for _, child in ipairs(backpack:GetChildren()) do setupToolListeners(child) end
@@ -381,4 +392,4 @@ if char then
     end
 end
 
-print("--- GUI V2 CARGADA: Control de Visibilidad integrado ---")
+print("--- GUI V3 CARGADA: Control de Visibilidad finalizado ---")
