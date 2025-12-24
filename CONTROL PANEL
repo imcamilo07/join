@@ -1,0 +1,337 @@
+-- ====================================================================
+-- MASTER GUI: AIMBOT + AUTO ADMIN + OCULTAR
+-- ====================================================================
+
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local RunService = game:GetService("RunService")
+local CoreGui = game:GetService("CoreGui")
+local LocalPlayer = Players.LocalPlayer
+
+-- Intentar obtener el paquete Net (necesario para ambos scripts)
+local Net
+local success, err = pcall(function()
+    Net = require(ReplicatedStorage:WaitForChild("Packages").Net)
+end)
+if not success then warn("No se pudo cargar Net Package. Asegúrate de estar en el juego correcto.") end
+
+-- ====================================================================
+-- ESTADO Y VARIABLES GLOBALES
+-- ====================================================================
+
+local Config = {
+    AimbotEnabled = false,
+    AutoAdminEnabled = false
+}
+
+-- Referencias a herramientas
+local TOOL_NAMES = {
+    WebSlinger = "Web Slinger",
+    LaserCape = "Laser Cape",
+    TriggerPotion = "Body Swap Potion"
+}
+
+-- ====================================================================
+-- CREACIÓN DE LA INTERFAZ GRÁFICA (GUI)
+-- ====================================================================
+
+local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.Name = "MasterControlGUI"
+ScreenGui.ResetOnSpawn = false -- Para que no se borre si mueres
+-- Protegemos la GUI poniéndola en CoreGui si es posible (seguridad de exploits), sino en PlayerGui
+if pcall(function() ScreenGui.Parent = CoreGui end) then
+else ScreenGui.Parent = LocalPlayer:WaitForChild("PlayerGui") end
+
+local MainFrame = Instance.new("Frame")
+MainFrame.Name = "MainFrame"
+MainFrame.Size = UDim2.new(0, 220, 0, 260)
+MainFrame.Position = UDim2.new(0.1, 0, 0.3, 0)
+MainFrame.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
+MainFrame.BorderSizePixel = 0
+MainFrame.Active = true
+MainFrame.Draggable = true -- Hace que la ventana se pueda mover
+MainFrame.Parent = ScreenGui
+
+local UICorner = Instance.new("UICorner")
+UICorner.CornerRadius = UDim.new(0, 10)
+UICorner.Parent = MainFrame
+
+local Title = Instance.new("TextLabel")
+Title.Text = "CONTROL PANEL"
+Title.Size = UDim2.new(1, 0, 0, 40)
+Title.BackgroundTransparency = 1
+Title.TextColor3 = Color3.fromRGB(255, 255, 255)
+Title.Font = Enum.Font.GothamBold
+Title.TextSize = 18
+Title.Parent = MainFrame
+
+-- FUNCION PARA CREAR BOTONES
+local function CreateButton(name, text, position, callback)
+    local btn = Instance.new("TextButton")
+    btn.Name = name
+    btn.Size = UDim2.new(0.9, 0, 0, 35)
+    btn.Position = position
+    btn.AnchorPoint = Vector2.new(0.5, 0)
+    btn.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+    btn.Text = text
+    btn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    btn.Font = Enum.Font.GothamSemibold
+    btn.TextSize = 14
+    btn.Parent = MainFrame
+    
+    local corner = Instance.new("UICorner")
+    corner.CornerRadius = UDim.new(0, 6)
+    corner.Parent = btn
+    
+    btn.MouseButton1Click:Connect(function()
+        callback(btn)
+    end)
+    return btn
+end
+
+-- 1. BOTÓN OCULTAR (Script 2)
+CreateButton("BtnHide", "Ocultar Brainrot", UDim2.new(0.5, 0, 0, 50), function(btn)
+    local gui = LocalPlayer:FindFirstChild("PlayerGui")
+    if gui and gui:FindFirstChild("BrainrotFinder") then
+        local brainrotGui = gui.BrainrotFinder
+        local frame = brainrotGui:FindFirstChild("Frame")
+        if frame then
+            frame.BackgroundTransparency = 1
+            frame.BorderSizePixel = 0
+            for _, v in ipairs(frame:GetDescendants()) do
+                if v:IsA("Frame") or v:IsA("TextLabel") or v:IsA("TextButton") or v:IsA("ImageLabel") or v:IsA("ImageButton") then
+                    pcall(function() v.BackgroundTransparency = 1 end)
+                    pcall(function() v.TextTransparency = 1 end)
+                    pcall(function() v.ImageTransparency = 1 end)
+                    pcall(function() v.BorderSizePixel = 0 end)
+                end
+            end
+            btn.Text = "¡Ocultado con éxito!"
+            task.wait(1)
+            btn.Text = "Ocultar Brainrot"
+        end
+    else
+        btn.Text = "No encontrado"
+        task.wait(1)
+        btn.Text = "Ocultar Brainrot"
+    end
+end)
+
+-- 2. BOTÓN AIMBOT (Script 3)
+local BtnAimbot = CreateButton("BtnAimbot", "Aimbot: OFF", UDim2.new(0.5, 0, 0, 95), function(btn)
+    Config.AimbotEnabled = not Config.AimbotEnabled
+    if Config.AimbotEnabled then
+        btn.Text = "Aimbot: ON"
+        btn.BackgroundColor3 = Color3.fromRGB(0, 170, 0) -- Verde
+    else
+        btn.Text = "Aimbot: OFF"
+        btn.BackgroundColor3 = Color3.fromRGB(60, 60, 60) -- Gris
+    end
+end)
+
+-- 3. BOTÓN AUTO ADMIN (Script 1)
+local BtnAdmin = CreateButton("BtnAdmin", "Auto Admin: OFF", UDim2.new(0.5, 0, 0, 140), function(btn)
+    Config.AutoAdminEnabled = not Config.AutoAdminEnabled
+    if Config.AutoAdminEnabled then
+        btn.Text = "Auto Admin: ON"
+        btn.BackgroundColor3 = Color3.fromRGB(0, 170, 0) -- Verde
+    else
+        btn.Text = "Auto Admin: OFF"
+        btn.BackgroundColor3 = Color3.fromRGB(60, 60, 60) -- Gris
+    end
+end)
+
+-- 4. BOTÓN ELIMINAR GUI
+local BtnClose = CreateButton("BtnClose", "Eliminar GUI", UDim2.new(0.5, 0, 0, 200), function(btn)
+    ScreenGui:Destroy()
+    -- NOTA: Al destruir la GUI, el script SIGUE corriendo.
+    -- Las variables Config.AimbotEnabled y Config.AutoAdminEnabled mantienen su valor.
+end)
+BtnClose.BackgroundColor3 = Color3.fromRGB(170, 0, 0) -- Rojo
+
+-- ====================================================================
+-- LÓGICA DEL SCRIPT 1 (AUTO ADMIN) INTEGRADA
+-- ====================================================================
+
+local ExecuteCommand = Net:RemoteEvent('AdminPanelService/ExecuteCommand')
+local AdminCommands = {'rocket', 'ragdoll', 'balloon', 'inverse', 'jail', 'tiny', 'morph', 'jumpscare'}
+
+local function unequipAll(char)
+    local backpack = LocalPlayer:FindFirstChild("Backpack")
+    if not backpack then return end
+    for _, v in ipairs(char:GetChildren()) do
+        if v:IsA("Tool") then
+            v.Parent = backpack
+        end
+    end
+end
+
+local function GetClosestPlayerForAdmin()
+    local char = LocalPlayer.Character
+    if not char then return nil end
+    local Root = char:FindFirstChild('HumanoidRootPart')
+    if not Root then return nil end
+
+    local closest
+    local shortest = math.huge
+
+    for _, p in ipairs(Players:GetPlayers()) do
+        if p ~= LocalPlayer and p.Character and p.Character:FindFirstChild('HumanoidRootPart') then
+            local distance = (Root.Position - p.Character.HumanoidRootPart.Position).Magnitude
+            if distance < shortest then
+                shortest = distance
+                closest = p
+            end
+        end
+    end
+    return closest
+end
+
+local function hookPotion(tool)
+    if tool.Name ~= TOOL_NAMES.TriggerPotion then return end
+
+    tool.Activated:Connect(function()
+        -- CHEQUEO DEL TOGGLE: Si está apagado, no hace nada
+        if not Config.AutoAdminEnabled then return end
+
+        task.wait(0.1)
+        local char = LocalPlayer.Character
+        local backpack = LocalPlayer:FindFirstChild("Backpack")
+        if not char or not backpack then return end
+
+        unequipAll(char)
+        task.wait(0.1)
+
+        local web = backpack:FindFirstChild(TOOL_NAMES.WebSlinger)
+        if web then
+            web.Parent = char
+            task.wait(0.1)
+            web:Activate()
+            
+            local target = GetClosestPlayerForAdmin()
+            if target then
+                for _, cmd in ipairs(AdminCommands) do
+                    ExecuteCommand:FireServer(target, cmd)
+                end
+            end
+        end
+    end)
+end
+
+-- ====================================================================
+-- LÓGICA DEL SCRIPT 3 (AIMBOT) INTEGRADA
+-- ====================================================================
+
+local RemoteFireAimbot = Net:RemoteEvent("UseItem")
+local aimbotLoopActive = false
+
+local function GetClosestTargetAimbot()
+    local char = LocalPlayer.Character
+    if not char then return nil end
+    local root = char:FindFirstChild("HumanoidRootPart")
+    if not root then return nil end
+    
+    local closest
+    local shortest = 150
+
+    for _, player in ipairs(Players:GetPlayers()) do
+        if player ~= LocalPlayer and player.Character then
+            local targetRoot = player.Character:FindFirstChild("HumanoidRootPart")
+            if targetRoot and targetRoot.Parent:FindFirstChild("Humanoid") and targetRoot.Parent.Humanoid.Health > 0 then
+                local distance = (root.Position - targetRoot.Position).Magnitude
+                if distance < shortest then
+                    shortest = distance
+                    closest = player
+                end
+            end
+        end
+    end
+    return closest
+end
+
+local function FireAimbot(toolName)
+    local target = GetClosestTargetAimbot()
+    if not target then return false end
+
+    local targetRoot = target.Character:FindFirstChild("HumanoidRootPart")
+    if not targetRoot then return false end
+
+    local targetPosition = targetRoot.Position + Vector3.new(0, 1.5, 0)
+    local targetPart = targetRoot 
+    
+    pcall(function()
+        RemoteFireAimbot:FireServer(targetPosition, targetPart) 
+    end)
+    return true
+end
+
+-- Conexiones de Herramientas (Aimbot y Admin Panel)
+local function setupToolListeners(tool)
+    if not tool:IsA("Tool") then return end
+
+    -- Conectar Admin Panel (Potion)
+    hookPotion(tool)
+
+    -- Conectar Aimbot (Web Slinger - Clic)
+    if tool.Name == TOOL_NAMES.WebSlinger then
+        tool.Activated:Connect(function()
+            -- CHEQUEO DEL TOGGLE AIMBOT
+            if Config.AimbotEnabled then
+                FireAimbot(TOOL_NAMES.WebSlinger)
+            end
+        end)
+    end
+
+    -- Conectar Aimbot (Laser Cape - Loop)
+    if tool.Name == TOOL_NAMES.LaserCape then
+        tool.Equipped:Connect(function()
+            aimbotLoopActive = true
+            task.spawn(function()
+                while aimbotLoopActive and tool.Parent == LocalPlayer.Character do
+                    -- CHEQUEO DEL TOGGLE AIMBOT
+                    if Config.AimbotEnabled then
+                        FireAimbot(TOOL_NAMES.LaserCape)
+                    end
+                    task.wait(0.1)
+                end
+            end)
+        end)
+        tool.Unequipped:Connect(function()
+            aimbotLoopActive = false
+        end)
+    end
+end
+
+-- ====================================================================
+-- INICIALIZACIÓN FINAL
+-- ====================================================================
+
+LocalPlayer.CharacterAdded:Connect(function(char)
+    local backpack = LocalPlayer:WaitForChild("Backpack")
+    
+    -- Conectar eventos a herramientas existentes y futuras
+    for _, child in ipairs(backpack:GetChildren()) do setupToolListeners(child) end
+    backpack.ChildAdded:Connect(setupToolListeners)
+    
+    char.ChildAdded:Connect(function(child)
+        if child:IsA("Tool") then setupToolListeners(child) end
+    end)
+end)
+
+-- Iniciar con lo que ya tengamos en la mochila
+local backpack = LocalPlayer:FindFirstChild("Backpack")
+if backpack then
+    for _, child in ipairs(backpack:GetChildren()) do
+        setupToolListeners(child)
+    end
+    backpack.ChildAdded:Connect(setupToolListeners)
+end
+
+local char = LocalPlayer.Character
+if char then
+    for _, child in ipairs(char:GetChildren()) do
+        if child:IsA("Tool") then setupToolListeners(child) end
+    end
+end
+
+print("--- GUI CARGADA: Aimbot y AutoAdmin listos ---")
