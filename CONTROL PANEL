@@ -1,10 +1,9 @@
 -- ====================================================================
--- MASTER GUI: AIMBOT + AUTO ADMIN + OCULTAR
+-- MASTER GUI V2: AIMBOT + AUTO ADMIN + OCULTAR/MOSTRAR TOGGLE
 -- ====================================================================
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local RunService = game:GetService("RunService")
 local CoreGui = game:GetService("CoreGui")
 local LocalPlayer = Players.LocalPlayer
 
@@ -21,7 +20,8 @@ if not success then warn("No se pudo cargar Net Package. Asegúrate de estar en 
 
 local Config = {
     AimbotEnabled = false,
-    AutoAdminEnabled = false
+    AutoAdminEnabled = false,
+    BrainrotHidden = false -- Nuevo estado para el toggle
 }
 
 -- Referencias a herramientas
@@ -32,13 +32,67 @@ local TOOL_NAMES = {
 }
 
 -- ====================================================================
+-- FUNCIONES DE OCULTAR/MOSTRAR (TUS SCRIPTS 1 Y 2)
+-- ====================================================================
+
+local OFFSCREEN = UDim2.new(2, 0, 2, 0)
+local CENTER = UDim2.new(0.5, 0, 0.5, 0)
+local TargetBrainrot = nil -- Guardar referencia
+
+local function FindBrainrot()
+    if TargetBrainrot and TargetBrainrot.Parent then return TargetBrainrot end
+    local gui = LocalPlayer:FindFirstChild("PlayerGui")
+    if gui and gui:FindFirstChild("BrainrotFinder") then
+        TargetBrainrot = gui.BrainrotFinder
+        return TargetBrainrot
+    end
+    return nil
+end
+
+local function HideBrainrot()
+    local brainrot = FindBrainrot()
+    if not brainrot then return false end
+    
+    for _, v in ipairs(brainrot:GetDescendants()) do
+        if v:IsA("TextButton") then
+            -- 🔘 Ocultar TextButton
+            v.TextTransparency = 1
+            v.BackgroundTransparency = 1
+            v.BorderSizePixel = 0
+        elseif v:IsA("Frame") then
+            -- 📦 Mover Frame fuera de pantalla
+            v.Position = OFFSCREEN
+        end
+    end
+    return true
+end
+
+local function ShowBrainrot()
+    local brainrot = FindBrainrot()
+    if not brainrot then return false end
+
+    for _, v in ipairs(brainrot:GetDescendants()) do
+        if v:IsA("TextButton") then
+            -- 🔘 Mostrar TextButton
+            v.TextTransparency = 0
+            v.BackgroundTransparency = 0
+            v.BorderSizePixel = 1 -- Asumo que vuelve a ser 1 o el valor original.
+        elseif v:IsA("Frame") then
+            -- 📦 Mover Frame al centro
+            v.AnchorPoint = Vector2.new(0.5, 0.5)
+            v.Position = CENTER
+        end
+    end
+    return true
+end
+
+-- ====================================================================
 -- CREACIÓN DE LA INTERFAZ GRÁFICA (GUI)
 -- ====================================================================
 
 local ScreenGui = Instance.new("ScreenGui")
 ScreenGui.Name = "MasterControlGUI"
-ScreenGui.ResetOnSpawn = false -- Para que no se borre si mueres
--- Protegemos la GUI poniéndola en CoreGui si es posible (seguridad de exploits), sino en PlayerGui
+ScreenGui.ResetOnSpawn = false
 if pcall(function() ScreenGui.Parent = CoreGui end) then
 else ScreenGui.Parent = LocalPlayer:WaitForChild("PlayerGui") end
 
@@ -49,7 +103,7 @@ MainFrame.Position = UDim2.new(0.1, 0, 0.3, 0)
 MainFrame.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
 MainFrame.BorderSizePixel = 0
 MainFrame.Active = true
-MainFrame.Draggable = true -- Hace que la ventana se pueda mover
+MainFrame.Draggable = true
 MainFrame.Parent = ScreenGui
 
 local UICorner = Instance.new("UICorner")
@@ -89,31 +143,29 @@ local function CreateButton(name, text, position, callback)
     return btn
 end
 
--- 1. BOTÓN OCULTAR (Script 2)
-CreateButton("BtnHide", "Ocultar Brainrot", UDim2.new(0.5, 0, 0, 50), function(btn)
-    local gui = LocalPlayer:FindFirstChild("PlayerGui")
-    if gui and gui:FindFirstChild("BrainrotFinder") then
-        local brainrotGui = gui.BrainrotFinder
-        local frame = brainrotGui:FindFirstChild("Frame")
-        if frame then
-            frame.BackgroundTransparency = 1
-            frame.BorderSizePixel = 0
-            for _, v in ipairs(frame:GetDescendants()) do
-                if v:IsA("Frame") or v:IsA("TextLabel") or v:IsA("TextButton") or v:IsA("ImageLabel") or v:IsA("ImageButton") then
-                    pcall(function() v.BackgroundTransparency = 1 end)
-                    pcall(function() v.TextTransparency = 1 end)
-                    pcall(function() v.ImageTransparency = 1 end)
-                    pcall(function() v.BorderSizePixel = 0 end)
-                end
-            end
-            btn.Text = "¡Ocultado con éxito!"
+-- 1. BOTÓN OCULTAR/MOSTRAR TOGGLE
+local BtnToggleHide = CreateButton("BtnToggleHide", "Brainrot: Visible", UDim2.new(0.5, 0, 0, 50), function(btn)
+    Config.BrainrotHidden = not Config.BrainrotHidden
+    if Config.BrainrotHidden then
+        if HideBrainrot() then
+            btn.Text = "Brainrot: Hidden"
+            btn.BackgroundColor3 = Color3.fromRGB(170, 0, 0) -- Rojo (Oculto/Inactivo)
+        else
+            btn.Text = "Error: Panel no encontrado"
+            Config.BrainrotHidden = false
             task.wait(1)
-            btn.Text = "Ocultar Brainrot"
+            btn.Text = "Brainrot: Visible"
         end
     else
-        btn.Text = "No encontrado"
-        task.wait(1)
-        btn.Text = "Ocultar Brainrot"
+        if ShowBrainrot() then
+            btn.Text = "Brainrot: Visible"
+            btn.BackgroundColor3 = Color3.fromRGB(60, 60, 60) -- Gris (Visible/Activo)
+        else
+            btn.Text = "Error: Panel no encontrado"
+            Config.BrainrotHidden = false
+            task.wait(1)
+            btn.Text = "Brainrot: Visible"
+        end
     end
 end)
 
@@ -122,10 +174,10 @@ local BtnAimbot = CreateButton("BtnAimbot", "Aimbot: OFF", UDim2.new(0.5, 0, 0, 
     Config.AimbotEnabled = not Config.AimbotEnabled
     if Config.AimbotEnabled then
         btn.Text = "Aimbot: ON"
-        btn.BackgroundColor3 = Color3.fromRGB(0, 170, 0) -- Verde
+        btn.BackgroundColor3 = Color3.fromRGB(0, 170, 0)
     else
         btn.Text = "Aimbot: OFF"
-        btn.BackgroundColor3 = Color3.fromRGB(60, 60, 60) -- Gris
+        btn.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
     end
 end)
 
@@ -134,23 +186,23 @@ local BtnAdmin = CreateButton("BtnAdmin", "Auto Admin: OFF", UDim2.new(0.5, 0, 0
     Config.AutoAdminEnabled = not Config.AutoAdminEnabled
     if Config.AutoAdminEnabled then
         btn.Text = "Auto Admin: ON"
-        btn.BackgroundColor3 = Color3.fromRGB(0, 170, 0) -- Verde
+        btn.BackgroundColor3 = Color3.fromRGB(0, 170, 0)
     else
         btn.Text = "Auto Admin: OFF"
-        btn.BackgroundColor3 = Color3.fromRGB(60, 60, 60) -- Gris
+        btn.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
     end
 end)
 
 -- 4. BOTÓN ELIMINAR GUI
 local BtnClose = CreateButton("BtnClose", "Eliminar GUI", UDim2.new(0.5, 0, 0, 200), function(btn)
     ScreenGui:Destroy()
-    -- NOTA: Al destruir la GUI, el script SIGUE corriendo.
-    -- Las variables Config.AimbotEnabled y Config.AutoAdminEnabled mantienen su valor.
+    -- Las funciones toggles (Aimbot y Auto Admin) seguirán corriendo en segundo plano.
 end)
-BtnClose.BackgroundColor3 = Color3.fromRGB(170, 0, 0) -- Rojo
+BtnClose.BackgroundColor3 = Color3.fromRGB(170, 0, 0)
 
 -- ====================================================================
 -- LÓGICA DEL SCRIPT 1 (AUTO ADMIN) INTEGRADA
+-- (Misma lógica que antes, chequea Config.AutoAdminEnabled)
 -- ====================================================================
 
 local ExecuteCommand = Net:RemoteEvent('AdminPanelService/ExecuteCommand')
@@ -191,7 +243,6 @@ local function hookPotion(tool)
     if tool.Name ~= TOOL_NAMES.TriggerPotion then return end
 
     tool.Activated:Connect(function()
-        -- CHEQUEO DEL TOGGLE: Si está apagado, no hace nada
         if not Config.AutoAdminEnabled then return end
 
         task.wait(0.1)
@@ -220,6 +271,7 @@ end
 
 -- ====================================================================
 -- LÓGICA DEL SCRIPT 3 (AIMBOT) INTEGRADA
+-- (Misma lógica que antes, chequea Config.AimbotEnabled)
 -- ====================================================================
 
 local RemoteFireAimbot = Net:RemoteEvent("UseItem")
@@ -275,7 +327,6 @@ local function setupToolListeners(tool)
     -- Conectar Aimbot (Web Slinger - Clic)
     if tool.Name == TOOL_NAMES.WebSlinger then
         tool.Activated:Connect(function()
-            -- CHEQUEO DEL TOGGLE AIMBOT
             if Config.AimbotEnabled then
                 FireAimbot(TOOL_NAMES.WebSlinger)
             end
@@ -288,7 +339,6 @@ local function setupToolListeners(tool)
             aimbotLoopActive = true
             task.spawn(function()
                 while aimbotLoopActive and tool.Parent == LocalPlayer.Character do
-                    -- CHEQUEO DEL TOGGLE AIMBOT
                     if Config.AimbotEnabled then
                         FireAimbot(TOOL_NAMES.LaserCape)
                     end
@@ -309,7 +359,6 @@ end
 LocalPlayer.CharacterAdded:Connect(function(char)
     local backpack = LocalPlayer:WaitForChild("Backpack")
     
-    -- Conectar eventos a herramientas existentes y futuras
     for _, child in ipairs(backpack:GetChildren()) do setupToolListeners(child) end
     backpack.ChildAdded:Connect(setupToolListeners)
     
@@ -318,12 +367,10 @@ LocalPlayer.CharacterAdded:Connect(function(char)
     end)
 end)
 
--- Iniciar con lo que ya tengamos en la mochila
+-- Intentar conectar herramientas al inicio
 local backpack = LocalPlayer:FindFirstChild("Backpack")
 if backpack then
-    for _, child in ipairs(backpack:GetChildren()) do
-        setupToolListeners(child)
-    end
+    for _, child in ipairs(backpack:GetChildren()) do setupToolListeners(child) end
     backpack.ChildAdded:Connect(setupToolListeners)
 end
 
@@ -334,4 +381,4 @@ if char then
     end
 end
 
-print("--- GUI CARGADA: Aimbot y AutoAdmin listos ---")
+print("--- GUI V2 CARGADA: Control de Visibilidad integrado ---")
