@@ -1,8 +1,8 @@
--- ================= CONFIGURACIÓN DE NOMBRES =================
-local MAX_SERVERS_A_ESCANEAR = 5 -- Revisar solo los ULTIMOS N servidores
+--- ================= CONFIGURACIÓN =================
+local MAX_SERVERS_A_ESCANEAR = 5 -- Escanear solo los últimos 5 de la lista
+local MAX_WAIT_TIME = 0.35 -- (Optimización 1) Tiempo máximo para esperar la carga de frames
 
--- LISTA DE PRIORIDAD (De MENOR a MAYOR importancia)
--- Cuanto más abajo esté en esta lista, MAS IMPORTANTE ES.
+-- LISTA DE PRIORIDAD (El más importante va al final)
 local TARGET_LIST = {
 	"Ketchuru and Musturu",
 	"Tang Tang Kelentang",
@@ -26,7 +26,7 @@ local TARGET_LIST = {
 	"Dragon Cannelloni",
 	"Meowl",
 	"Strawberry Elephant",
-	"Skibidi Toilet"
+	"Skibidi Toilet" -- EL MÁS IMPORTANTE
 }
 
 -- ================= SETUP =================
@@ -46,9 +46,9 @@ local scrolling = mainFrame:WaitForChild("ScrollingFrame")
 local usados = {} 
 local joinLock = false 
 local cachedRefreshBtn = nil 
-local FILE_NAME = "auto_join_nombres_usados.json"
+local FILE_NAME = "auto_join_final_v5.json" -- Nuevo nombre para el archivo de guardado
 
--- Generar tabla de búsqueda rápida
+-- Generar valores
 local NAME_VALUES = {}
 for i, name in ipairs(TARGET_LIST) do
 	NAME_VALUES[name:lower()] = i 
@@ -68,11 +68,10 @@ end
 
 cargarUsados()
 
--- ================= UTILS: PARSEO =================
+-- ================= PARSER =================
 local function parseValor(txt)
 	if not txt then return 0, "Nada" end
 	local txtLower = txt:lower() 
-	
 	local bestValue = 0
 	local bestName = nil
 
@@ -84,13 +83,12 @@ local function parseValor(txt)
 			end
 		end
 	end
-	
 	return bestValue, bestName
 end
 
--- ================= GUI =================
+-- ================= GUI (SIN CAMBIOS) =================
 local gui = Instance.new("ScreenGui")
-gui.Name = "AUTO_JOIN_NAMED_VISUAL"
+gui.Name = "AUTO_JOIN_FINAL_V5"
 gui.ResetOnSpawn = false
 gui.DisplayOrder = 999999
 gui.Parent = PlayerGui
@@ -106,7 +104,7 @@ bigBtn.Visible = false
 bigBtn.Parent = gui
 
 local logsFrame = Instance.new("Frame")
-logsFrame.Size = UDim2.new(0,220,0,180)
+logsFrame.Size = UDim2.new(0,250,0,200) 
 logsFrame.Position = UDim2.new(0, 10, 0.5, 50) 
 logsFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
 logsFrame.Visible = false 
@@ -116,7 +114,7 @@ Instance.new("UICorner", logsFrame)
 local logsTitle = Instance.new("TextLabel")
 logsTitle.Size = UDim2.new(1,0,0,25)
 logsTitle.BackgroundTransparency = 1
-logsTitle.Text = "🔍 ESCANEANDO (TOP 5 ABAJO)"
+logsTitle.Text = "🔍 ESCANEANDO BOTTOM 5 (FAST)"
 logsTitle.TextColor3 = Color3.fromRGB(255, 200, 0)
 logsTitle.Font = Enum.Font.SourceSansBold
 logsTitle.TextSize = 14
@@ -131,31 +129,31 @@ logsText.TextYAlignment = Enum.TextYAlignment.Top
 logsText.Text = "Esperando..."
 logsText.TextColor3 = Color3.new(1,1,1)
 logsText.Font = Enum.Font.Code
-logsText.TextSize = 11
+logsText.TextSize = 12
 logsText.Parent = logsFrame
 
 local function updateLogs(servidores, waitTime)
 	local txt = ""
-	for i, srv in ipairs(servidores) do 
+	for i = #servidores, 1, -1 do
+		local srv = servidores[i]
 		local estado = "✅"
-		if srv.usado then estado = "⛔(Usado)" end
+		if srv.usado then estado = "⛔" end
 		if srv.valor == 0 then estado = "🔻" end
 		
 		local displayName = srv.encontrado or "---"
-		if #displayName > 15 then displayName = displayName:sub(1,13)..".." end
+		if #displayName > 18 then displayName = displayName:sub(1,16)..".." end
 		
-        -- Mostrar el número relativo (1 es el último, 2 el penúltimo, etc.)
-		txt = txt .. "#" .. srv.idx .. " " .. displayName .. " " .. estado .. "\n"
+		txt = txt .. "["..srv.idx.."] " .. displayName .. " " .. estado .. "\n"
 	end
 	
 	if waitTime then
-		txt = txt .. "--- \nCarga: " .. string.format("%.3f", waitTime) .. "s"
+		txt = txt .. "----------------\nCarga: " .. string.format("%.2f", waitTime) .. "s"
 	end
 	
 	logsText.Text = txt
 end
 
--- ================= CORE (LOGICA CORREGIDA) =================
+-- ================= CORE (OPTIMIZADO) =================
 
 local function intentarUnirse(frame, firma, nombreDetectado)
 	if joinLock then return end
@@ -167,70 +165,77 @@ local function intentarUnirse(frame, firma, nombreDetectado)
 	local joinBtn = inner:FindFirstChildWhichIsA("TextButton")
 	if not joinBtn then joinLock = false return end
 
-	usados[firma] = true 
+	usados[firma] = true -- Firma más corta
 	task.spawn(guardarUsados)
 	
 	for _,conn in ipairs(getconnections(joinBtn.MouseButton1Click)) do
 		conn:Fire()
 	end
 	
-	print("🚀 INTENTO DE UNIÓN A: " .. (nombreDetectado or "???"))
+	print("🚀 JOINING: " .. (nombreDetectado or "???"))
 
-	task.delay(2.5, function()
+	-- (Optimización 5) Desbloqueo rápido: 1.2 segundos
+	task.delay(1.2, function() 
 		if joinLock then
-			print("⚠️ Fallo o server lleno, desbloqueando...")
+			print("⚠️ Fallo/Lleno, desbloqueando...")
 			joinLock = false
 		end
 	end)
 end
 
+-- (Optimización 1) Función para verificar si los últimos N Frames están listos
+local function listoParaEscanear()
+	local frames = scrolling:GetChildren()
+	local count = 0
+	-- Recorrer de atrás hacia adelante
+	for i = #frames, 1, -1 do
+		-- Solo contamos Frames visibles
+		if frames[i]:IsA("Frame") and frames[i].Visible then
+			count += 1
+			if count >= MAX_SERVERS_A_ESCANEAR then
+				return true
+			end
+		end
+	end
+	return false
+end
+
 local function escanearSmart()
 	if joinLock then return end
 	
-    -- 1. Obtener hijos sin procesar
 	local rawChildren = scrolling:GetChildren()
-    local servidoresEncontrados = {}
+    local framesValidos = {}
     
-    -- 2. Filtrar solo los frames válidos
+    -- Filtrar solo los Frames
     for _,obj in ipairs(rawChildren) do
-        if obj:IsA("Frame") then
-            table.insert(servidoresEncontrados, obj)
+        if obj:IsA("Frame") and obj.Visible then
+            table.insert(framesValidos, obj)
         end
     end
-    
-    -- 3. ORDENAR POR POSICIÓN VISUAL (LayoutOrder)
-    -- Esto es lo que faltaba. Sin esto, el orden es aleatorio.
-    table.sort(servidoresEncontrados, function(a, b)
-        -- Si tienen LayoutOrder, úsalo. Si es igual, usa el nombre.
-        local orderA = a.LayoutOrder or 0
-        local orderB = b.LayoutOrder or 0
-        if orderA == orderB then
-            return a.Name < b.Name
-        end
-        return orderA < orderB
-    end)
     
 	local candidatos = {}
 	local logsData = {} 
 	
-    local totalServidores = #servidoresEncontrados
+    local total = #framesValidos
+    local start = math.max(1, total - MAX_SERVERS_A_ESCANEAR + 1)
     
-    -- 4. Seleccionar los ÚLTIMOS 'MAX_SERVERS_A_ESCANEAR' de la lista ordenada
-    local inicio = math.max(1, totalServidores - MAX_SERVERS_A_ESCANEAR + 1)
-    
-    for i = inicio, totalServidores do
-        local obj = servidoresEncontrados[i]
-        local lbl = obj:FindFirstChildWhichIsA("TextLabel")
+    for i = start, total do
+        local obj = framesValidos[i]
+        
+        -- (Optimización 3) Búsqueda más rápida: No recursiva (el TextLabel está al mismo nivel que los botones)
+        local lbl = obj:FindFirstChild("TextLabel", false) 
         
         if lbl and lbl.Text then
             local txt = lbl.Text
             local val, nombreEncontrado = parseValor(txt) 
-            local isUsed = usados[txt] ~= nil
             
-            -- Guardamos en el log con el índice real para verificar que sean los de abajo
+            -- (Optimización 4) Firma más corta: Usamos el nombre detectado o el texto crudo.
+            local firma = nombreEncontrado or txt 
+            local isUsed = usados[firma] ~= nil
+            
             table.insert(logsData, {
-                idx = i, 
-                firma = txt, 
+                idx = i,
+                firma = firma, 
                 valor = val, 
                 encontrado = nombreEncontrado, 
                 usado = isUsed
@@ -240,7 +245,7 @@ local function escanearSmart()
                 table.insert(candidatos, {
                     frame = obj,
                     valor = val,
-                    firma = txt,
+                    firma = firma,
                     nombre = nombreEncontrado
                 })
             end
@@ -250,9 +255,8 @@ local function escanearSmart()
 	updateLogs(logsData)
 
 	if #candidatos > 0 then
-		-- Prioridad: Mayor valor gana
+		-- (Punto 6) Orden de prioridad: Mantener.
 		table.sort(candidatos, function(a,b) return a.valor > b.valor end)
-		
 		local mejor = candidatos[1]
 		
 		bigBtn.Text = "JOIN: " .. mejor.nombre
@@ -268,7 +272,7 @@ local function escanearSmart()
 	end
 end
 
--- ================= RESTO DEL SISTEMA (SIN CAMBIOS) =================
+-- ================= EXTRAS (REFRESH, GUI, LOOP) =================
 
 local function getRefreshBtn()
 	if cachedRefreshBtn and cachedRefreshBtn.Parent then return cachedRefreshBtn end
@@ -301,7 +305,7 @@ Instance.new("UICorner", controlPanel)
 local logsBtn = Instance.new("TextButton")
 logsBtn.Size = UDim2.new(1,-10,0,25)
 logsBtn.Position = UDim2.new(0,5,0,5)
-logsBtn.Text = "MOSTRAR LOGS: OFF"
+logsBtn.Text = "LOGS: OFF"
 logsBtn.BackgroundColor3 = Color3.fromRGB(200, 150, 0)
 logsBtn.TextColor3 = Color3.new(1,1,1)
 logsBtn.Parent = controlPanel
@@ -309,7 +313,7 @@ logsBtn.Parent = controlPanel
 local autoBtn = Instance.new("TextButton")
 autoBtn.Size = UDim2.new(1,-10,0,40)
 autoBtn.Position = UDim2.new(0,5,0,35)
-autoBtn.Text = "AUTO JOIN: OFF"
+autoBtn.Text = "AUTO: OFF"
 autoBtn.TextScaled = true
 autoBtn.BackgroundColor3 = Color3.fromRGB(150,50,50)
 autoBtn.TextColor3 = Color3.new(1,1,1)
@@ -319,7 +323,7 @@ autoBtn.Parent = controlPanel
 local cleanBtn = Instance.new("TextButton")
 cleanBtn.Size = UDim2.new(1,-10,0,30)
 cleanBtn.Position = UDim2.new(0,5,0,80)
-cleanBtn.Text = "BORRAR USADOS (CLEAN)"
+cleanBtn.Text = "CLEAN DATA"
 cleanBtn.BackgroundColor3 = Color3.fromRGB(60,60,60)
 cleanBtn.TextColor3 = Color3.new(1,1,1)
 cleanBtn.Parent = controlPanel
@@ -328,12 +332,12 @@ local autoRefresh = false
 
 logsBtn.MouseButton1Click:Connect(function()
 	logsFrame.Visible = not logsFrame.Visible
-	logsBtn.Text = logsFrame.Visible and "MOSTRAR LOGS: ON" or "MOSTRAR LOGS: OFF"
+	logsBtn.Text = logsFrame.Visible and "LOGS: ON" or "LOGS: OFF"
 end)
 
 autoBtn.MouseButton1Click:Connect(function()
 	autoRefresh = not autoRefresh
-	autoBtn.Text = autoRefresh and "AUTO JOIN: ON" or "AUTO JOIN: OFF"
+	autoBtn.Text = autoRefresh and "AUTO: ON" or "AUTO: OFF"
 	autoBtn.BackgroundColor3 = autoRefresh and Color3.fromRGB(0,150,0) or Color3.fromRGB(150,50,50)
 	if autoRefresh and not joinLock then escanearSmart() end
 end)
@@ -341,11 +345,12 @@ end)
 cleanBtn.MouseButton1Click:Connect(function()
 	usados = {}
 	if isfile(FILE_NAME) then delfile(FILE_NAME) end
-	cleanBtn.Text = "¡DATOS BORRADOS!"
+	cleanBtn.Text = "BORRADO!"
 	updateLogs({}) 
-	task.delay(1, function() cleanBtn.Text = "BORRAR USADOS (CLEAN)" end)
+	task.delay(1, function() cleanBtn.Text = "CLEAN DATA" end)
 end)
 
+-- LOOP PRINCIPAL OPTIMIZADO
 task.spawn(function()
 	while true do
 		if autoRefresh and not joinLock then
@@ -353,27 +358,24 @@ task.spawn(function()
 			fireRefresh()
 			
 			local start = tick()
-			local items = 0
 			
-			repeat 
-				items = 0
-				for _,c in ipairs(scrolling:GetChildren()) do
-					if c:IsA("Frame") then items = items + 1 end
-				end
-				task.wait() 
-			until items >= MAX_SERVERS_A_ESCANEAR or (tick() - start) > 0.5
+			-- (Optimización 1) Esperar solo lo necesario, con límite de 0.35s
+			while not listoParaEscanear() and (tick() - start) < MAX_WAIT_TIME do
+				task.wait()
+			end
 			
 			local waitTime = tick() - start
-			task.wait(0.05)
+			
+			-- (Optimización 2) Pausa mínima para renderizado
+			task.wait(0.03) 
 			
 			escanearSmart()
 			
 			if logsFrame.Visible then
-				logsText.Text = logsText.Text:gsub("Carga: .-s", "Carga: " .. string.format("%.3f", waitTime) .. "s")
+				logsText.Text = logsText.Text .. "\n(Wait: " .. string.format("%.2f", waitTime) .. "s)"
 			end
 		end
 		
-		task.wait(0.01) 
+		task.wait(0.05) -- Pausa mínima entre ciclos de escaneo
 	end
-end)
 end)
