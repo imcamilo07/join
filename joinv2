@@ -4,9 +4,8 @@ local MAX_WAIT_TIME = 0.35 -- (Optimización 1) Tiempo máximo para esperar la c
 
 -- LISTA DE PRIORIDAD (El más importante va al final)
 local TARGET_LIST = {
-    "Los Candies",
 	"Ketchuru and Musturu",
-	"Tang Tang Kelentang",
+	"Tang Tang Keletang",
 	"Tictac Sahur",
 	"Ketupat Kepat",
 	"Lavadorito Spinito",
