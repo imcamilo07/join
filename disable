@@ -1,0 +1,53 @@
+local CoreGui = game:GetService("CoreGui")
+local GuiService = game:GetService("GuiService")
+local Lighting = game:GetService("Lighting")
+local UserInputService = game:GetService("UserInputService")
+local ContextActionService = game:GetService("ContextActionService")
+
+print("🔓 Desbloqueo de cámara, controles y desenfoque activado.")
+
+-- 1. FUNCIÓN PARA QUITAR EL BLUR Y DESBLOQUEAR CONTROLES
+local function restaurarJuego()
+    -- Quitar el efecto difuminado (Blur)
+    for _, effect in ipairs(Lighting:GetChildren()) do
+        if effect:IsA("BlurEffect") then
+            effect.Enabled = false
+        end
+    end
+    
+    -- Forzar a que el ratón y la cámara se desbloqueen
+    UserInputService.OverrideMouseIconBehavior = Enum.MouseIconBehavior.Default
+    GuiService.SelectedObject = nil
+    
+    -- Intentar restaurar el movimiento de la cámara si fue bloqueado
+    local camera = workspace.CurrentCamera
+    if camera then
+        camera.CameraType = Enum.CameraType.Custom
+    end
+    
+    -- Eliminar el cartel de la ruta que detectamos antes
+    local promptOverlay = CoreGui:FindFirstChild("promptOverlay", true)
+    if promptOverlay then
+        local errorPrompt = promptOverlay:FindFirstChild("ErrorPrompt")
+        if errorPrompt then
+            errorPrompt.Visible = false
+        end
+    end
+end
+
+-- 2. LIMPIAR ERRORES CONSTANTEMENTE
+GuiService.ErrorMessageChanged:Connect(function()
+    GuiService:ClearError()
+    restaurarJuego()
+end)
+
+-- 3. BUCLE DE FUERZA BRUTA (Para evitar que se quede trabado)
+task.spawn(function()
+    while task.wait(0.5) do
+        -- Si hay un error invisible bloqueando, esto lo limpia
+        if not GuiService:GetErrorMessage() == "" then
+            GuiService:ClearError()
+        end
+        restaurarJuego()
+    end
+end)
