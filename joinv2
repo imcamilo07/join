@@ -1,6 +1,6 @@
 --- ================= CONFIGURACIÓN =================
 local MAX_SERVERS_A_ESCANEAR = 5 
-local MAX_WAIT_TIME = 0.35 
+local MAX_WAIT_TIME = 0.2
 
 -- LISTA DE PRIORIDAD
 local TARGET_LIST = {
@@ -350,7 +350,7 @@ task.spawn(function()
 				logsText.Text = logsText.Text .. "\n(Wait: " .. string.format("%.2f", waitTime) .. "s)"
 			end
 		end
-		task.wait(0.05)
+		task.wait(0.01)
 	end
 end)
 
