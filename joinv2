@@ -1,8 +1,8 @@
 --- ================= CONFIGURACIÓN =================
-local MAX_SERVERS_A_ESCANEAR = 5 -- Escanear solo los últimos 5 de la lista
-local MAX_WAIT_TIME = 0.35 -- (Optimización 1) Tiempo máximo para esperar la carga de frames
+local MAX_SERVERS_A_ESCANEAR = 5 
+local MAX_WAIT_TIME = 0.35 
 
--- LISTA DE PRIORIDAD (El más importante va al final)
+-- LISTA DE PRIORIDAD
 local TARGET_LIST = {
 	"Ketchuru and Musturu",
 	"Tang Tang Keletang",
@@ -26,7 +26,7 @@ local TARGET_LIST = {
 	"Dragon Cannelloni",
 	"Meowl",
 	"Strawberry Elephant",
-	"Skibidi Toilet" -- EL MÁS IMPORTANTE
+	"Skibidi Toilet"
 }
 
 -- ================= SETUP =================
@@ -46,9 +46,8 @@ local scrolling = mainFrame:WaitForChild("ScrollingFrame")
 local usados = {} 
 local joinLock = false 
 local cachedRefreshBtn = nil 
-local FILE_NAME = "auto_join_final_v5.json" -- Nuevo nombre para el archivo de guardado
+local FILE_NAME = "auto_join_final_v5.json" 
 
--- Generar valores
 local NAME_VALUES = {}
 for i, name in ipairs(TARGET_LIST) do
 	NAME_VALUES[name:lower()] = i 
@@ -86,7 +85,7 @@ local function parseValor(txt)
 	return bestValue, bestName
 end
 
--- ================= GUI (SIN CAMBIOS) =================
+-- ================= GUI =================
 local gui = Instance.new("ScreenGui")
 gui.Name = "AUTO_JOIN_FINAL_V5"
 gui.ResetOnSpawn = false
@@ -145,15 +144,11 @@ local function updateLogs(servidores, waitTime)
 		
 		txt = txt .. "["..srv.idx.."] " .. displayName .. " " .. estado .. "\n"
 	end
-	
-	if waitTime then
-		txt = txt .. "----------------\nCarga: " .. string.format("%.2f", waitTime) .. "s"
-	end
-	
+	if waitTime then txt = txt .. "----------------\nCarga: " .. string.format("%.2f", waitTime) .. "s" end
 	logsText.Text = txt
 end
 
--- ================= CORE (OPTIMIZADO) =================
+-- ================= CORE =================
 
 local function intentarUnirse(frame, firma, nombreDetectado)
 	if joinLock then return end
@@ -165,36 +160,29 @@ local function intentarUnirse(frame, firma, nombreDetectado)
 	local joinBtn = inner:FindFirstChildWhichIsA("TextButton")
 	if not joinBtn then joinLock = false return end
 
-	usados[firma] = true -- Firma más corta
+	usados[firma] = true 
 	task.spawn(guardarUsados)
 	
 	for _,conn in ipairs(getconnections(joinBtn.MouseButton1Click)) do
 		conn:Fire()
 	end
 	
-	print("🚀 JOINING: " .. (nombreDetectado or "???"))
+	print("🚀 JOINING: " .. (firma or "???"))
 
-	-- (Optimización 5) Desbloqueo rápido: 1.2 segundos
 	task.delay(1.2, function() 
 		if joinLock then
-			print("⚠️ Fallo/Lleno, desbloqueando...")
 			joinLock = false
 		end
 	end)
 end
 
--- (Optimización 1) Función para verificar si los últimos N Frames están listos
 local function listoParaEscanear()
 	local frames = scrolling:GetChildren()
 	local count = 0
-	-- Recorrer de atrás hacia adelante
 	for i = #frames, 1, -1 do
-		-- Solo contamos Frames visibles
 		if frames[i]:IsA("Frame") and frames[i].Visible then
 			count += 1
-			if count >= MAX_SERVERS_A_ESCANEAR then
-				return true
-			end
+			if count >= MAX_SERVERS_A_ESCANEAR then return true end
 		end
 	end
 	return false
@@ -206,7 +194,6 @@ local function escanearSmart()
 	local rawChildren = scrolling:GetChildren()
     local framesValidos = {}
     
-    -- Filtrar solo los Frames
     for _,obj in ipairs(rawChildren) do
         if obj:IsA("Frame") and obj.Visible then
             table.insert(framesValidos, obj)
@@ -221,16 +208,15 @@ local function escanearSmart()
     
     for i = start, total do
         local obj = framesValidos[i]
-        
-        -- (Optimización 3) Búsqueda más rápida: No recursiva (el TextLabel está al mismo nivel que los botones)
         local lbl = obj:FindFirstChild("TextLabel", false) 
         
         if lbl and lbl.Text then
             local txt = lbl.Text
             local val, nombreEncontrado = parseValor(txt) 
             
-            -- (Optimización 4) Firma más corta: Usamos el nombre detectado o el texto crudo.
-            local firma = nombreEncontrado or txt 
+            -- MODIFICACIÓN: La firma ahora es el texto completo (Nombre + Valor)
+            -- Esto hace que "Garama $50M" y "Garama $1B" sean firmas distintas.
+            local firma = txt 
             local isUsed = usados[firma] ~= nil
             
             table.insert(logsData, {
@@ -255,7 +241,6 @@ local function escanearSmart()
 	updateLogs(logsData)
 
 	if #candidatos > 0 then
-		-- (Punto 6) Orden de prioridad: Mantener.
 		table.sort(candidatos, function(a,b) return a.valor > b.valor end)
 		local mejor = candidatos[1]
 		
@@ -272,7 +257,7 @@ local function escanearSmart()
 	end
 end
 
--- ================= EXTRAS (REFRESH, GUI, LOOP) =================
+-- ================= EXTRAS =================
 
 local function getRefreshBtn()
 	if cachedRefreshBtn and cachedRefreshBtn.Parent then return cachedRefreshBtn end
@@ -350,32 +335,22 @@ cleanBtn.MouseButton1Click:Connect(function()
 	task.delay(1, function() cleanBtn.Text = "CLEAN DATA" end)
 end)
 
--- LOOP PRINCIPAL OPTIMIZADO
 task.spawn(function()
 	while true do
 		if autoRefresh and not joinLock then
-			
 			fireRefresh()
-			
 			local start = tick()
-			
-			-- (Optimización 1) Esperar solo lo necesario, con límite de 0.35s
 			while not listoParaEscanear() and (tick() - start) < MAX_WAIT_TIME do
 				task.wait()
 			end
-			
 			local waitTime = tick() - start
-			
-			-- (Optimización 2) Pausa mínima para renderizado
 			task.wait(0.03) 
-			
 			escanearSmart()
-			
 			if logsFrame.Visible then
 				logsText.Text = logsText.Text .. "\n(Wait: " .. string.format("%.2f", waitTime) .. "s)"
 			end
 		end
-		
-		task.wait(0.05) -- Pausa mínima entre ciclos de escaneo
+		task.wait(0.05)
 	end
 end)
+
