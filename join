@@ -1,5 +1,5 @@
 -- ==========================================
--- BRAINROTS AUTO-JOINER PREMIUM V13 (FINAL)
+-- BRAINROTS AUTO-JOINER PREMIUM V14 (CLEAN FIX)
 -- ==========================================
 
 local UserInputService = game:GetService("UserInputService")
@@ -10,7 +10,6 @@ local PlayerGui = player:WaitForChild("PlayerGui")
 -- CONFIGURACIÓN TÉCNICA
 local MAX_SERVERS_A_ESCANEAR = 5 
 local MAX_WAIT_TIME = 0.2
-local CLEAN_DEBOUNCE = 0.5 -- Tiempo de confirmación para el Auto-Clean
 local FILE_DATA = "brainrots_config_v13.json"
 local FILE_USADOS = "brainrots_usados_v13.json"
 local FILE_LAST_JOIN = "brainrots_last_join.json"
@@ -44,9 +43,9 @@ local usados = {}
 local selectedData = {}
 local priorityList = {unpack(INITIAL_PRIORITY)}
 local joinLock = false
-local autoRefresh = false -- Siempre inicia en OFF
+local autoRefresh = false 
 local btnCPos = UDim2.new(0.5, 257, 0.1, 58)
-local zonaVaciaDesde = 0 -- Timer para el Auto-Clean
+local ultimaFirmaPos15 = "" -- Para detectar movimiento de la lista
 
 -- PERSISTENCIA
 local function loadData()
@@ -56,7 +55,6 @@ local function loadData()
             btnCPos = UDim2.new(data.pos.X.Scale, data.pos.X.Offset, data.pos.Y.Scale, data.pos.Y.Offset)
             selectedData = data.sel or {}
             priorityList = data.prio or priorityList
-            -- autoRefresh se ignora para que siempre sea false al iniciar
         end
     end
     if isfile(FILE_USADOS) then pcall(function() usados = HttpService:JSONDecode(readfile(FILE_USADOS)) end) end
@@ -67,7 +65,7 @@ local function saveData()
         pos = {X = {Scale = btnCPos.X.Scale, Offset = btnCPos.X.Offset}, Y = {Scale = btnCPos.Y.Scale, Offset = btnCPos.Y.Offset}},
         sel = selectedData,
         prio = priorityList,
-        auto = false -- Guardamos siempre en OFF por seguridad
+        auto = false 
     }
     writefile(FILE_DATA, HttpService:JSONEncode(data))
     writefile(FILE_USADOS, HttpService:JSONEncode(usados))
@@ -90,7 +88,6 @@ local function showNotify(text)
     task.delay(2, function() nF:TweenPosition(UDim2.new(0.5, -125, 0, -50), "In", "Quad", 0.4); task.wait(0.4); nF:Destroy() end)
 end
 
--- Notificación al entrar
 task.spawn(function()
     if isfile(FILE_LAST_JOIN) then
         local last = readfile(FILE_LAST_JOIN); delfile(FILE_LAST_JOIN)
@@ -99,7 +96,6 @@ task.spawn(function()
     end
 end)
 
--- Botón C
 local btnC = Instance.new("Frame", gui); btnC.Size = UDim2.new(0, 35, 0, 35); btnC.Position = btnCPos; btnC.BackgroundColor3 = Color3.fromRGB(30, 30, 45)
 Instance.new("UICorner", btnC).CornerRadius = UDim.new(0, 10)
 local textC = Instance.new("TextLabel", btnC); textC.Size = UDim2.new(1,0,1,0); textC.Text = "C"; textC.TextColor3 = Color3.new(0.4, 0.6, 1); textC.BackgroundTransparency = 1; textC.TextScaled = true
@@ -124,7 +120,6 @@ triggerC.InputEnded:Connect(function(input)
     end
 end)
 
--- Panel Principal
 local main = Instance.new("Frame", gui); main.Name = "Main"; main.Visible = false; main.Size = UDim2.new(0, 450, 0, 300); main.Position = UDim2.new(0.5, -225, 0.5, -150); main.BackgroundColor3 = Color3.fromRGB(15, 15, 15); Instance.new("UICorner", main)
 local title = Instance.new("TextLabel", main); title.Size = UDim2.new(0.45, 0, 0, 30); title.Position = UDim2.new(0.02, 0, 0, 5); title.Text = "BRAINROTS"; title.TextColor3 = Color3.new(1,1,1); title.BackgroundTransparency = 1; title.Font = "SourceSansBold"; title.TextXAlignment = "Left"
 local logL = Instance.new("TextLabel", main); logL.Size = UDim2.new(0.1, 0, 0, 30); logL.Position = UDim2.new(0.45, 0, 0, 5); logL.Text = "..."; logL.TextColor3 = Color3.new(1,1,1); logL.BackgroundTransparency = 1; logL.Font = "SourceSansBold"
@@ -184,27 +179,23 @@ local function escanear()
         if v:IsA("Frame") and v.Visible then table.insert(frames, v) end 
     end
     
-    -- LÓGICA AUTO-CLEAN CON DEBOUNCE (Frames 11-15)
+    -- LÓGICA AUTO-CLEAN POR MOVIMIENTO (DETECTOR DE REFRESH)
     local totalFrames = #frames
-    local zonaInicio = math.max(1, totalFrames - MAX_SERVERS_A_ESCANEAR + 1)
-    local algoEnZona = false
-    
-    for i = zonaInicio, totalFrames do
-        local lbl = frames[i]:FindFirstChild("TextLabel", false)
-        if lbl and lbl.Text ~= "" then algoEnZona = true; break end
-    end
-    
-    if not algoEnZona then
-        if zonaVaciaDesde == 0 then zonaVaciaDesde = tick() end
-        if (tick() - zonaVaciaDesde) >= CLEAN_DEBOUNCE and next(usados) ~= nil then
-            usados = {}; saveData()
-            logL.Text = "CLR"; task.delay(0.5, function() logL.Text = "..." end)
-            zonaVaciaDesde = 0
+    if totalFrames >= 15 then
+        local pos15 = frames[totalFrames]
+        local lbl15 = pos15:FindFirstChild("TextLabel", false)
+        if lbl15 and lbl15.Text ~= "" then
+            local firmaActual = lbl15.Text
+            -- Si el servidor en la última posición cambió, significa que hubo un Refresh real
+            if ultimaFirmaPos15 ~= "" and ultimaFirmaPos15 ~= firmaActual and next(usados) ~= nil then
+                usados = {}; saveData()
+                logL.Text = "CLR"; task.delay(0.5, function() logL.Text = "..." end)
+            end
+            ultimaFirmaPos15 = firmaActual
         end
-    else
-        zonaVaciaDesde = 0 -- Resetear timer si aparece algo
     end
 
+    local zonaInicio = math.max(1, totalFrames - MAX_SERVERS_A_ESCANEAR + 1)
     local candidatos = {}
     for i = zonaInicio, totalFrames do
         local lbl = frames[i]:FindFirstChild("TextLabel", false)
@@ -258,6 +249,7 @@ task.spawn(function()
 end)
 
 renderPrio()
+
 
 
 
