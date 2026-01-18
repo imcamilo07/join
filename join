@@ -1,5 +1,5 @@
 -- ==========================================
--- BRAINROTS AUTO-JOINER PREMIUM V14 (CLEAN FIX)
+-- BRAINROTS AUTO-JOINER PREMIUM V15 (FINAL FIX)
 -- ==========================================
 
 local UserInputService = game:GetService("UserInputService")
@@ -45,7 +45,6 @@ local priorityList = {unpack(INITIAL_PRIORITY)}
 local joinLock = false
 local autoRefresh = false 
 local btnCPos = UDim2.new(0.5, 257, 0.1, 58)
-local ultimaFirmaPos15 = "" -- Para detectar movimiento de la lista
 
 -- PERSISTENCIA
 local function loadData()
@@ -162,11 +161,21 @@ for i, name in ipairs(ALL_OBJECTS) do
 end
 
 -- ================= MOTOR =================
-local function parseSms(txt)
-    local n = txt:match("(%d+%.?%d*)")
-    local val = tonumber(n) or 0
-    if txt:find("B") then val = val * 1000 end
-    return val
+-- MEJORA: Parseador que corta el texto por palabra clave
+local function parseSms(txt, targetName)
+    local lowTxt = txt:lower()
+    local lowTarget = targetName:lower()
+    local startIdx = lowTxt:find(lowTarget, 1, true)
+    
+    if startIdx then
+        -- Cortamos el texto para leer solo lo que hay después del nombre
+        local sub = txt:sub(startIdx + #targetName)
+        local n = sub:match("(%d+%.?%d*)")
+        local val = tonumber(n) or 0
+        if sub:find("B") and sub:find("B") < 15 then val = val * 1000 end
+        return val
+    end
+    return 0
 end
 
 local function escanear()
@@ -179,23 +188,26 @@ local function escanear()
         if v:IsA("Frame") and v.Visible then table.insert(frames, v) end 
     end
     
-    -- LÓGICA AUTO-CLEAN POR MOVIMIENTO (DETECTOR DE REFRESH)
     local totalFrames = #frames
-    if totalFrames >= 15 then
-        local pos15 = frames[totalFrames]
-        local lbl15 = pos15:FindFirstChild("TextLabel", false)
-        if lbl15 and lbl15.Text ~= "" then
-            local firmaActual = lbl15.Text
-            -- Si el servidor en la última posición cambió, significa que hubo un Refresh real
-            if ultimaFirmaPos15 ~= "" and ultimaFirmaPos15 ~= firmaActual and next(usados) ~= nil then
-                usados = {}; saveData()
-                logL.Text = "CLR"; task.delay(0.5, function() logL.Text = "..." end)
-            end
-            ultimaFirmaPos15 = firmaActual
+    local zonaInicio = math.max(1, totalFrames - MAX_SERVERS_A_ESCANEAR + 1)
+    
+    -- LÓGICA AUTO-CLEAN (AUSENCIA EN 11-15)
+    local firmasActuales = {}
+    for i = zonaInicio, totalFrames do
+        local lbl = frames[i]:FindFirstChild("TextLabel", false)
+        if lbl and lbl.Text ~= "" then firmasActuales[lbl.Text] = true end
+    end
+    
+    local limpio = false
+    for firma, _ in pairs(usados) do
+        if not firmasActuales[firma] then
+            usados[firma] = nil
+            limpio = true
         end
     end
+    if limpio then saveData(); logL.Text = "CLR"; task.delay(0.5, function() logL.Text = "..." end) end
 
-    local zonaInicio = math.max(1, totalFrames - MAX_SERVERS_A_ESCANEAR + 1)
+    -- BÚSQUEDA DE CANDIDATOS
     local candidatos = {}
     for i = zonaInicio, totalFrames do
         local lbl = frames[i]:FindFirstChild("TextLabel", false)
@@ -203,7 +215,7 @@ local function escanear()
             local txt = lbl.Text:lower()
             for name, data in pairs(selectedData) do
                 if data.enabled and txt:find(name:lower(), 1, true) then
-                    local val = parseSms(lbl.Text)
+                    local val = parseSms(lbl.Text, name)
                     if val >= data.minVal and not usados[lbl.Text] then
                         table.insert(candidatos, {frame = frames[i], name = name, val = val, firma = lbl.Text})
                     end
@@ -249,6 +261,7 @@ task.spawn(function()
 end)
 
 renderPrio()
+
 
 
 
