@@ -1,5 +1,5 @@
 -- ==========================================
--- BRAINROTS AUTO-JOINER PREMIUM V12 (FINAL)
+-- BRAINROTS AUTO-JOINER PREMIUM V13 (FINAL)
 -- ==========================================
 
 local UserInputService = game:GetService("UserInputService")
@@ -10,8 +10,9 @@ local PlayerGui = player:WaitForChild("PlayerGui")
 -- CONFIGURACIÓN TÉCNICA
 local MAX_SERVERS_A_ESCANEAR = 5 
 local MAX_WAIT_TIME = 0.2
-local FILE_DATA = "brainrots_config_v12.json"
-local FILE_USADOS = "brainrots_usados_v12.json"
+local CLEAN_DEBOUNCE = 0.2 -- Tiempo de confirmación para el Auto-Clean
+local FILE_DATA = "brainrots_config_v13.json"
+local FILE_USADOS = "brainrots_usados_v13.json"
 local FILE_LAST_JOIN = "brainrots_last_join.json"
 
 local ALL_OBJECTS = {
@@ -43,8 +44,9 @@ local usados = {}
 local selectedData = {}
 local priorityList = {unpack(INITIAL_PRIORITY)}
 local joinLock = false
-local autoRefresh = false
+local autoRefresh = false -- Siempre inicia en OFF
 local btnCPos = UDim2.new(0.5, 257, 0.1, 58)
+local zonaVaciaDesde = 0 -- Timer para el Auto-Clean
 
 -- PERSISTENCIA
 local function loadData()
@@ -54,7 +56,7 @@ local function loadData()
             btnCPos = UDim2.new(data.pos.X.Scale, data.pos.X.Offset, data.pos.Y.Scale, data.pos.Y.Offset)
             selectedData = data.sel or {}
             priorityList = data.prio or priorityList
-            autoRefresh = data.auto or false
+            -- autoRefresh se ignora para que siempre sea false al iniciar
         end
     end
     if isfile(FILE_USADOS) then pcall(function() usados = HttpService:JSONDecode(readfile(FILE_USADOS)) end) end
@@ -65,7 +67,7 @@ local function saveData()
         pos = {X = {Scale = btnCPos.X.Scale, Offset = btnCPos.X.Offset}, Y = {Scale = btnCPos.Y.Scale, Offset = btnCPos.Y.Offset}},
         sel = selectedData,
         prio = priorityList,
-        auto = autoRefresh
+        auto = false -- Guardamos siempre en OFF por seguridad
     }
     writefile(FILE_DATA, HttpService:JSONEncode(data))
     writefile(FILE_USADOS, HttpService:JSONEncode(usados))
@@ -75,7 +77,7 @@ loadData()
 for _, name in ipairs(ALL_OBJECTS) do if not selectedData[name] then selectedData[name] = {enabled = false, minVal = 0} end end
 
 -- ================= INTERFAZ =================
-local gui = Instance.new("ScreenGui", PlayerGui); gui.Name = "BRAINROTS_V12"; gui.ResetOnSpawn = false
+local gui = Instance.new("ScreenGui", PlayerGui); gui.Name = "BRAINROTS_V13"; gui.ResetOnSpawn = false
 
 local function showNotify(text)
     local nF = Instance.new("Frame", gui)
@@ -88,16 +90,16 @@ local function showNotify(text)
     task.delay(2, function() nF:TweenPosition(UDim2.new(0.5, -125, 0, -50), "In", "Quad", 0.4); task.wait(0.4); nF:Destroy() end)
 end
 
+-- Notificación al entrar
 task.spawn(function()
     if isfile(FILE_LAST_JOIN) then
-        local last = readfile(FILE_LAST_JOIN)
-        delfile(FILE_LAST_JOIN)
-        repeat task.wait() until player.Character
-        task.wait(0.5)
-        showNotify(last)
+        local last = readfile(FILE_LAST_JOIN); delfile(FILE_LAST_JOIN)
+        repeat task.wait() until player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+        task.wait(0.5); showNotify(last)
     end
 end)
 
+-- Botón C
 local btnC = Instance.new("Frame", gui); btnC.Size = UDim2.new(0, 35, 0, 35); btnC.Position = btnCPos; btnC.BackgroundColor3 = Color3.fromRGB(30, 30, 45)
 Instance.new("UICorner", btnC).CornerRadius = UDim.new(0, 10)
 local textC = Instance.new("TextLabel", btnC); textC.Size = UDim2.new(1,0,1,0); textC.Text = "C"; textC.TextColor3 = Color3.new(0.4, 0.6, 1); textC.BackgroundTransparency = 1; textC.TextScaled = true
@@ -122,13 +124,14 @@ triggerC.InputEnded:Connect(function(input)
     end
 end)
 
+-- Panel Principal
 local main = Instance.new("Frame", gui); main.Name = "Main"; main.Visible = false; main.Size = UDim2.new(0, 450, 0, 300); main.Position = UDim2.new(0.5, -225, 0.5, -150); main.BackgroundColor3 = Color3.fromRGB(15, 15, 15); Instance.new("UICorner", main)
 local title = Instance.new("TextLabel", main); title.Size = UDim2.new(0.45, 0, 0, 30); title.Position = UDim2.new(0.02, 0, 0, 5); title.Text = "BRAINROTS"; title.TextColor3 = Color3.new(1,1,1); title.BackgroundTransparency = 1; title.Font = "SourceSansBold"; title.TextXAlignment = "Left"
 local logL = Instance.new("TextLabel", main); logL.Size = UDim2.new(0.1, 0, 0, 30); logL.Position = UDim2.new(0.45, 0, 0, 5); logL.Text = "..."; logL.TextColor3 = Color3.new(1,1,1); logL.BackgroundTransparency = 1; logL.Font = "SourceSansBold"
 
-local autoBtn = Instance.new("TextButton", main); autoBtn.Size = UDim2.new(0, 100, 0, 30); autoBtn.Position = UDim2.new(1, -110, 0, 5); autoBtn.Text = autoRefresh and "AUTO: ON" or "AUTO: OFF"; autoBtn.BackgroundColor3 = autoRefresh and Color3.fromRGB(0, 100, 255) or Color3.fromRGB(150, 50, 50); autoBtn.TextColor3 = Color3.new(1,1,1); Instance.new("UICorner", autoBtn)
+local autoBtn = Instance.new("TextButton", main); autoBtn.Size = UDim2.new(0, 100, 0, 30); autoBtn.Position = UDim2.new(1, -110, 0, 5); autoBtn.Text = "AUTO: OFF"; autoBtn.BackgroundColor3 = Color3.fromRGB(150, 50, 50); autoBtn.TextColor3 = Color3.new(1,1,1); Instance.new("UICorner", autoBtn)
 autoBtn.MouseButton1Click:Connect(function()
-    autoRefresh = not autoRefresh; autoBtn.Text = autoRefresh and "AUTO: ON" or "AUTO: OFF"; autoBtn.BackgroundColor3 = autoRefresh and Color3.fromRGB(0, 100, 255) or Color3.fromRGB(150, 50, 50); saveData()
+    autoRefresh = not autoRefresh; autoBtn.Text = autoRefresh and "AUTO: ON" or "AUTO: OFF"; autoBtn.BackgroundColor3 = autoRefresh and Color3.fromRGB(0, 100, 255) or Color3.fromRGB(150, 50, 50)
 end)
 
 local scrollSel = Instance.new("ScrollingFrame", main); scrollSel.Size = UDim2.new(0.45, 0, 0.82, 0); scrollSel.Position = UDim2.new(0.02, 0, 0.15, 0); scrollSel.BackgroundTransparency = 1; scrollSel.CanvasSize = UDim2.new(0,0,0,#ALL_OBJECTS*35)
@@ -140,7 +143,7 @@ local function renderPrio()
     for i, name in ipairs(priorityList) do
         if selectedData[name].enabled then
             local f = Instance.new("Frame", scrollPrio); f.Size = UDim2.new(1,-10,0,25); f.Position = UDim2.new(0,0,0,y); f.BackgroundColor3 = Color3.fromRGB(30,30,30); Instance.new("UICorner", f)
-            local t = Instance.new("TextLabel", f); t.Size = UDim2.new(0.75,0,1,0); t.Text = name; t.TextColor3 = Color3.new(1,1,1); t.BackgroundTransparency = 1; t.TextSize = 11; t.TextXAlignment = "Left"; t.Position = UDim2.new(0,5,0,0)
+            local t = Instance.new("TextLabel", f); t.Size = UDim2.new(0.75,0,1,0); t.Text = name; t.TextColor3 = Color3.new(1,1,1); t.BackgroundTransparency = 1; t.TextSize = 10; t.TextXAlignment = "Left"; t.Position = UDim2.new(0,5,0,0)
             local up = Instance.new("TextButton", f); up.Size = UDim2.new(0,20,0,12); up.Position = UDim2.new(0.85,0,0,0); up.Text = "▲"; up.BackgroundTransparency = 1; up.TextColor3 = Color3.new(1,1,1); up.TextSize = 10
             local dw = Instance.new("TextButton", f); dw.Size = UDim2.new(0,20,0,12); dw.Position = UDim2.new(0.85,0,0.5,0); dw.Text = "▼"; dw.BackgroundTransparency = 1; dw.TextColor3 = Color3.new(1,1,1); dw.TextSize = 10
             up.MouseButton1Click:Connect(function() if i > 1 then table.remove(priorityList, i); table.insert(priorityList, i-1, name); renderPrio(); saveData() end end)
@@ -153,7 +156,7 @@ end
 
 for i, name in ipairs(ALL_OBJECTS) do
     local f = Instance.new("Frame", scrollSel); f.Size = UDim2.new(1,-10,0,30); f.Position = UDim2.new(0,0,0,(i-1)*33); f.BackgroundColor3 = Color3.fromRGB(25,25,25); Instance.new("UICorner", f)
-    local b = Instance.new("TextButton", f); b.Size = UDim2.new(0.72,0,1,0); b.Text = name; b.TextSize = 10; b.BackgroundColor3 = selectedData[name].enabled and Color3.fromRGB(0, 100, 255) or Color3.fromRGB(50,50,50); b.TextColor3 = Color3.new(1,1,1); b.ClipsDescendants = true; Instance.new("UICorner", b)
+    local b = Instance.new("TextButton", f); b.Size = UDim2.new(0.72,0,1,0); b.Text = name; b.TextSize = 9; b.BackgroundColor3 = selectedData[name].enabled and Color3.fromRGB(0, 100, 255) or Color3.fromRGB(50,50,50); b.TextColor3 = Color3.new(1,1,1); b.ClipsDescendants = true; Instance.new("UICorner", b)
     local v = Instance.new("TextBox", f); v.Size = UDim2.new(0.24,0,1,0); v.Position = UDim2.new(0.76,0,0,0); v.PlaceholderText = "M/s"; v.Text = selectedData[name].minVal > 0 and tostring(selectedData[name].minVal) or ""; v.BackgroundColor3 = Color3.fromRGB(40,40,40); v.TextColor3 = Color3.new(1,1,1); v.TextSize = 10; Instance.new("UICorner", v)
     b.MouseButton1Click:Connect(function()
         selectedData[name].enabled = not selectedData[name].enabled
@@ -181,25 +184,25 @@ local function escanear()
         if v:IsA("Frame") and v.Visible then table.insert(frames, v) end 
     end
     
-    -- LÓGICA AUTO-CLEAN: Zona Vacía (Frames 11 al 15)
+    -- LÓGICA AUTO-CLEAN CON DEBOUNCE (Frames 11-15)
     local totalFrames = #frames
     local zonaInicio = math.max(1, totalFrames - MAX_SERVERS_A_ESCANEAR + 1)
     local algoEnZona = false
     
     for i = zonaInicio, totalFrames do
         local lbl = frames[i]:FindFirstChild("TextLabel", false)
-        if lbl and lbl.Text ~= "" then
-            algoEnZona = true
-            break
-        end
+        if lbl and lbl.Text ~= "" then algoEnZona = true; break end
     end
     
-    -- Si no hay nada en los últimos 5, borramos memoria
-    if not algoEnZona and next(usados) ~= nil then
-        usados = {}
-        saveData()
-        logL.Text = "CLR"
-        task.delay(0.5, function() logL.Text = "..." end)
+    if not algoEnZona then
+        if zonaVaciaDesde == 0 then zonaVaciaDesde = tick() end
+        if (tick() - zonaVaciaDesde) >= CLEAN_DEBOUNCE and next(usados) ~= nil then
+            usados = {}; saveData()
+            logL.Text = "CLR"; task.delay(0.5, function() logL.Text = "..." end)
+            zonaVaciaDesde = 0
+        end
+    else
+        zonaVaciaDesde = 0 -- Resetear timer si aparece algo
     end
 
     local candidatos = {}
@@ -255,6 +258,7 @@ task.spawn(function()
 end)
 
 renderPrio()
+
 
 
 
