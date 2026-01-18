@@ -1,5 +1,5 @@
 -- ==========================================
--- BRAINROTS AUTO-JOINER PREMIUM V15 (FINAL FIX)
+-- BRAINROTS AUTO-JOINER PREMIUM V16 (SAFE CLEAN)
 -- ==========================================
 
 local UserInputService = game:GetService("UserInputService")
@@ -10,6 +10,7 @@ local PlayerGui = player:WaitForChild("PlayerGui")
 -- CONFIGURACIÓN TÉCNICA
 local MAX_SERVERS_A_ESCANEAR = 5 
 local MAX_WAIT_TIME = 0.2
+local INTENTOS_PARA_LIMPIAR = 3 -- <--- AQUÍ AUMENTAS LOS INTENTOS SI EL LAG PERSISTE
 local FILE_DATA = "brainrots_config_v13.json"
 local FILE_USADOS = "brainrots_usados_v13.json"
 local FILE_LAST_JOIN = "brainrots_last_join.json"
@@ -40,6 +41,7 @@ local INITIAL_PRIORITY = {
 }
 
 local usados = {}
+local ausenciaContador = {} -- Tabla para el seguro de intentos
 local selectedData = {}
 local priorityList = {unpack(INITIAL_PRIORITY)}
 local joinLock = false
@@ -161,14 +163,12 @@ for i, name in ipairs(ALL_OBJECTS) do
 end
 
 -- ================= MOTOR =================
--- MEJORA: Parseador que corta el texto por palabra clave
 local function parseSms(txt, targetName)
     local lowTxt = txt:lower()
     local lowTarget = targetName:lower()
     local startIdx = lowTxt:find(lowTarget, 1, true)
     
     if startIdx then
-        -- Cortamos el texto para leer solo lo que hay después del nombre
         local sub = txt:sub(startIdx + #targetName)
         local n = sub:match("(%d+%.?%d*)")
         local val = tonumber(n) or 0
@@ -191,7 +191,7 @@ local function escanear()
     local totalFrames = #frames
     local zonaInicio = math.max(1, totalFrames - MAX_SERVERS_A_ESCANEAR + 1)
     
-    -- LÓGICA AUTO-CLEAN (AUSENCIA EN 11-15)
+    -- LÓGICA AUTO-CLEAN (CON SEGURO DE INTENTOS)
     local firmasActuales = {}
     for i = zonaInicio, totalFrames do
         local lbl = frames[i]:FindFirstChild("TextLabel", false)
@@ -201,8 +201,16 @@ local function escanear()
     local limpio = false
     for firma, _ in pairs(usados) do
         if not firmasActuales[firma] then
-            usados[firma] = nil
-            limpio = true
+            -- El servidor no está, sumamos un intento de ausencia
+            ausenciaContador[firma] = (ausenciaContador[firma] or 0) + 1
+            if ausenciaContador[firma] >= INTENTOS_PARA_LIMPIAR then
+                usados[firma] = nil
+                ausenciaContador[firma] = nil
+                limpio = true
+            end
+        else
+            -- Si vuelve a aparecer, reseteamos su contador de ausencia
+            ausenciaContador[firma] = 0
         end
     end
     if limpio then saveData(); logL.Text = "CLR"; task.delay(0.5, function() logL.Text = "..." end) end
@@ -232,7 +240,7 @@ local function escanear()
         end)
         
         local mejor = candidatos[1]
-        joinLock = true; usados[mejor.firma] = true; saveData()
+        joinLock = true; usados[mejor.firma] = true; ausenciaContador[mejor.firma] = 0; saveData()
         writefile(FILE_LAST_JOIN, mejor.name .. " $" .. mejor.val .. "M/s")
         
         local btn = mejor.frame:FindFirstChildWhichIsA("Frame"):FindFirstChildWhichIsA("TextButton")
@@ -261,6 +269,7 @@ task.spawn(function()
 end)
 
 renderPrio()
+
 
 
 
