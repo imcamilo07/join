@@ -10,7 +10,7 @@ local PlayerGui = player:WaitForChild("PlayerGui")
 -- CONFIGURACIÓN TÉCNICA
 local MAX_SERVERS_A_ESCANEAR = 5 
 local MAX_WAIT_TIME = 0.2
-local INTENTOS_PARA_LIMPIAR = 3 -- <--- AQUÍ AUMENTAS LOS INTENTOS SI EL LAG PERSISTE
+local INTENTOS_PARA_LIMPIAR = 6 -- <--- AQUÍ AUMENTAS LOS INTENTOS SI EL LAG PERSISTE
 local FILE_DATA = "brainrots_config_v13.json"
 local FILE_USADOS = "brainrots_usados_v13.json"
 local FILE_LAST_JOIN = "brainrots_last_join.json"
