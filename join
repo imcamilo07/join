@@ -22,7 +22,7 @@ local ALL_OBJECTS = {
     "La Casa Boo", "Cooki and Milki", "Burguro and Fryuro", "Headless Horseman",
     "Capitano Moby", "Cerberus", "Dragon Gingerini", "Dragon Cannelloni", "Meowl",
     "Los Spaghettis", "Spaghetti Tualetti", "La Ginger Sekolah", "Strawberry Elephant",
-    "Skibidi Toilet", "Money Money Puggy", "Swag Soda", "Los Combinasionas",
+    "Skibidi Toilet", "Money Money Puggy", "Hydra Dragon Cannelloni", "Swag Soda", "Los Combinasionas",
     "Chicleteira Noelteira", "Tacorita Bicicleta", "Las Sis", "Los Hotspotsitos",
     "Celularcini Viciosini", "Los Candies", "Los Bros", "La Extinct Grande",
     "Chipso and Queso", "Chillin Chili", "Money Money Reindeer", "Mieteteira Bicicleteira",
@@ -32,7 +32,7 @@ local ALL_OBJECTS = {
 
 local INITIAL_PRIORITY = {
     "Strawberry Elephant", "Meowl", "Skibidi Toilet", "Dragon Cannelloni",
-    "Dragon Gingerini", "Cerberus", "Capitano Moby", "Headless Horseman",
+    "Dragon Gingerini", "Hydra Dragon Cannelloni", "Cerberus", "Capitano Moby", "Headless Horseman",
     "Burguro and Fryuro", "Cooki and Milki", "La Casa Boo", "Reinito Sleighito",
     "Gingerat Gerat", "Spooky and Pumpky", "Fragrama and Chocrama",
     "La Supreme Combinasion", "La Secret Combinasion", "Garama and Madundung",
