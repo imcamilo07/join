@@ -1,16 +1,54 @@
 -- ==========================================
--- SCRIPT MODO CITA V13 (OPTIMIZADO ANTI-LAG)
+-- SCRIPT MODO CITA V14 (SIMPLE & NO LAG)
 -- ==========================================
 
 local Player = game.Players.LocalPlayer
 local PlayerGui = Player:WaitForChild("PlayerGui")
 local HttpService = game:GetService("HttpService")
 
-local TIEMPO_ESPERA = 30 
+local TIEMPO_ESPERA_CITA = 30 
 local SIZE_TABLA = 150 
 local FILE_POS = "cita_btn_pos.json"
 
--- --- FUNCIONES DE ACCIÓN ---
+-- 1. FUNCIÓN DE LIMPIEZA ÚNICA (Se ejecuta tras 3 segundos)
+local function limpiezaSimple()
+    task.wait(3) -- El tiempo que tarda el script en cargar
+    print("🧹 Iniciando limpieza única...")
+
+    -- Ocultar Hubs
+    for _, gui in ipairs(PlayerGui:GetChildren()) do
+        if gui:FindFirstChild("Section_STEALING", true) or gui:FindFirstChild("Tab_Main", true) then
+            local frame = gui:FindFirstChildOfClass("Frame")
+            if frame then frame.Position = UDim2.new(5, 0, 0, 0) end
+        end
+    end
+
+    -- Ocultar MiniContainers y ajustar Tabla
+    for _, obj in ipairs(PlayerGui:GetDescendants()) do
+        if obj.Name == "MiniContainer" and obj:IsA("GuiObject") then
+            obj.Position = UDim2.new(5, 0, 0, 0)
+        end
+        
+        if obj.Name == "StealContent" or obj.Name == "Steal Target" then
+            local container = obj:IsA("Frame") and obj or obj:FindFirstAncestorWhichIsA("Frame")
+            if container then
+                container.Size = UDim2.new(0, SIZE_TABLA, 0, SIZE_TABLA)
+                container.ClipsDescendants = true
+                container.BackgroundTransparency = 0.5
+            end
+        end
+    end
+
+    -- Ocultar Botones de Móvil
+    local mb = PlayerGui:FindFirstChild("MobileButtons")
+    if mb then mb.Enabled = false end
+    
+    print("✅ Limpieza completada sin lag.")
+end
+
+task.spawn(limpiezaSimple)
+
+-- 2. LÓGICA DE BOTONES (Igual que la V11)
 local function switchV2()
     for _, obj in ipairs(PlayerGui:GetDescendants()) do
         if obj.Name == "Row_InvisOnStealv2(Admin)" then
@@ -37,41 +75,11 @@ local function presionarOtros(nombre)
     return false
 end
 
--- --- SISTEMA DE OCULTADO OPTIMIZADO (SIN BUCLE PESADO) ---
-local function limpiarObjeto(obj)
-    -- Ocultar MiniContainer al instante
-    if obj.Name == "MiniContainer" and obj:IsA("GuiObject") then
-        obj.Position = UDim2.new(5, 0, 0, 0)
-    end
-    -- Ajustar tabla de Steal
-    if obj.Name == "StealContent" or obj.Name == "Steal Target" then
-        local container = obj:IsA("Frame") and obj or obj:FindFirstAncestorWhichIsA("Frame")
-        if container then
-            container.Size = UDim2.new(0, SIZE_TABLA, 0, SIZE_TABLA)
-            container.ClipsDescendants = true
-            container.BackgroundTransparency = 0.5
-        end
-    end
-    -- Ocultar el Frame del Hub si aparece
-    if obj:IsA("Frame") and (obj:FindFirstChild("Tab_Main", true) or obj:FindFirstChild("Section_STEALING", true)) then
-        obj.Position = UDim2.new(5, 0, 0, 0)
-    end
-end
-
--- Limpiar lo que ya existe
-for _, desc in ipairs(PlayerGui:GetDescendants()) do limpiarObjeto(desc) end
-
--- ESCUCHAR CUANDO ALGO NUEVO SE CREA (Esto no da lag)
-PlayerGui.DescendantAdded:Connect(limpiarObjeto)
-
--- Desactivar MobileButtons una sola vez
-if PlayerGui:FindFirstChild("MobileButtons") then PlayerGui.MobileButtons.Enabled = false end
-
 -- ================= INTERFAZ DEL BOTÓN =================
-local sg = Instance.new("ScreenGui", PlayerGui); sg.Name = "CitaV13"; sg.ResetOnSpawn = false
+local sg = Instance.new("ScreenGui", PlayerGui); sg.Name = "CitaV14"; sg.ResetOnSpawn = false
 local mainBtn = Instance.new("Frame", sg)
 mainBtn.Size = UDim2.new(0, 75, 0, 30) 
-mainBtn.BackgroundColor3 = Color3.fromRGB(30, 30, 35)
+mainBtn.BackgroundColor3 = Color3.fromRGB(35, 35, 40)
 Instance.new("UICorner", mainBtn)
 
 local txt = Instance.new("TextLabel", mainBtn)
@@ -80,7 +88,7 @@ txt.Size = UDim2.new(1,0,1,0); txt.Text = "START"; txt.TextColor3 = Color3.new(1
 local trigger = Instance.new("TextButton", mainBtn)
 trigger.Size = UDim2.new(1,0,1,0); trigger.BackgroundTransparency = 1; trigger.Text = ""
 
--- Arrastre y guardado
+-- Arrastre y Guardado
 local dragging, dragStart, startPos
 trigger.InputBegan:Connect(function(input)
     if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
@@ -118,8 +126,9 @@ trigger.MouseButton1Click:Connect(function()
         presionarOtros("Invis") 
         task.wait(0.4)
         presionarOtros("Steal Target Priority") 
+        
         mainBtn.BackgroundColor3 = Color3.fromRGB(180, 0, 0)
-        for i = TIEMPO_ESPERA, 0, -1 do
+        for i = TIEMPO_ESPERA_CITA, 0, -1 do
             txt.Text = tostring(i)
             task.wait(1)
         end
@@ -132,8 +141,9 @@ trigger.MouseButton1Click:Connect(function()
         presionarOtros("Steal Target Priority") 
         task.wait(0.4)
         switchV2() 
+        
         txt.Text = "START"
-        mainBtn.BackgroundColor3 = Color3.fromRGB(30, 30, 35)
+        mainBtn.BackgroundColor3 = Color3.fromRGB(35, 35, 40)
         estado = "START"
     end
 end)
