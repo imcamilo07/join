@@ -1,5 +1,5 @@
 -- ==========================================
--- SCRIPT MODO CITA V16 (DOBLE LIMPIEZA)
+-- SCRIPT MODO CITA V17 (CORRECCIÓN INVIS V2)
 -- ==========================================
 
 local Player = game.Players.LocalPlayer
@@ -10,40 +10,45 @@ local TIEMPO_ESPERA_CITA = 30
 local SIZE_TABLA = 150 
 local FILE_POS = "cita_btn_pos.json"
 
--- 1. FUNCIÓN DE LIMPIEZA CON REFUERZO
-local function limpiezaEfectiva()
-    -- PRIMERA LIMPIEZA (A los 2.5 segundos)
-    task.wait(2.5)
-    
-    local function ejecutarLimpieza()
-        -- Ocultar MiniContainer
-        for _, obj in ipairs(PlayerGui:GetDescendants()) do
-            if obj.Name == "MiniContainer" and obj:IsA("GuiObject") then
-                obj.Position = UDim2.new(5, 0, 0, 0)
-            end
-        end
-
-        -- Ocultar MobileButtons
-        local mb = PlayerGui:FindFirstChild("MobileButtons")
-        if mb then
-            if mb:IsA("ScreenGui") then mb.Enabled = false 
-            else
-                for _, hijo in ipairs(mb:GetChildren()) do
-                    if hijo:IsA("GuiObject") then hijo.Visible = false end
+-- 1. FUNCIÓN ESPECÍFICA INVIS V2 (Tu código estrella)
+local function switchV2()
+    print("Buscando Invis v2 para cambiar estado...")
+    for _, obj in ipairs(PlayerGui:GetDescendants()) do
+        if obj.Name == "Row_InvisOnStealv2(Admin)" then
+            local clickArea = obj:FindFirstChild("ClickArea", true)
+            if clickArea and (clickArea:IsA("TextButton") or clickArea:IsA("GuiButton")) then
+                local conexiones = getconnections(clickArea.MouseButton1Click)
+                for _, c in ipairs(conexiones) do
+                    c:Fire()
                 end
+                print("✅ Click enviado a ClickArea de Invis v2")
+                return true
             end
         end
+    end
+    return false
+end
 
-        -- Ocultar Hub Principal
-        for _, gui in ipairs(PlayerGui:GetChildren()) do
-            if gui:FindFirstChild("Tab_Main", true) or gui:FindFirstChild("Section_STEALING", true) then
-                local frame = gui:FindFirstChildOfClass("Frame")
-                if frame then frame.Position = UDim2.new(5, 0, 0, 0) end
+-- 2. FUNCIÓN PARA OTROS BOTONES
+local function presionarOtros(nombre)
+    for _, obj in ipairs(PlayerGui:GetDescendants()) do
+        if (obj.Name == nombre or (obj:IsA("TextLabel") and obj.Text == nombre)) and obj:IsA("GuiObject") then
+            local btn = obj:IsA("TextButton") and obj or obj:FindFirstAncestorWhichIsA("TextButton") or obj.Parent:FindFirstChildWhichIsA("TextButton")
+            if btn then
+                local conexiones = getconnections(btn.MouseButton1Click)
+                for _, c in ipairs(conexiones) do c:Fire() end
+                return true
             end
         end
+    end
+    return false
+end
 
-        -- Tabla Cuadrada Fija (150x150)
+-- 3. LIMPIEZA AUTOMÁTICA (2.5s y 5s)
+task.spawn(function()
+    local function limpiar()
         for _, obj in ipairs(PlayerGui:GetDescendants()) do
+            if obj.Name == "MiniContainer" then obj.Position = UDim2.new(5, 0, 0, 0) end
             if obj.Name == "StealContent" or obj.Name == "Steal Target" then
                 local container = obj:IsA("Frame") and obj or obj:FindFirstAncestorWhichIsA("Frame")
                 if container then
@@ -53,51 +58,23 @@ local function limpiezaEfectiva()
                 end
             end
         end
-    end
-
-    ejecutarLimpieza()
-    print("🧹 Primera limpieza realizada.")
-
-    -- REFUERZO (A los 5 segundos por si el MiniContainer volvió a aparecer)
-    task.wait(2.5) 
-    ejecutarLimpieza()
-    print("🔨 Refuerzo de limpieza completado.")
-end
-
-task.spawn(limpiezaEfectiva)
-
--- 2. LÓGICA DE BOTONES (Invisibles y Steal)
-local function switchV2()
-    for _, obj in ipairs(PlayerGui:GetDescendants()) do
-        if obj.Name == "Row_InvisOnStealv2(Admin)" then
-            local ca = obj:FindFirstChild("ClickArea", true)
-            if ca then
-                for _, c in ipairs(getconnections(ca.MouseButton1Click)) do c:Fire() end
-                return true
+        local mb = PlayerGui:FindFirstChild("MobileButtons")
+        if mb then mb.Enabled = false end
+        for _, gui in ipairs(PlayerGui:GetChildren()) do
+            if gui:FindFirstChild("Tab_Main", true) or gui:FindFirstChild("Section_STEALING", true) then
+                local frame = gui:FindFirstChildOfClass("Frame")
+                if frame then frame.Position = UDim2.new(5, 0, 0, 0) end
             end
         end
     end
-    return false
-end
-
-local function presionarOtros(nombre)
-    for _, obj in ipairs(PlayerGui:GetDescendants()) do
-        if (obj.Name == nombre or (obj:IsA("TextLabel") and obj.Text == nombre)) and obj:IsA("GuiObject") then
-            local btn = obj:IsA("TextButton") and obj or obj:FindFirstAncestorWhichIsA("TextButton") or obj.Parent:FindFirstChildWhichIsA("TextButton")
-            if btn then
-                for _, c in ipairs(getconnections(btn.MouseButton1Click)) do c:Fire() end
-                return true
-            end
-        end
-    end
-    return false
-end
+    task.wait(2.5); limpiar()
+    task.wait(2.5); limpiar()
+end)
 
 -- ================= INTERFAZ DEL BOTÓN =================
-local sg = Instance.new("ScreenGui", PlayerGui); sg.Name = "CitaV16"; sg.ResetOnSpawn = false
+local sg = Instance.new("ScreenGui", PlayerGui); sg.Name = "CitaV17"; sg.ResetOnSpawn = false
 local mainBtn = Instance.new("Frame", sg)
-mainBtn.Size = UDim2.new(0, 75, 0, 30) 
-mainBtn.BackgroundColor3 = Color3.fromRGB(35, 35, 40)
+mainBtn.Size = UDim2.new(0, 75, 0, 30); mainBtn.BackgroundColor3 = Color3.fromRGB(35, 35, 40)
 Instance.new("UICorner", mainBtn)
 local txt = Instance.new("TextLabel", mainBtn); txt.Size = UDim2.new(1,0,1,0); txt.Text = "START"; txt.TextColor3 = Color3.new(1,1,1); txt.BackgroundTransparency = 1; txt.TextScaled = true; txt.Font = "SourceSansBold"
 local trigger = Instance.new("TextButton", mainBtn); trigger.Size = UDim2.new(1,0,1,0); trigger.BackgroundTransparency = 1; trigger.Text = ""
@@ -133,18 +110,24 @@ local estado = "START"
 trigger.MouseButton1Click:Connect(function()
     if estado == "START" then
         estado = "WAIT"
-        switchV2() 
-        task.wait(0.4)
-        presionarOtros("Invis") 
-        task.wait(0.4)
-        presionarOtros("Steal Target Priority") 
+        
+        switchV2() -- AQUÍ APAGA EL V2 (IMPORTANTE)
+        task.wait(0.5)
+        presionarOtros("Invis") -- PRENDE V1
+        task.wait(0.5)
+        presionarOtros("Steal Target Priority") -- PRENDE STEAL
+        
         mainBtn.BackgroundColor3 = Color3.fromRGB(180, 0, 0)
         for i = TIEMPO_ESPERA_CITA, 0, -1 do txt.Text = tostring(i); task.wait(1) end
         txt.Text = "READY"; mainBtn.BackgroundColor3 = Color3.fromRGB(0, 150, 0); estado = "READY"
+        
     elseif estado == "READY" then
-        presionarOtros("Invis"); task.wait(0.4)
-        presionarOtros("Steal Target Priority"); task.wait(0.4)
-        switchV2() 
+        presionarOtros("Invis") -- APAGA V1
+        task.wait(0.5)
+        presionarOtros("Steal Target Priority") -- APAGA STEAL
+        task.wait(0.5)
+        switchV2() -- AQUÍ PRENDE EL V2 OTRA VEZ
+        
         txt.Text = "START"; mainBtn.BackgroundColor3 = Color3.fromRGB(35, 35, 40); estado = "START"
     end
 end)
