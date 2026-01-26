@@ -1,32 +1,42 @@
 -- ==========================================
--- SCRIPT MODO CITA V21 (TU V11 + LIMPIEZA)
+-- SCRIPT MODO CITA V25 (CONTROL POR VISIBLE)
 -- ==========================================
 
 local Player = game.Players.LocalPlayer
 local PlayerGui = Player:WaitForChild("PlayerGui")
-local HttpService = game:GetService("HttpService")
 
 local TIEMPO_ESPERA = 30 
 
--- 1. FUNCIÓN V2 (TUYA, SIN CAMBIOS)
-local function switchV2()
+-- 1. FUNCIÓN V2 (DETECTA EL TRUE/FALSE QUE VISTE EN EL ESCÁNER)
+local function setV2(debeEstarEncendido)
     for _, obj in ipairs(PlayerGui:GetDescendants()) do
+        -- Buscamos la fila del Invis V2
         if obj.Name == "Row_InvisOnStealv2(Admin)" then
-            local clickArea = obj:FindFirstChild("ClickArea", true)
-            if clickArea and (clickArea:IsA("TextButton") or clickArea:IsA("GuiButton")) then
-                local conexiones = getconnections(clickArea.MouseButton1Click)
-                for _, c in ipairs(conexiones) do
-                    c:Fire()
+            -- Buscamos el objeto "Check" que cambia de visible
+            local checkImage = obj:FindFirstChild("Check", true)
+            
+            if checkImage and checkImage:IsA("ImageLabel") then
+                local estaEncendido = checkImage.Visible -- True o False
+                
+                -- Si el estado actual es distinto al que queremos, hacemos click
+                if estaEncendido ~= debeEstarEncendido then
+                    local clickArea = obj:FindFirstChild("ClickArea", true)
+                    if clickArea then
+                        local conexiones = getconnections(clickArea.MouseButton1Click)
+                        for _, c in ipairs(conexiones) do c:Fire() end
+                        print("✅ V2 sincronizado a: " .. tostring(debeEstarEncendido))
+                    end
+                else
+                    print("ℹ️ V2 ya estaba en " .. tostring(debeEstarEncendido) .. ", no se tocó.")
                 end
-                print("✅ Click enviado a Invis V2")
-                return true
             end
+            return
         end
     end
-    return false
+    print("❌ No se encontró Row_InvisOnStealv2 para sincronizar.")
 end
 
--- 2. FUNCIÓN OTROS (TUYA, SIN CAMBIOS)
+-- 2. FUNCIÓN PARA V1 Y STEAL (TU V11)
 local function presionarOtros(nombre)
     for _, obj in ipairs(PlayerGui:GetDescendants()) do
         if (obj.Name == nombre or (obj:IsA("TextLabel") and obj.Text == nombre)) and obj:IsA("GuiObject") then
@@ -38,92 +48,66 @@ local function presionarOtros(nombre)
             end
         end
     end
-    return false
 end
 
--- ================= INTERFAZ (TUYA, SIN CAMBIOS) =================
-local sg = Instance.new("ScreenGui", PlayerGui); sg.Name = "CitaTest"; sg.ResetOnSpawn = false
+-- ================= INTERFAZ (TU V11) =================
+local sg = Instance.new("ScreenGui", PlayerGui); sg.Name = "CitaV25"; sg.ResetOnSpawn = false
 local mainBtn = Instance.new("Frame", sg)
-mainBtn.Size = UDim2.new(0, 75, 0, 30) 
-mainBtn.Position = UDim2.new(0.8, 0, 0.5, 0)
-mainBtn.BackgroundColor3 = Color3.fromRGB(40, 40, 50)
-Instance.new("UICorner", mainBtn)
-local txt = Instance.new("TextLabel", mainBtn)
-txt.Size = UDim2.new(1,0,1,0); txt.Text = "START"; txt.TextColor3 = Color3.new(1,1,1); txt.BackgroundTransparency = 1; txt.TextScaled = true; txt.Font = "SourceSansBold"
-local trigger = Instance.new("TextButton", mainBtn)
-trigger.Size = UDim2.new(1,0,1,0); trigger.BackgroundTransparency = 1; trigger.Text = ""
+mainBtn.Size = UDim2.new(0, 75, 0, 30); mainBtn.Position = UDim2.new(0.8, 0, 0.5, 0)
+mainBtn.BackgroundColor3 = Color3.fromRGB(40, 40, 50); Instance.new("UICorner", mainBtn)
+local txt = Instance.new("TextLabel", mainBtn); txt.Size = UDim2.new(1,0,1,0); txt.Text = "START"; txt.TextColor3 = Color3.new(1,1,1); txt.BackgroundTransparency = 1; txt.TextScaled = true; txt.Font = "SourceSansBold"
+local trigger = Instance.new("TextButton", mainBtn); trigger.Size = UDim2.new(1,0,1,0); trigger.BackgroundTransparency = 1; trigger.Text = ""
 
--- Arrastre (TUYO)
-local dragging, dragStart, startPos
-trigger.InputBegan:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-        dragging = true; dragStart = input.Position; startPos = mainBtn.Position
-    end
-end)
-game:GetService("UserInputService").InputChanged:Connect(function(input)
-    if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
-        local delta = input.Position - dragStart
-        mainBtn.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
-    end
-end)
-trigger.InputEnded:Connect(function() dragging = false end)
-
--- ================= LÓGICA TOGGLE (TUYA, SIN CAMBIOS) =================
+-- ================= LÓGICA DE INTERRUPTOR =================
 local estado = "START"
+
 trigger.MouseButton1Click:Connect(function()
     if estado == "START" then
         estado = "WAIT"
-        switchV2() 
-        task.wait(0.4)
+        
+        -- 1. Sincronizar V2 (Apagar si está en true)
+        setV2(false) 
+        task.wait(0.5)
+        
+        -- 2. Activar V1 y Steal
         presionarOtros("Invis") 
-        task.wait(0.4)
+        task.wait(0.5)
         presionarOtros("Steal Target Priority") 
+        
         mainBtn.BackgroundColor3 = Color3.fromRGB(180, 0, 0)
         for i = TIEMPO_ESPERA, 0, -1 do txt.Text = tostring(i); task.wait(1) end
         txt.Text = "READY"; mainBtn.BackgroundColor3 = Color3.fromRGB(0, 150, 0); estado = "READY"
+        
     elseif estado == "READY" then
+        -- 1. Desactivar V1 y Steal
         presionarOtros("Invis") 
-        task.wait(0.4)
+        task.wait(0.5)
         presionarOtros("Steal Target Priority") 
-        task.wait(0.4)
-        switchV2() 
+        task.wait(0.5)
+        
+        -- 2. Sincronizar V2 (Encender si está en false)
+        setV2(true) 
+        
         txt.Text = "START"; mainBtn.BackgroundColor3 = Color3.fromRGB(40, 40, 50); estado = "START"
     end
 end)
 
--- ================= BLOQUE DE OCULTAR (SOLO ESTO AÑADÍ) =================
+-- ================= LIMPIEZA (A LOS 3 SEGUNDOS) =================
 task.spawn(function()
-    task.wait(2.5) -- Espera para que cargue todo
-    
-    -- Limpieza de MiniContainer y Hub
+    task.wait(3)
+    -- Ocultar elementos molestos
     for _, obj in ipairs(PlayerGui:GetDescendants()) do
         if obj.Name == "MiniContainer" then obj.Position = UDim2.new(5, 0, 0, 0) end
-        
-        -- Tabla 150x150
         if obj.Name == "StealContent" or obj.Name == "Steal Target" then
-            local container = obj:IsA("Frame") and obj or obj:FindFirstAncestorWhichIsA("Frame")
-            if container then
-                container.Size = UDim2.new(0, 150, 0, 150)
-                container.ClipsDescendants = true
-                container.BackgroundTransparency = 0.5
-            end
+            local c = obj:IsA("Frame") and obj or obj:FindFirstAncestorWhichIsA("Frame")
+            if c then c.Size = UDim2.new(0, 150, 0, 150); c.ClipsDescendants = true; c.BackgroundTransparency = 0.5 end
         end
     end
-
-    -- Ocultar el Hub Principal
+    -- Ocultar Hub y MobileButtons
+    if PlayerGui:FindFirstChild("MobileButtons") then PlayerGui.MobileButtons.Enabled = false end
     for _, gui in ipairs(PlayerGui:GetChildren()) do
         if gui:FindFirstChild("Tab_Main", true) or gui:FindFirstChild("Section_STEALING", true) then
-            local f = gui:FindFirstChildOfClass("Frame")
-            if f then f.Position = UDim2.new(5, 0, 0, 0) end
+            local f = gui:FindFirstChildOfClass("Frame"); if f then f.Position = UDim2.new(5, 0, 0, 0) end
         end
-    end
-
-    -- MobileButtons
-    if PlayerGui:FindFirstChild("MobileButtons") then PlayerGui.MobileButtons.Enabled = false end
-    
-    -- REFUERZO A LOS 5 SEGUNDOS (Solo MiniContainer)
-    task.wait(2.5)
-    for _, obj in ipairs(PlayerGui:GetDescendants()) do
-        if obj.Name == "MiniContainer" then obj.Position = UDim2.new(5, 0, 0, 0) end
     end
 end)
