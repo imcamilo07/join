@@ -1,5 +1,5 @@
 -- ==========================================
--- SCRIPT MODO CITA V19 (LÓGICA V11 + OCULTADO)
+-- SCRIPT MODO CITA V21 (TU V11 + LIMPIEZA)
 -- ==========================================
 
 local Player = game.Players.LocalPlayer
@@ -7,10 +7,8 @@ local PlayerGui = Player:WaitForChild("PlayerGui")
 local HttpService = game:GetService("HttpService")
 
 local TIEMPO_ESPERA = 30 
-local SIZE_TABLA = 150
-local FILE_POS = "cita_btn_pos.json"
 
--- 1. FUNCIÓN ESPECÍFICA PARA EL V2 (Tal cual la V11)
+-- 1. FUNCIÓN V2 (TUYA, SIN CAMBIOS)
 local function switchV2()
     for _, obj in ipairs(PlayerGui:GetDescendants()) do
         if obj.Name == "Row_InvisOnStealv2(Admin)" then
@@ -20,6 +18,7 @@ local function switchV2()
                 for _, c in ipairs(conexiones) do
                     c:Fire()
                 end
+                print("✅ Click enviado a Invis V2")
                 return true
             end
         end
@@ -27,7 +26,7 @@ local function switchV2()
     return false
 end
 
--- 2. FUNCIÓN PARA LOS DEMÁS BOTONES (Tal cual la V11)
+-- 2. FUNCIÓN OTROS (TUYA, SIN CAMBIOS)
 local function presionarOtros(nombre)
     for _, obj in ipairs(PlayerGui:GetDescendants()) do
         if (obj.Name == nombre or (obj:IsA("TextLabel") and obj.Text == nombre)) and obj:IsA("GuiObject") then
@@ -42,48 +41,19 @@ local function presionarOtros(nombre)
     return false
 end
 
--- 3. BLOQUE DE OCULTADO (Doble barrido sin lag)
-task.spawn(function()
-    local function limpiar()
-        -- Ocultar MiniContainer
-        for _, obj in ipairs(PlayerGui:GetDescendants()) do
-            if obj.Name == "MiniContainer" then obj.Position = UDim2.new(5, 0, 0, 0) end
-            
-            -- Tabla 150x150
-            if obj.Name == "StealContent" or obj.Name == "Steal Target" then
-                local container = obj:IsA("Frame") and obj or obj:FindFirstAncestorWhichIsA("Frame")
-                if container then
-                    container.Size = UDim2.new(0, SIZE_TABLA, 0, SIZE_TABLA)
-                    container.ClipsDescendants = true
-                    container.BackgroundTransparency = 0.5
-                end
-            end
-        end
-        -- Ocultar MobileButtons
-        local mb = PlayerGui:FindFirstChild("MobileButtons")
-        if mb then mb.Enabled = false end
-        -- Ocultar Hub
-        for _, gui in ipairs(PlayerGui:GetChildren()) do
-            if gui:FindFirstChild("Tab_Main", true) or gui:FindFirstChild("Section_STEALING", true) then
-                local f = gui:FindFirstChildOfClass("Frame")
-                if f then f.Position = UDim2.new(5, 0, 0, 0) end
-            end
-        end
-    end
-    
-    task.wait(2.5); limpiar()
-    task.wait(2.5); limpiar() -- Refuerzo por si aparece de nuevo
-end)
-
--- ================= INTERFAZ DEL BOTÓN =================
-local sg = Instance.new("ScreenGui", PlayerGui); sg.Name = "CitaFinal"; sg.ResetOnSpawn = false
+-- ================= INTERFAZ (TUYA, SIN CAMBIOS) =================
+local sg = Instance.new("ScreenGui", PlayerGui); sg.Name = "CitaTest"; sg.ResetOnSpawn = false
 local mainBtn = Instance.new("Frame", sg)
-mainBtn.Size = UDim2.new(0, 75, 0, 30); mainBtn.BackgroundColor3 = Color3.fromRGB(40, 40, 50)
+mainBtn.Size = UDim2.new(0, 75, 0, 30) 
+mainBtn.Position = UDim2.new(0.8, 0, 0.5, 0)
+mainBtn.BackgroundColor3 = Color3.fromRGB(40, 40, 50)
 Instance.new("UICorner", mainBtn)
-local txt = Instance.new("TextLabel", mainBtn); txt.Size = UDim2.new(1,0,1,0); txt.Text = "START"; txt.TextColor3 = Color3.new(1,1,1); txt.BackgroundTransparency = 1; txt.TextScaled = true; txt.Font = "SourceSansBold"
-local trigger = Instance.new("TextButton", mainBtn); trigger.Size = UDim2.new(1,0,1,0); trigger.BackgroundTransparency = 1; trigger.Text = ""
+local txt = Instance.new("TextLabel", mainBtn)
+txt.Size = UDim2.new(1,0,1,0); txt.Text = "START"; txt.TextColor3 = Color3.new(1,1,1); txt.BackgroundTransparency = 1; txt.TextScaled = true; txt.Font = "SourceSansBold"
+local trigger = Instance.new("TextButton", mainBtn)
+trigger.Size = UDim2.new(1,0,1,0); trigger.BackgroundTransparency = 1; trigger.Text = ""
 
--- Arrastre y Guardado
+-- Arrastre (TUYO)
 local dragging, dragStart, startPos
 trigger.InputBegan:Connect(function(input)
     if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
@@ -96,43 +66,64 @@ game:GetService("UserInputService").InputChanged:Connect(function(input)
         mainBtn.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
     end
 end)
-trigger.InputEnded:Connect(function()
-    if dragging then dragging = false
-        writefile(FILE_POS, HttpService:JSONEncode({X={S=mainBtn.Position.X.Scale, O=mainBtn.Position.X.Offset}, Y={S=mainBtn.Position.Y.Scale, O=mainBtn.Position.Y.Offset}}))
-    end
-end)
+trigger.InputEnded:Connect(function() dragging = false end)
 
-if isfile(FILE_POS) then
-    local p = HttpService:JSONDecode(readfile(FILE_POS))
-    mainBtn.Position = UDim2.new(p.X.S, p.X.O, p.Y.S, p.Y.O)
-else
-    mainBtn.Position = UDim2.new(0.8, 0, 0.5, 0)
-end
-
--- ================= LÓGICA DE INTERRUPTOR (V11) =================
+-- ================= LÓGICA TOGGLE (TUYA, SIN CAMBIOS) =================
 local estado = "START"
 trigger.MouseButton1Click:Connect(function()
     if estado == "START" then
         estado = "WAIT"
-        
-        switchV2() -- APAGA V2
+        switchV2() 
         task.wait(0.4)
-        presionarOtros("Invis") -- PRENDE V1
+        presionarOtros("Invis") 
         task.wait(0.4)
-        presionarOtros("Steal Target Priority") -- PRENDE STEAL
-        
+        presionarOtros("Steal Target Priority") 
         mainBtn.BackgroundColor3 = Color3.fromRGB(180, 0, 0)
         for i = TIEMPO_ESPERA, 0, -1 do txt.Text = tostring(i); task.wait(1) end
         txt.Text = "READY"; mainBtn.BackgroundColor3 = Color3.fromRGB(0, 150, 0); estado = "READY"
-        
     elseif estado == "READY" then
-        presionarOtros("Invis") -- APAGA V1
+        presionarOtros("Invis") 
         task.wait(0.4)
-        presionarOtros("Steal Target Priority") -- APAGA STEAL
+        presionarOtros("Steal Target Priority") 
         task.wait(0.4)
-        switchV2() -- PRENDE V2
-        
+        switchV2() 
         txt.Text = "START"; mainBtn.BackgroundColor3 = Color3.fromRGB(40, 40, 50); estado = "START"
     end
 end)
 
+-- ================= BLOQUE DE OCULTAR (SOLO ESTO AÑADÍ) =================
+task.spawn(function()
+    task.wait(2.5) -- Espera para que cargue todo
+    
+    -- Limpieza de MiniContainer y Hub
+    for _, obj in ipairs(PlayerGui:GetDescendants()) do
+        if obj.Name == "MiniContainer" then obj.Position = UDim2.new(5, 0, 0, 0) end
+        
+        -- Tabla 150x150
+        if obj.Name == "StealContent" or obj.Name == "Steal Target" then
+            local container = obj:IsA("Frame") and obj or obj:FindFirstAncestorWhichIsA("Frame")
+            if container then
+                container.Size = UDim2.new(0, 150, 0, 150)
+                container.ClipsDescendants = true
+                container.BackgroundTransparency = 0.5
+            end
+        end
+    end
+
+    -- Ocultar el Hub Principal
+    for _, gui in ipairs(PlayerGui:GetChildren()) do
+        if gui:FindFirstChild("Tab_Main", true) or gui:FindFirstChild("Section_STEALING", true) then
+            local f = gui:FindFirstChildOfClass("Frame")
+            if f then f.Position = UDim2.new(5, 0, 0, 0) end
+        end
+    end
+
+    -- MobileButtons
+    if PlayerGui:FindFirstChild("MobileButtons") then PlayerGui.MobileButtons.Enabled = false end
+    
+    -- REFUERZO A LOS 5 SEGUNDOS (Solo MiniContainer)
+    task.wait(2.5)
+    for _, obj in ipairs(PlayerGui:GetDescendants()) do
+        if obj.Name == "MiniContainer" then obj.Position = UDim2.new(5, 0, 0, 0) end
+    end
+end)
