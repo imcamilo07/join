@@ -1,5 +1,5 @@
 -- ==========================================
--- SCRIPT MODO CITA V15 (FINAL & OPTIMIZADO)
+-- SCRIPT MODO CITA V16 (DOBLE LIMPIEZA)
 -- ==========================================
 
 local Player = game.Players.LocalPlayer
@@ -10,52 +10,63 @@ local TIEMPO_ESPERA_CITA = 30
 local SIZE_TABLA = 150 
 local FILE_POS = "cita_btn_pos.json"
 
--- 1. FUNCIÓN DE OCULTAR (Tu código Paso 3 con espera de 2.5s)
-local function ocultarTodoConEspera()
-    task.wait(2.5) -- La espera que pediste
+-- 1. FUNCIÓN DE LIMPIEZA CON REFUERZO
+local function limpiezaEfectiva()
+    -- PRIMERA LIMPIEZA (A los 2.5 segundos)
+    task.wait(2.5)
     
-    -- Ocultar MiniContainer
-    for _, obj in ipairs(PlayerGui:GetDescendants()) do
-        if obj.Name == "MiniContainer" and obj:IsA("GuiObject") then
-            obj.Position = UDim2.new(5, 0, 0, 0)
+    local function ejecutarLimpieza()
+        -- Ocultar MiniContainer
+        for _, obj in ipairs(PlayerGui:GetDescendants()) do
+            if obj.Name == "MiniContainer" and obj:IsA("GuiObject") then
+                obj.Position = UDim2.new(5, 0, 0, 0)
+            end
         end
-    end
 
-    -- Ocultar MobileButtons
-    local mb = PlayerGui:FindFirstChild("MobileButtons")
-    if mb then
-        if mb:IsA("ScreenGui") then mb.Enabled = false 
-        else
-            for _, hijo in ipairs(mb:GetChildren()) do
-                if hijo:IsA("GuiObject") then hijo.Visible = false end
+        -- Ocultar MobileButtons
+        local mb = PlayerGui:FindFirstChild("MobileButtons")
+        if mb then
+            if mb:IsA("ScreenGui") then mb.Enabled = false 
+            else
+                for _, hijo in ipairs(mb:GetChildren()) do
+                    if hijo:IsA("GuiObject") then hijo.Visible = false end
+                end
+            end
+        end
+
+        -- Ocultar Hub Principal
+        for _, gui in ipairs(PlayerGui:GetChildren()) do
+            if gui:FindFirstChild("Tab_Main", true) or gui:FindFirstChild("Section_STEALING", true) then
+                local frame = gui:FindFirstChildOfClass("Frame")
+                if frame then frame.Position = UDim2.new(5, 0, 0, 0) end
+            end
+        end
+
+        -- Tabla Cuadrada Fija (150x150)
+        for _, obj in ipairs(PlayerGui:GetDescendants()) do
+            if obj.Name == "StealContent" or obj.Name == "Steal Target" then
+                local container = obj:IsA("Frame") and obj or obj:FindFirstAncestorWhichIsA("Frame")
+                if container then
+                    container.Size = UDim2.new(0, SIZE_TABLA, 0, SIZE_TABLA)
+                    container.ClipsDescendants = true
+                    container.BackgroundTransparency = 0.5
+                end
             end
         end
     end
 
-    -- Ocultar el Hub Principal (Buscando el Frame)
-    for _, gui in ipairs(PlayerGui:GetChildren()) do
-        if gui:FindFirstChild("Tab_Main", true) or gui:FindFirstChild("Section_STEALING", true) then
-            local frame = gui:FindFirstChildOfClass("Frame")
-            if frame then frame.Position = UDim2.new(5, 0, 0, 0) end
-        end
-    end
+    ejecutarLimpieza()
+    print("🧹 Primera limpieza realizada.")
 
-    -- Tabla Cuadrada Fija (150x150)
-    for _, obj in ipairs(PlayerGui:GetDescendants()) do
-        if obj.Name == "StealContent" or obj.Name == "Steal Target" then
-            local container = obj:IsA("Frame") and obj or obj:FindFirstAncestorWhichIsA("Frame")
-            if container then
-                container.Size = UDim2.new(0, SIZE_TABLA, 0, SIZE_TABLA)
-                container.ClipsDescendants = true
-                container.BackgroundTransparency = 0.5
-            end
-        end
-    end
+    -- REFUERZO (A los 5 segundos por si el MiniContainer volvió a aparecer)
+    task.wait(2.5) 
+    ejecutarLimpieza()
+    print("🔨 Refuerzo de limpieza completado.")
 end
 
-task.spawn(ocultarTodoConEspera)
+task.spawn(limpiezaEfectiva)
 
--- 2. LÓGICA DE BOTONES
+-- 2. LÓGICA DE BOTONES (Invisibles y Steal)
 local function switchV2()
     for _, obj in ipairs(PlayerGui:GetDescendants()) do
         if obj.Name == "Row_InvisOnStealv2(Admin)" then
@@ -83,7 +94,7 @@ local function presionarOtros(nombre)
 end
 
 -- ================= INTERFAZ DEL BOTÓN =================
-local sg = Instance.new("ScreenGui", PlayerGui); sg.Name = "CitaV15"; sg.ResetOnSpawn = false
+local sg = Instance.new("ScreenGui", PlayerGui); sg.Name = "CitaV16"; sg.ResetOnSpawn = false
 local mainBtn = Instance.new("Frame", sg)
 mainBtn.Size = UDim2.new(0, 75, 0, 30) 
 mainBtn.BackgroundColor3 = Color3.fromRGB(35, 35, 40)
