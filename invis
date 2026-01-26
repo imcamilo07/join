@@ -1,5 +1,5 @@
 -- ==========================================
--- SCRIPT MODO CITA V26 (CON GUARDADO DE POSICIÓN)
+-- SCRIPT MODO CITA V28 (CICLO MANUAL V2 -> V1)
 -- ==========================================
 
 local Player = game.Players.LocalPlayer
@@ -30,23 +30,27 @@ local function setV2(debeEstarEncendido)
 end
 
 -- 2. FUNCIÓN OTROS (V1 Y STEAL)
-local function presionarOtros(nombre)
-    for _, obj in ipairs(PlayerGui:GetDescendants()) do
-        if (obj.Name == nombre or (obj:IsA("TextLabel") and obj.Text == nombre)) and obj:IsA("GuiObject") then
-            local btn = obj:IsA("TextButton") and obj or obj:FindFirstAncestorWhichIsA("TextButton") or obj.Parent:FindFirstChildWhichIsA("TextButton")
-            if btn then
-                local conexiones = getconnections(btn.MouseButton1Click)
-                for _, c in ipairs(conexiones) do c:Fire() end
-                return true
+-- Esta función ahora detecta si debe PRENDER o APAGAR basándose en el estado
+local function setAtaque(debeEstarEncendido)
+    local nombres = {"Invis", "Steal Target Priority"}
+    for _, nombre in ipairs(nombres) do
+        for _, obj in ipairs(PlayerGui:GetDescendants()) do
+            if (obj.Name == nombre or (obj:IsA("TextLabel") and obj.Text == nombre)) and obj:IsA("GuiObject") then
+                local btn = obj:IsA("TextButton") and obj or obj:FindFirstAncestorWhichIsA("TextButton") or obj.Parent:FindFirstChildWhichIsA("TextButton")
+                if btn then
+                    -- Como estos no tienen un "Check" fácil de leer, confiamos en el ciclo del script
+                    local conexiones = getconnections(btn.MouseButton1Click)
+                    for _, c in ipairs(conexiones) do c:Fire() end
+                end
             end
         end
     end
 end
 
 -- ================= INTERFAZ MOVIBLE =================
-local sg = Instance.new("ScreenGui", PlayerGui); sg.Name = "CitaV26"; sg.ResetOnSpawn = false
+local sg = Instance.new("ScreenGui", PlayerGui); sg.Name = "CitaV28"; sg.ResetOnSpawn = false
 local mainBtn = Instance.new("Frame", sg)
-mainBtn.Size = UDim2.new(0, 75, 0, 30)
+mainBtn.Size = UDim2.new(0, 85, 0, 35)
 mainBtn.BackgroundColor3 = Color3.fromRGB(40, 40, 50)
 Instance.new("UICorner", mainBtn)
 
@@ -57,7 +61,7 @@ txt.BackgroundTransparency = 1; txt.TextScaled = true; txt.Font = "SourceSansBol
 local trigger = Instance.new("TextButton", mainBtn)
 trigger.Size = UDim2.new(1,0,1,0); trigger.BackgroundTransparency = 1; trigger.Text = ""
 
--- --- Lógica de Arrastre y Guardado ---
+-- --- Lógica de Arrastre ---
 local dragging, dragStart, startPos
 trigger.InputBegan:Connect(function(input)
     if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
@@ -77,7 +81,6 @@ trigger.InputEnded:Connect(function()
     end
 end)
 
--- Cargar posición previa
 if isfile(FILE_POS) then
     local p = HttpService:JSONDecode(readfile(FILE_POS))
     mainBtn.Position = UDim2.new(p.X.S, p.X.O, p.Y.S, p.Y.O)
@@ -85,30 +88,45 @@ else
     mainBtn.Position = UDim2.new(0.8, 0, 0.5, 0)
 end
 
--- ================= LÓGICA TOGGLE =================
-local estado = "START"
+-- ================= LÓGICA DE CLIC MANUAL =================
+local modo = 0 -- 0: Nada, 1: V2 Activo, 2: V1 Activo
+
 trigger.MouseButton1Click:Connect(function()
-    if estado == "START" then
-        estado = "WAIT"
-        setV2(false) 
+    if modo == 0 or modo == 2 then
+        -- PASAR A MODO V2
+        if modo == 2 then setAtaque(false) task.wait(0.3) end -- Apaga V1 si estaba prendido
+        setV2(true)
+        
+        modo = 1
+        txt.Text = "V2 ON"
+        mainBtn.BackgroundColor3 = Color3.fromRGB(0, 120, 200) -- Azul para V2
+        
+    elseif modo == 1 then
+        -- PASAR A MODO V1 (ATAQUE)
+        setV2(false) -- Apaga V2
         task.wait(0.5)
-        presionarOtros("Invis") 
-        task.wait(0.5)
-        presionarOtros("Steal Target Priority") 
-        mainBtn.BackgroundColor3 = Color3.fromRGB(180, 0, 0)
-        for i = TIEMPO_ESPERA, 0, -1 do txt.Text = tostring(i); task.wait(1) end
-        txt.Text = "READY"; mainBtn.BackgroundColor3 = Color3.fromRGB(0, 150, 0); estado = "READY"
-    elseif estado == "READY" then
-        presionarOtros("Invis"); task.wait(0.5)
-        presionarOtros("Steal Target Priority"); task.wait(0.5)
-        setV2(true) 
-        txt.Text = "START"; mainBtn.BackgroundColor3 = Color3.fromRGB(40, 40, 50); estado = "START"
+        setAtaque(true) -- Prende V1 y Steal
+        
+        modo = 2
+        mainBtn.BackgroundColor3 = Color3.fromRGB(180, 0, 0) -- Rojo para Ataque
+        
+        -- Iniciar cuenta regresiva opcional (puedes quitar esto si prefieres que sea manual siempre)
+        for i = TIEMPO_ESPERA, 0, -1 do
+            txt.Text = "V1: " .. i
+            task.wait(1)
+            if modo ~= 2 then break end -- Si cambias de modo, se detiene
+        end
+        
+        if modo == 2 then
+            txt.Text = "READY"
+            mainBtn.BackgroundColor3 = Color3.fromRGB(0, 150, 0)
+        end
     end
 end)
 
--- ================= LIMPIEZA AUTOMÁTICA =================
+-- ================= LIMPIEZA AUTOMÁTICA (5 SEGUNDOS) =================
 task.spawn(function()
-    task.wait(3)
+    task.wait(5)
     for _, obj in ipairs(PlayerGui:GetDescendants()) do
         if obj.Name == "MiniContainer" then obj.Position = UDim2.new(5, 0, 0, 0) end
         if obj.Name == "StealContent" or obj.Name == "Steal Target" then
