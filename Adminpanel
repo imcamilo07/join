@@ -1,6 +1,6 @@
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local Workspace = game:GetService("Workspace") -- Agregado para poder ver la carpeta Rendered
+local Workspace = game:GetService("Workspace")
 local lp = Players.LocalPlayer
 
 -- CONFIGURACIÓN DE SEGURIDAD
@@ -17,10 +17,11 @@ local Prioridad = {
     ["Gingerat Gerat"] = 88, ["Spooky and Pumpky"] = 87, ["Fragrama and Chocrama"] = 86,
     ["La Supreme Combinasion"] = 85, ["La Secret Combinasion"] = 84, ["Garama and Madundung"] = 83,
     ["Lavadorito Spinito"] = 82, ["Ketupat Kepat"] = 81, ["Tictac Sahur"] = 80,
-    ["Tang Tang Keletang"] = 79, ["Ketchuru and Musturu"] = 78, -- Nombre de tu lista
+    ["Tang Tang Keletang"] = 79, ["Ketchuru and Musturu"] = 78,
+    ["Bandito Bobritto"] = 110
 }
 
--- INTERFAZ ULTRA COMPACTA
+-- INTERFAZ
 local sg = Instance.new("ScreenGui", lp.PlayerGui)
 sg.Name = "AdminPanel_Final_v3"
 sg.ResetOnSpawn = false
@@ -53,7 +54,7 @@ local function updateMainSize()
     end
 end
 
--- Función para buscar el nombre en la carpeta si el atributo falla
+-- Función para buscar el nombre en Rendered
 local function getObjetoNombre()
     local folder = Workspace:FindFirstChild("RenderedMovingAnimals")
     if folder then
@@ -81,31 +82,17 @@ local function addPlayer(p)
     Instance.new("UICorner", profile).CornerRadius = UDim.new(1, 0)
 
     local dName = Instance.new("TextLabel", card)
-    dName.Size = UDim2.new(1, -35, 0, 12)
-    dName.Position = UDim2.new(0, 34, 0, 4)
-    dName.Text = p.DisplayName
-    dName.TextColor3 = Color3.new(1, 1, 1)
-    dName.Font = Enum.Font.GothamBold
-    dName.TextSize = 9
-    dName.TextXAlignment = Enum.TextXAlignment.Left
-    dName.BackgroundTransparency = 1
+    dName.Size = UDim2.new(1, -35, 0, 12); dName.Position = UDim2.new(0, 34, 0, 4)
+    dName.Text = p.DisplayName; dName.TextColor3 = Color3.new(1, 1, 1); dName.Font = Enum.Font.GothamBold; dName.TextSize = 9; dName.TextXAlignment = Enum.TextXAlignment.Left; dName.BackgroundTransparency = 1
 
     local uName = Instance.new("TextLabel", card)
-    uName.Size = UDim2.new(1, -35, 0, 12)
-    uName.Position = UDim2.new(0, 34, 0, 16)
-    uName.TextColor3 = Color3.fromRGB(160, 160, 160)
-    uName.Font = Enum.Font.Gotham
-    uName.TextSize = 7
-    uName.TextScaled = true
-    uName.TextXAlignment = Enum.TextXAlignment.Left
-    uName.BackgroundTransparency = 1
+    uName.Size = UDim2.new(1, -35, 0, 12); uName.Position = UDim2.new(0, 34, 0, 16)
+    uName.TextColor3 = Color3.fromRGB(160, 160, 160); uName.Font = Enum.Font.Gotham; uName.TextSize = 7; uName.TextScaled = true; uName.TextXAlignment = Enum.TextXAlignment.Left; uName.BackgroundTransparency = 1
 
     local function updateUI()
         if not p.Parent or not card then return end
         local mineral = p:GetAttribute("StealingIndex")
         local estaRobando = p:GetAttribute("Stealing")
-        
-        -- Si StealingIndex está vacío pero está robando, busca el nombre en Rendered
         local nombreFinal = (mineral and mineral ~= "") and mineral or (estaRobando and getObjetoNombre())
         
         uName.Text = "@" .. p.Name .. (nombreFinal and (" | " .. nombreFinal) or (estaRobando and " | ¡Cargando!" or ""))
@@ -126,29 +113,30 @@ local function addPlayer(p)
     end)
 end
 
+-- FUNCIÓN DE REFRESCO: Ahora solo crea objetos si está visible
 local function refresh()
     for _, child in ipairs(listFrame:GetChildren()) do
         if child:IsA("TextButton") then child:Destroy() end
     end
-    for _, p in ipairs(Players:GetPlayers()) do
-        addPlayer(p)
+    
+    -- Solo cargamos jugadores si el menú está desplegado
+    if listFrame.Visible then
+        for _, p in ipairs(Players:GetPlayers()) do
+            addPlayer(p)
+        end
     end
     updateMainSize()
 end
 
 local titleBtn = Instance.new("TextButton", main)
-titleBtn.Size = UDim2.new(1, 0, 0, 32)
-titleBtn.BackgroundTransparency = 1
-titleBtn.Text = "Admin Spammer ▼"
-titleBtn.TextColor3 = Color3.new(1, 1, 1)
-titleBtn.Font = Enum.Font.GothamBold
-titleBtn.TextSize = 10
+titleBtn.Size = UDim2.new(1, 0, 0, 32); titleBtn.BackgroundTransparency = 1; titleBtn.Text = "Admin Spammer ▼"; titleBtn.TextColor3 = Color3.new(1, 1, 1); titleBtn.Font = Enum.Font.GothamBold; titleBtn.TextSize = 10
 
 titleBtn.MouseButton1Click:Connect(function()
     listFrame.Visible = not listFrame.Visible
-    if listFrame.Visible then refresh() else updateMainSize() end
+    refresh() -- Esto limpia o carga los jugadores al instante
 end)
 
-Players.PlayerAdded:Connect(refresh)
-Players.PlayerRemoving:Connect(refresh)
+-- Solo actualizamos si lo estás viendo
+Players.PlayerAdded:Connect(function() if listFrame.Visible then refresh() end end)
+Players.PlayerRemoving:Connect(function() if listFrame.Visible then refresh() end end)
 layout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(updateMainSize)
