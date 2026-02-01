@@ -3,13 +3,13 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Workspace = game:GetService("Workspace")
 local lp = Players.LocalPlayer
 
--[span_2](start_span)- CONFIGURACIÓN DE SEGURIDAD[span_2](end_span)
-[span_3](start_span)local REMOTE_NAME = "352aad58-c786-4998-886b-3e4fa390721e"[span_3](end_span)
-[span_4](start_span)local KEY_SEGURIDAD = "78a772b6-9e1c-4827-ab8b-04a07838f298"[span_4](end_span)
-[span_5](start_span)local EFECTOS = {"rocket", "ragdoll", "balloon"}[span_5](end_span)
+-[span_4](start_span)[span_5](start_span)- CONFIGURACIÓN DE SEGURIDAD[span_4](end_span)[span_5](end_span)
+local REMOTE_NAME = "352aad58-c786-4998-886b-3e4fa390721e"
+local KEY_SEGURIDAD = "78a772b6-9e1c-4827-ab8b-04a07838f298"
+local EFECTOS = {"rocket", "ragdoll", "balloon"}
 local indiceGlobal = 1
 
-[span_6](start_span)local Prioridad = {[span_6](end_span)
+local Prioridad = {
     ["Bandito Bobritto"] = 110,
     ["Skibidi Toilet"] = 100, ["Strawberry Elephant"] = 99, ["Meowl"] = 98,
     ["Dragon Cannelloni"] = 97, ["Dragon Gingerini"] = 96, ["Cerberus"] = 95,
@@ -21,104 +21,129 @@ local indiceGlobal = 1
     ["Tang Tang Keletang"] = 79, ["Ketchuru and Musturu"] = 78
 }
 
--[span_7](start_span)- INTERFAZ[span_7](end_span)
-local sg = Instance.new("ScreenGui", lp.PlayerGui); sg.Name = "AdminPanel_Final_Fixed"; sg.ResetOnSpawn = false
+-[span_6](start_span)[span_7](start_span)- INTERFAZ[span_6](end_span)[span_7](end_span)
+local sg = Instance.new("ScreenGui", lp.PlayerGui)
+sg.Name = "AdminPanel_Optimized_v4"
+sg.ResetOnSpawn = false
+
 local main = Instance.new("Frame", sg)
-main.Size = UDim2.new(0, 170, 0, 32); main.Position = UDim2.new(0.5, 126, 0.5, -152) 
-main.BackgroundColor3 = Color3.fromRGB(15, 15, 15); main.BorderSizePixel = 0; main.ClipsDescendants = true
+main.Size = UDim2.new(0, 170, 0, 32)
+main.Position = UDim2.new(0.5, 126, 0.5, -152) 
+main.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
+main.BorderSizePixel = 0
+main.ClipsDescendants = true
 Instance.new("UICorner", main).CornerRadius = UDim.new(0, 5)
 
 local listFrame = Instance.new("Frame", main)
-listFrame.Size = UDim2.new(1, -6, 0, 0); listFrame.Position = UDim2.new(0, 3, 0, 38)
-listFrame.BackgroundTransparency = 1; listFrame.Visible = false
+listFrame.Size = UDim2.new(1, -6, 0, 0)
+listFrame.Position = UDim2.new(0, 3, 0, 38)
+listFrame.BackgroundTransparency = 1
+listFrame.Visible = false
 
 local layout = Instance.new("UIListLayout", listFrame)
-layout.Padding = UDim.new(0, 3); layout.SortOrder = Enum.SortOrder.LayoutOrder
+layout.Padding = UDim.new(0, 3)
+layout.SortOrder = Enum.SortOrder.LayoutOrder
 
--[span_8](start_span)- AJUSTE DE TAMAÑO DINÁMICO (ARREGLADO)[span_8](end_span)
+-[span_8](start_span)[span_9](start_span)- AJUSTE DINÁMICO: Solo ocupa el espacio de los jugadores reales[span_8](end_span)[span_9](end_span)
 local function updateMainSize()
     if listFrame.Visible then
         local contentHeight = layout.AbsoluteContentSize.Y
-        -[span_9](start_span)- Margen aumentado para que el último jugador no se oculte[span_9](end_span)
-        main:TweenSize(UDim2.new(0, 170, 0, math.min(contentHeight + 75, 300)), "Out", "Quart", 0.2, true)
+        -- Si no hay jugadores, se queda pequeño. Si hay, crece exacto.
+        local targetHeight = (contentHeight > 0) and (contentHeight + 45) or 32
+        main:TweenSize(UDim2.new(0, 170, 0, math.min(targetHeight, 350)), "Out", "Quart", 0.2, true)
     else
         main:TweenSize(UDim2.new(0, 170, 0, 32), "Out", "Quart", 0.2, true)
     end
 end
 
--- ESCÁNER DE OBJETOS GENERAL (Usa toda la lista de prioridad)
-local function getObjetoNombre(p)
-    -[span_10](start_span)- 1. Intento original con Atributo[span_10](end_span)
-    local mineral = p:GetAttribute("StealingIndex")
-    if mineral and mineral ~= "" then return mineral end
-    
-    -- 2. Escaneo de Carpeta para CUALQUIER objeto de la lista
+-[span_10](start_span)- ESCÁNER INTELIGENTE: Busca cualquier objeto de la prioridad[span_10](end_span)
+local function buscarObjetoFisico()
     local folder = Workspace:FindFirstChild("RenderedMovingAnimals")
     if folder then
         for _, obj in ipairs(folder:GetChildren()) do
-            -- Si el objeto que aparece en la carpeta está en tu lista de Prioridad
-            if Prioridad[obj.Name] then 
-                return obj.Name 
-            end
+            if Prioridad[obj.Name] then return obj.Name end
         end
     end
     return nil
 end
 
-[span_11](start_span)local function addPlayer(p)[span_11](end_span)
+local function addPlayer(p)
     if not p or p == lp then return end
+    
     local card = Instance.new("TextButton", listFrame)
-    card.Size = UDim2.new(1, 0, 0, 32); card.BackgroundColor3 = Color3.fromRGB(25, 25, 25); card.Text = ""
+    card.Size = UDim2.new(1, 0, 0, 32)
+    card.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
+    card.Text = ""
     Instance.new("UICorner", card).CornerRadius = UDim.new(0, 4)
 
+    -- CARGA DE FOTO: Solo ocurre cuando se crea la tarjeta (al abrir el panel)
     local profile = Instance.new("ImageLabel", card)
-    profile.Size = UDim2.new(0, 24, 0, 24); profile.Position = UDim2.new(0, 4, 0.5, -12)
-    [span_12](start_span)profile.Image = Players:GetUserThumbnailAsync(p.UserId, Enum.ThumbnailType.HeadShot, Enum.ThumbnailSize.Size100x100)[span_12](end_span)
+    profile.Size = UDim2.new(0, 24, 0, 24)
+    profile.Position = UDim2.new(0, 4, 0.5, -12)
+    profile.Image = Players:GetUserThumbnailAsync(p.UserId, Enum.ThumbnailType.HeadShot, Enum.ThumbnailSize.Size100x100)
     Instance.new("UICorner", profile).CornerRadius = UDim.new(1, 0)
 
     local dName = Instance.new("TextLabel", card)
     dName.Size = UDim2.new(1, -35, 0, 12); dName.Position = UDim2.new(0, 34, 0, 4)
-    [span_13](start_span)dName.Text = p.DisplayName; dName.TextColor3 = Color3.new(1, 1, 1); dName.Font = "GothamBold"; dName.TextSize = 9; dName.TextXAlignment = "Left"; dName.BackgroundTransparency = 1[span_13](end_span)
+    dName.Text = p.DisplayName; dName.TextColor3 = Color3.new(1, 1, 1)
+    dName.Font = "GothamBold"; dName.TextSize = 9; dName.TextXAlignment = "Left"; dName.BackgroundTransparency = 1
 
     local uName = Instance.new("TextLabel", card)
     uName.Size = UDim2.new(1, -35, 0, 12); uName.Position = UDim2.new(0, 34, 0, 16)
-    [span_14](start_span)uName.TextColor3 = Color3.fromRGB(160, 160, 160); uName.Font = "Gotham"; uName.TextSize = 7; uName.TextScaled = true; uName.TextXAlignment = "Left"; uName.BackgroundTransparency = 1[span_14](end_span)
+    uName.TextColor3 = Color3.fromRGB(160, 160, 160); uName.Font = "Gotham"; uName.TextSize = 7; uName.BackgroundTransparency = 1
+    uName.TextXAlignment = "Left"; uName.TextScaled = true
 
-    [span_15](start_span)local function updateUI()[span_15](end_span)
-        if not p.Parent or not card then return end
+    local function updateUI()
+        if not card or not p.Parent then return end
+        local mineral = p:GetAttribute("StealingIndex")
         local estaRobando = p:GetAttribute("Stealing")
-        local nombreFinal = getObjetoNombre(p)
         
-        uName.Text = "@" .. p.Name .. (nombreFinal and (" | " .. nombreFinal) or (estaRobando and " | ¡Cargando!" or ""))
+        -[span_11](start_span)[span_12](start_span)[span_13](start_span)- Si StealingIndex es nil, escanea la carpeta RenderedMovingAnimals[span_11](end_span)[span_12](end_span)[span_13](end_span)
+        local nombreFinal = (mineral and mineral ~= "") and mineral or (estaRobando and buscarObjetoFisico())
+        
+        uName.Text = "@" .. p.Name .. (nombreFinal and (" | " .. nombreFinal) or "")
         card.LayoutOrder = -(Prioridad[nombreFinal] or (estaRobando and 50) or 0)
         card.BackgroundColor3 = estaRobando and Color3.fromRGB(85, 20, 20) or Color3.fromRGB(25, 25, 25)
     end
 
-    [span_16](start_span)p:GetAttributeChangedSignal("StealingIndex"):Connect(updateUI)[span_16](end_span)
-    [span_17](start_span)p:GetAttributeChangedSignal("Stealing"):Connect(updateUI)[span_17](end_span)
+    p:GetAttributeChangedSignal("Stealing"):Connect(updateUI)
+    p:GetAttributeChangedSignal("StealingIndex"):Connect(updateUI)
     updateUI()
 
-    [span_18](start_span)card.MouseButton1Click:Connect(function()[span_18](end_span)
+    card.MouseButton1Click:Connect(function()
         local remote = ReplicatedStorage.Packages.Net:FindFirstChild("RE/" .. REMOTE_NAME, true)
         if remote then
-            [span_19](start_span)remote:FireServer(KEY_SEGURIDAD, p, EFECTOS[indiceGlobal])[span_19](end_span)
-            [span_20](start_span)indiceGlobal = (indiceGlobal % #EFECTOS) + 1[span_20](end_span)
+            remote:FireServer(KEY_SEGURIDAD, p, EFECTOS[indiceGlobal])
+            indiceGlobal = (indiceGlobal % #EFECTOS) + 1
         end
     end)
 end
 
-[span_21](start_span)local function refresh()[span_21](end_span)
-    for _, child in ipairs(listFrame:GetChildren()) do if child:IsA("TextButton") then child:Destroy() end end
-    for _, p in ipairs(Players:GetPlayers()) do addPlayer(p) end
+-[span_14](start_span)- LIMPIEZA TOTAL: Solo carga datos al abrir[span_14](end_span)
+local function refresh()
+    for _, child in ipairs(listFrame:GetChildren()) do
+        if child:IsA("TextButton") then child:Destroy() end
+    end
+    if listFrame.Visible then
+        for _, p in ipairs(Players:GetPlayers()) do
+            addPlayer(p)
+        end
+    end
     updateMainSize()
 end
 
 local titleBtn = Instance.new("TextButton", main)
-[span_22](start_span)titleBtn.Size = UDim2.new(1, 0, 0, 32); titleBtn.BackgroundTransparency = 1; titleBtn.Text = "Admin Spammer ▼"; titleBtn.TextColor3 = Color3.new(1, 1, 1); titleBtn.Font = "GothamBold"; titleBtn.TextSize = 10[span_22](end_span)
+titleBtn.Size = UDim2.new(1, 0, 0, 32); titleBtn.BackgroundTransparency = 1
+titleBtn.Text = "Admin Spammer ▼"; titleBtn.TextColor3 = Color3.new(1, 1, 1)
+[span_15](start_span)[span_16](start_span)titleBtn.Font = "GothamBold"; titleBtn.TextSize = 10[span_15](end_span)[span_16](end_span)
+
 titleBtn.MouseButton1Click:Connect(function()
     listFrame.Visible = not listFrame.Visible
-    if listFrame.Visible then refresh() else updateMainSize() end
+    refresh() -- Al cerrar destruye todo, al abrir carga todo
 end)
 
-Players.PlayerAdded:Connect(refresh); [span_23](start_span)Players.PlayerRemoving:Connect(refresh)[span_23](end_span)
-[span_24](start_span)layout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(updateMainSize)[span_24](end_span)
+-- Optimización: No actualiza la lista en segundo plano si está cerrada
+Players.PlayerAdded:Connect(function() if listFrame.Visible then refresh() end end)
+Players.PlayerRemoving:Connect(function() if listFrame.Visible then refresh() end end)
+layout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(updateMainSize)
+
