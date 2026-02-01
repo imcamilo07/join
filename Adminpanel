@@ -17,8 +17,7 @@ local Prioridad = {
     ["Gingerat Gerat"] = 88, ["Spooky and Pumpky"] = 87, ["Fragrama and Chocrama"] = 86,
     ["La Supreme Combinasion"] = 85, ["La Secret Combinasion"] = 84, ["Garama and Madundung"] = 83,
     ["Lavadorito Spinito"] = 82, ["Ketupat Kepat"] = 81, ["Tictac Sahur"] = 80,
-    ["Tang Tang Keletang"] = 79, ["Ketchuru and Musturu"] = 78,
-    ["Bandito Bobritto"] = 110
+    ["Tang Tang Keletang"] = 79, ["Ketchuru and Musturu"] = 78, 
 }
 
 -- INTERFAZ
