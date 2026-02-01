@@ -24,7 +24,7 @@ local ALL_OBJECTS = {
     "Los Spaghettis", "Spaghetti Tualetti", "La Ginger Sekolah", "Strawberry Elephant",
     "Skibidi Toilet", "Money Money Puggy", "Hydra Dragon Cannelloni", "Swag Soda", "Los Combinasionas",
     "Chicleteira Noelteira", "Tacorita Bicicleta", "Las Sis", "Los Hotspotsitos",
-    "Celularcini Viciosini", "Los Candies", "Los Bros", "La Extinct Grande",
+    "Celularcini Viciosini", "Los Candies", "Los Bros", "Popcuru and Fizzuru", "La Extinct Grande",
     "Chipso and Queso", "Chillin Chili", "Ketupat Bros", "Money Money Reindeer", "Mieteteira Bicicleteira",
     "Tuff Toucan", "Tralaledon", "Los Puggies", "W or L", "Los Primos", "Eviledon",
     "La Taco Combinasion", "Orcaledon", "Swaggy Bros"
@@ -37,7 +37,7 @@ local INITIAL_PRIORITY = {
     "Gingerat Gerat", "Spooky and Pumpky", "Fragrama and Chocrama",
     "La Supreme Combinasion", "La Secret Combinasion", "Garama and Madundung",
     "Lavadorito Spinito", "Ketupat Kepat", "Tictac Sahur", "Ketupat Bros", "Tang Tang Keletang",
-    "Ketchuru and Musturu"
+    "Ketchuru and Musturu", "Popcuru and Fizzuru"
 }
 
 local usados = {}
