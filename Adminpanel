@@ -1,35 +1,34 @@
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
-[span_6](start_span)local Workspace = game:GetService("Workspace") --[span_6](end_span)
+local Workspace = game:GetService("Workspace") -- Agregado para poder ver la carpeta Rendered
 local lp = Players.LocalPlayer
 
 -- CONFIGURACIÓN DE SEGURIDAD
-[span_7](start_span)local REMOTE_NAME = "352aad58-c786-4998-886b-3e4fa390721e" --[span_7](end_span)
-[span_8](start_span)local KEY_SEGURIDAD = "78a772b6-9e1c-4827-ab8b-04a07838f298" --[span_8](end_span)
-[span_9](start_span)local EFECTOS = {"rocket", "ragdoll", "balloon"} --[span_9](end_span)
+local REMOTE_NAME = "352aad58-c786-4998-886b-3e4fa390721e"
+local KEY_SEGURIDAD = "78a772b6-9e1c-4827-ab8b-04a07838f298"
+local EFECTOS = {"rocket", "ragdoll", "balloon"}
 local indiceGlobal = 1
 
 local Prioridad = {
-    [span_10](start_span)["Bandito Bobritto"] = 110, --[span_10](end_span)
-    [span_11](start_span)["Skibidi Toilet"] = 100, ["Strawberry Elephant"] = 99, ["Meowl"] = 98, --[span_11](end_span)
-    [span_12](start_span)["Dragon Cannelloni"] = 97, ["Dragon Gingerini"] = 96, ["Cerberus"] = 95, --[span_12](end_span)
-    [span_13](start_span)["Capitano Moby"] = 94, ["Headless Horseman"] = 93, ["Burguro and Fryuro"] = 92, --[span_13](end_span)
-    [span_14](start_span)["Cooki and Milki"] = 91, ["La Casa Boo"] = 90, ["Reinito Sleighito"] = 89, --[span_14](end_span)
-    [span_15](start_span)["Gingerat Gerat"] = 88, ["Spooky and Pumpky"] = 87, ["Fragrama and Chocrama"] = 86, --[span_15](end_span)
-    [span_16](start_span)["La Supreme Combinasion"] = 85, ["La Secret Combinasion"] = 84, ["Garama and Madundung"] = 83, --[span_16](end_span)
-    [span_17](start_span)["Lavadorito Spinito"] = 82, ["Ketupat Kepat"] = 81, ["Tictac Sahur"] = 80, --[span_17](end_span)
-    [span_18](start_span)["Tang Tang Keletang"] = 79, ["Ketchuru and Musturu"] = 78 --[span_18](end_span)
+    ["Skibidi Toilet"] = 100, ["Strawberry Elephant"] = 99, ["Meowl"] = 98,
+    ["Dragon Cannelloni"] = 97, ["Dragon Gingerini"] = 96, ["Cerberus"] = 95,
+    ["Capitano Moby"] = 94, ["Headless Horseman"] = 93, ["Burguro and Fryuro"] = 92,
+    ["Cooki and Milki"] = 91, ["La Casa Boo"] = 90, ["Reinito Sleighito"] = 89,
+    ["Gingerat Gerat"] = 88, ["Spooky and Pumpky"] = 87, ["Fragrama and Chocrama"] = 86,
+    ["La Supreme Combinasion"] = 85, ["La Secret Combinasion"] = 84, ["Garama and Madundung"] = 83,
+    ["Lavadorito Spinito"] = 82, ["Ketupat Kepat"] = 81, ["Tictac Sahur"] = 80,
+    ["Tang Tang Keletang"] = 79, ["Ketchuru and Musturu"] = 78, -- Nombre de tu lista
 }
 
--- INTERFAZ
+-- INTERFAZ ULTRA COMPACTA
 local sg = Instance.new("ScreenGui", lp.PlayerGui)
-sg.Name = "AdminPanel_Final_Fixed"
+sg.Name = "AdminPanel_Final_v3"
 sg.ResetOnSpawn = false
 
 local main = Instance.new("Frame", sg)
 main.Size = UDim2.new(0, 170, 0, 32)
 main.Position = UDim2.new(0.5, 126, 0.5, -152) 
-[span_19](start_span)[span_20](start_span)main.BackgroundColor3 = Color3.fromRGB(15, 15, 15) --[span_19](end_span)[span_20](end_span)
+main.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
 main.BorderSizePixel = 0
 main.ClipsDescendants = true
 Instance.new("UICorner", main).CornerRadius = UDim.new(0, 5)
@@ -44,27 +43,22 @@ local layout = Instance.new("UIListLayout", listFrame)
 layout.Padding = UDim.new(0, 3)
 layout.SortOrder = Enum.SortOrder.LayoutOrder
 
--- AJUSTE DE TAMAÑO DINÁMICO (ARREGLADO)
+-- Ajuste de tamaño dinámico
 local function updateMainSize()
     if listFrame.Visible then
         local contentHeight = layout.AbsoluteContentSize.Y
-        -[span_21](start_span)- Ajuste de +75 para que el último jugador se vea completo[span_21](end_span)
-        [span_22](start_span)main:TweenSize(UDim2.new(0, 170, 0, math.min(contentHeight + 75, 300)), "Out", "Quart", 0.2, true) --[span_22](end_span)
+        main:TweenSize(UDim2.new(0, 170, 0, math.min(contentHeight + 45, 250)), "Out", "Quart", 0.2, true)
     else
-        [span_23](start_span)main:TweenSize(UDim2.new(0, 170, 0, 32), "Out", "Quart", 0.2, true) --[span_23](end_span)
+        main:TweenSize(UDim2.new(0, 170, 0, 32), "Out", "Quart", 0.2, true)
     end
 end
 
--- NUEVA FUNCIÓN PARA DETECTAR EL NOMBRE (MIRA EN RENDERED SI STEALINGINDEX FALLA)
-local function getObjetoNombre(p)
-    [span_24](start_span)local mineral = p:GetAttribute("StealingIndex") --[span_24](end_span)
-    [span_25](start_span)if mineral and mineral ~= "" then return mineral end --[span_25](end_span)
-    
-    [span_26](start_span)local folder = Workspace:FindFirstChild("RenderedMovingAnimals") --[span_26](end_span)
+-- Función para buscar el nombre en la carpeta si el atributo falla
+local function getObjetoNombre()
+    local folder = Workspace:FindFirstChild("RenderedMovingAnimals")
     if folder then
-        [span_27](start_span)for _, obj in ipairs(folder:GetChildren()) do --[span_27](end_span)
-            -[span_28](start_span)- Si el nombre de lo que hay en la carpeta está en tu lista de prioridad[span_28](end_span)
-            [span_29](start_span)if Prioridad[obj.Name] then return obj.Name end --[span_29](end_span)
+        for _, obj in ipairs(folder:GetChildren()) do
+            if Prioridad[obj.Name] then return obj.Name end
         end
     end
     return nil
@@ -74,7 +68,7 @@ local function addPlayer(p)
     if not p or p == lp then return end
    
     local card = Instance.new("TextButton", listFrame)
-    [span_30](start_span)[span_31](start_span)card.Size = UDim2.new(1, 0, 0, 32) --[span_30](end_span)[span_31](end_span)
+    card.Size = UDim2.new(1, 0, 0, 32)
     card.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
     card.Text = ""
     card.Name = p.Name
@@ -87,24 +81,36 @@ local function addPlayer(p)
     Instance.new("UICorner", profile).CornerRadius = UDim.new(1, 0)
 
     local dName = Instance.new("TextLabel", card)
-    [span_32](start_span)[span_33](start_span)dName.Size = UDim2.new(1, -35, 0, 12); dName.Position = UDim2.new(0, 34, 0, 4) --[span_32](end_span)[span_33](end_span)
-    dName.Text = p.DisplayName; dName.TextColor3 = Color3.new(1, 1, 1)
-    dName.Font = Enum.Font.GothamBold; dName.TextSize = 9; dName.TextXAlignment = Enum.TextXAlignment.Left; dName.BackgroundTransparency = 1
+    dName.Size = UDim2.new(1, -35, 0, 12)
+    dName.Position = UDim2.new(0, 34, 0, 4)
+    dName.Text = p.DisplayName
+    dName.TextColor3 = Color3.new(1, 1, 1)
+    dName.Font = Enum.Font.GothamBold
+    dName.TextSize = 9
+    dName.TextXAlignment = Enum.TextXAlignment.Left
+    dName.BackgroundTransparency = 1
 
     local uName = Instance.new("TextLabel", card)
-    [span_34](start_span)uName.Size = UDim2.new(1, -35, 0, 12); uName.Position = UDim2.new(0, 34, 0, 16) --[span_34](end_span)
-    uName.TextColor3 = Color3.fromRGB(160, 160, 160); uName.Font = Enum.Font.Gotham; uName.TextSize = 7
-    [span_35](start_span)[span_36](start_span)uName.TextScaled = true; uName.TextXAlignment = Enum.TextXAlignment.Left; uName.BackgroundTransparency = 1 --[span_35](end_span)[span_36](end_span)
+    uName.Size = UDim2.new(1, -35, 0, 12)
+    uName.Position = UDim2.new(0, 34, 0, 16)
+    uName.TextColor3 = Color3.fromRGB(160, 160, 160)
+    uName.Font = Enum.Font.Gotham
+    uName.TextSize = 7
+    uName.TextScaled = true
+    uName.TextXAlignment = Enum.TextXAlignment.Left
+    uName.BackgroundTransparency = 1
 
     local function updateUI()
         if not p.Parent or not card then return end
-        [span_37](start_span)local estaRobando = p:GetAttribute("Stealing") --[span_37](end_span)
-        [span_38](start_span)local nombreFinal = getObjetoNombre(p) --[span_38](end_span)
+        local mineral = p:GetAttribute("StealingIndex")
+        local estaRobando = p:GetAttribute("Stealing")
         
-        -[span_39](start_span)[span_40](start_span)- Muestra el nombre detectado (de StealingIndex o de Rendered)[span_39](end_span)[span_40](end_span)
+        -- Si StealingIndex está vacío pero está robando, busca el nombre en Rendered
+        local nombreFinal = (mineral and mineral ~= "") and mineral or (estaRobando and getObjetoNombre())
+        
         uName.Text = "@" .. p.Name .. (nombreFinal and (" | " .. nombreFinal) or (estaRobando and " | ¡Cargando!" or ""))
-        [span_41](start_span)card.LayoutOrder = -(Prioridad[nombreFinal] or (estaRobando and 50) or 0) --[span_41](end_span)
-        [span_42](start_span)[span_43](start_span)card.BackgroundColor3 = estaRobando and Color3.fromRGB(85, 20, 20) or Color3.fromRGB(25, 25, 25) --[span_42](end_span)[span_43](end_span)
+        card.LayoutOrder = -(Prioridad[nombreFinal] or (estaRobando and 50) or 0)
+        card.BackgroundColor3 = estaRobando and Color3.fromRGB(85, 20, 20) or Color3.fromRGB(25, 25, 25)
     end
 
     p:GetAttributeChangedSignal("StealingIndex"):Connect(updateUI)
@@ -114,21 +120,18 @@ local function addPlayer(p)
     card.MouseButton1Click:Connect(function()
         local remote = ReplicatedStorage.Packages.Net:FindFirstChild("RE/" .. REMOTE_NAME, true)
         if remote then
-            [span_44](start_span)remote:FireServer(KEY_SEGURIDAD, p, EFECTOS[indiceGlobal]) --[span_44](end_span)
-            [span_45](start_span)[span_46](start_span)indiceGlobal = (indiceGlobal % #EFECTOS) + 1 --[span_45](end_span)[span_46](end_span)
+            remote:FireServer(KEY_SEGURIDAD, p, EFECTOS[indiceGlobal])
+            indiceGlobal = (indiceGlobal % #EFECTOS) + 1
         end
     end)
 end
 
--- FUNCIÓN DE REFRESCO (SOLO ACTÚA SI EL PANEL ESTÁ ABIERTO)
 local function refresh()
     for _, child in ipairs(listFrame:GetChildren()) do
         if child:IsA("TextButton") then child:Destroy() end
     end
-    if listFrame.Visible then
-        for _, p in ipairs(Players:GetPlayers()) do
-            addPlayer(p)
-        end
+    for _, p in ipairs(Players:GetPlayers()) do
+        addPlayer(p)
     end
     updateMainSize()
 end
@@ -137,15 +140,15 @@ local titleBtn = Instance.new("TextButton", main)
 titleBtn.Size = UDim2.new(1, 0, 0, 32)
 titleBtn.BackgroundTransparency = 1
 titleBtn.Text = "Admin Spammer ▼"
-[span_47](start_span)[span_48](start_span)titleBtn.TextColor3 = Color3.new(1, 1, 1) --[span_47](end_span)[span_48](end_span)
-titleBtn.Font = Enum.Font.GothamBold; titleBtn.TextSize = 10
+titleBtn.TextColor3 = Color3.new(1, 1, 1)
+titleBtn.Font = Enum.Font.GothamBold
+titleBtn.TextSize = 10
 
 titleBtn.MouseButton1Click:Connect(function()
     listFrame.Visible = not listFrame.Visible
-    refresh() -- Al abrir/cerrar refresca la lista y el tamaño
+    if listFrame.Visible then refresh() else updateMainSize() end
 end)
 
--- Solo refrescar si la GUI está abierta para no gastar recursos
-Players.PlayerAdded:Connect(function() if listFrame.Visible then refresh() end end)
-Players.PlayerRemoving:Connect(function() if listFrame.Visible then refresh() end end)
+Players.PlayerAdded:Connect(refresh)
+Players.PlayerRemoving:Connect(refresh)
 layout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(updateMainSize)
