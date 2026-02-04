@@ -217,8 +217,7 @@ local function escanearSmart()
             local txt = lbl.Text
             local val, nombreEncontrado = parseValor(txt) 
             
-            -- MODIFICACIÓN: La firma ahora es el texto completo (Nombre + Valor)
-            -- Esto hace que "Garama $50M" y "Garama $1B" sean firmas distintas.
+            -- MEJORA DE FIRMA: Usa el texto completo del mensaje (Nombre + Poder + Combinaciones)
             local firma = txt 
             local isUsed = usados[firma] ~= nil
             
@@ -356,4 +355,3 @@ task.spawn(function()
 		task.wait(0.01)
 	end
 end)
-
