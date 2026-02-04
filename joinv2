@@ -11,7 +11,6 @@ local TARGET_LIST = {
 	"Lavadorito Spinito",
 	"Garama and Madundung",
 	"La Secret Combinasion",
-	"La Supreme Combinasion",
 	"Fragrama and Chocrama",
 	"Spooky and Pumpky",
     "Popcuru and Fizzuru", 
@@ -20,6 +19,7 @@ local TARGET_LIST = {
 	"La Casa Boo",
 	"Headless Horseman",
     "Ketupat Bros",
+	"La Supreme Combinasion",
 	"Cooki and Milki",
 	"Burguro and Fryuro",
 	"Ginger Gerat",
@@ -28,8 +28,8 @@ local TARGET_LIST = {
 	"Dragon Gingerini",
 	"Dragon Cannelloni",
 	"Meowl",
-	"Strawberry Elephant",
-	"Skibidi Toilet"
+	"Skibidi Toilet",
+	"Strawberry Elephant"
 }
 
 -- ================= SETUP =================
