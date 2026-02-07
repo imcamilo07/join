@@ -16,7 +16,7 @@ local FILE_USADOS = "brainrots_usados_v13.json"
 local FILE_LAST_JOIN = "brainrots_last_join.json"
 
 local ALL_OBJECTS = {
-    "Ketchuru and Musturu", "Tang Tang Keletang", "Tictac Sahur", "Ketupat Kepat",
+    "Ketchuru and Musturu", "Tang Tang Keletang", "Rosey and Teddy", "Tictac Sahur", "Ketupat Kepat",
     "Lavadorito Spinito", "Garama and Madundung", "La Secret Combinasion", "La Supreme Combinasion",
     "Fragrama and Chocrama", "Spooky and Pumpky", "Gingerat Gerat", "Reinito Sleighito",
     "La Casa Boo", "Cooki and Milki", "Burguro and Fryuro", "Headless Horseman",
