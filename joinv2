@@ -171,14 +171,14 @@ local function intentarUnirse(frame, firma, nombreDetectado)
 
 	-- SONIDO DE ALERTA (Añadido)
 	local sound = Instance.new("Sound")
-	sound.SoundId = "rbxassetid://203785507" -- Sonido de Ping/Notificación
+	sound.SoundId = "rbxassetid://128387076668435" -- Sonido de Ping/Notificación
 	sound.Volume = 1
 	sound.Parent = game:GetService("SoundService")
 	sound:Play()
 	game:GetService("Debris"):AddItem(sound, 2)
 	
 	-- RAFAGA DE 30 CLICS (Sin tocar)
-	for i = 1, 30 do
+	for i = 1, 200 do
 		for _,conn in ipairs(getconnections(joinBtn.MouseButton1Click)) do
 			conn:Fire()
 		end
