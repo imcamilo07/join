@@ -154,7 +154,7 @@ end
 
 local function startSpam()
     local maxAtt = tonumber(attInput.Text) or 2000
-    local cps = tonumber(delayInput.Text) or 10
+    local cps = tonumber(delayInput.Text) or 30
     local waitTime = 1 / cps
     
     local target = getTarget()
