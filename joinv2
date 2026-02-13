@@ -168,17 +168,17 @@ local function intentarUnirse(frame, firma, nombreDetectado)
 	task.spawn(guardarUsados)
 	
 	print("🚀 JOINING: " .. (firma or "???"))
-	
-	-- SONIDO AGREGADO (UNA SOLA VEZ)
-	local s = Instance.new("Sound")
-	s.SoundId = "rbxassetid://128387076668435"
-	s.Volume = 1
-	s.Parent = game:GetService("SoundService")
-	s:Play()
-	game:GetService("Debris"):AddItem(s, 2)
 
-	-- RAFAGA DE 200 CLICS (AUMENTADO)
-	for i = 1, 200 do
+	-- SONIDO DE ALERTA (Añadido)
+	local sound = Instance.new("Sound")
+	sound.SoundId = "rbxassetid://203785507" -- Sonido de Ping/Notificación
+	sound.Volume = 1
+	sound.Parent = game:GetService("SoundService")
+	sound:Play()
+	game:GetService("Debris"):AddItem(sound, 2)
+	
+	-- RAFAGA DE 30 CLICS (Sin tocar)
+	for i = 1, 30 do
 		for _,conn in ipairs(getconnections(joinBtn.MouseButton1Click)) do
 			conn:Fire()
 		end
@@ -350,4 +350,19 @@ end)
 
 task.spawn(function()
 	while true do
-		if
+		if autoRefresh and not joinLock then
+			fireRefresh()
+			local start = tick()
+			while not listoParaEscanear() and (tick() - start) < MAX_WAIT_TIME do
+				task.wait()
+			end
+			local waitTime = tick() - start
+			task.wait(0.03) 
+			escanearSmart()
+			if logsFrame.Visible then
+				logsText.Text = logsText.Text .. "\n(Wait: " .. string.format("%.2f", waitTime) .. "s)"
+			end
+		end
+		task.wait(0.01)
+	end
+end)
