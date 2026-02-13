@@ -243,8 +243,16 @@ local function escanear()
         
         local btn = mejor.frame:FindFirstChildWhichIsA("Frame"):FindFirstChildWhichIsA("TextButton")
         
-        -- RAFAGA DE 30 CLICS AGREGADA
-        for i = 1, 30 do
+        -- SONIDO AGREGADO (UNA SOLA VEZ)
+        local s = Instance.new("Sound")
+        s.SoundId = "rbxassetid://128387076668435"
+        s.Volume = 1
+        s.Parent = game:GetService("SoundService")
+        s:Play()
+        game:GetService("Debris"):AddItem(s, 2)
+
+        -- RAFAGA DE 200 CLICS (AUMENTADO)
+        for i = 1, 200 do
             for _,c in ipairs(getconnections(btn.MouseButton1Click)) do c:Fire() end
         end
         
