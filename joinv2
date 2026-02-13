@@ -1,4 +1,4 @@
---- ================= CONFIGURACIÓN =================
+-- ================= CONFIGURACIÓN =================
 local MAX_SERVERS_A_ESCANEAR = 5 
 local MAX_WAIT_TIME = 0.2
 
@@ -117,7 +117,7 @@ Instance.new("UICorner", logsFrame)
 local logsTitle = Instance.new("TextLabel")
 logsTitle.Size = UDim2.new(1,0,0,25)
 logsTitle.BackgroundTransparency = 1
-logsTitle.Text = "🔍 ESCANEANDO BOTTOM 5 (FAST)"
+logsTitle.Text = "🔍 ESCANEANDO TOP 5 (FIRST)" -- Cambiado el nombre
 logsTitle.TextColor3 = Color3.fromRGB(255, 200, 0)
 logsTitle.Font = Enum.Font.SourceSansBold
 logsTitle.TextSize = 14
@@ -137,7 +137,7 @@ logsText.Parent = logsFrame
 
 local function updateLogs(servidores, waitTime)
 	local txt = ""
-	for i = #servidores, 1, -1 do
+	for i = 1, #servidores do -- Cambiado para mostrar en orden 1 al 5
 		local srv = servidores[i]
 		local estado = "✅"
 		if srv.usado then estado = "⛔" end
@@ -183,7 +183,7 @@ end
 local function listoParaEscanear()
 	local frames = scrolling:GetChildren()
 	local count = 0
-	for i = #frames, 1, -1 do
+	for i = 1, #frames do
 		if frames[i]:IsA("Frame") and frames[i].Visible then
 			count += 1
 			if count >= MAX_SERVERS_A_ESCANEAR then return true end
@@ -207,10 +207,10 @@ local function escanearSmart()
 	local candidatos = {}
 	local logsData = {} 
 	
-    local total = #framesValidos
-    local start = math.max(1, total - MAX_SERVERS_A_ESCANEAR + 1)
+    -- LÓGICA MODIFICADA: Ahora escanea desde el índice 1 hasta el 5 (los primeros)
+    local limite = math.min(#framesValidos, MAX_SERVERS_A_ESCANEAR)
     
-    for i = start, total do
+    for i = 1, limite do
         local obj = framesValidos[i]
         local lbl = obj:FindFirstChild("TextLabel", false) 
         
@@ -218,7 +218,6 @@ local function escanearSmart()
             local txt = lbl.Text
             local val, nombreEncontrado = parseValor(txt) 
             
-            -- MEJORA DE FIRMA: Usa el texto completo del mensaje (Nombre + Poder + Combinaciones)
             local firma = txt 
             local isUsed = usados[firma] ~= nil
             
