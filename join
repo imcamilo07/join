@@ -1,5 +1,5 @@
 -- ==========================================
--- BRAINROTS AUTO-JOINER PREMIUM V16 (SAFE CLEAN)
+-- BRAINROTS AUTO-JOINER PREMIUM V16 (TOP 5 SCAN)
 -- ==========================================
 
 local UserInputService = game:GetService("UserInputService")
@@ -10,7 +10,7 @@ local PlayerGui = player:WaitForChild("PlayerGui")
 -- CONFIGURACIÓN TÉCNICA
 local MAX_SERVERS_A_ESCANEAR = 5 
 local MAX_WAIT_TIME = 0.2
-local INTENTOS_PARA_LIMPIAR = 6 -- <--- AQUÍ AUMENTAS LOS INTENTOS SI EL LAG PERSISTE
+local INTENTOS_PARA_LIMPIAR = 6 
 local FILE_DATA = "brainrots_config_v13.json"
 local FILE_USADOS = "brainrots_usados_v13.json"
 local FILE_LAST_JOIN = "brainrots_last_join.json"
@@ -41,7 +41,7 @@ local INITIAL_PRIORITY = {
 }
 
 local usados = {}
-local ausenciaContador = {} -- Tabla para el seguro de intentos
+local ausenciaContador = {} 
 local selectedData = {}
 local priorityList = {unpack(INITIAL_PRIORITY)}
 local joinLock = false
@@ -183,25 +183,24 @@ local function escanear()
     local pm = PlayerGui:FindFirstChild("PetMenu")
     if not pm then return end
     
-    local frames = {}
+    local allFrames = {}
     for _,v in ipairs(pm.Frame.ScrollingFrame:GetChildren()) do 
-        if v:IsA("Frame") and v.Visible then table.insert(frames, v) end 
+        if v:IsA("Frame") and v.Visible then table.insert(allFrames, v) end 
     end
     
-    local totalFrames = #frames
-    local zonaInicio = math.max(1, totalFrames - MAX_SERVERS_A_ESCANEAR + 1)
+    -- LÓGICA MODIFICADA: Escanear solo los primeros 5
+    local limiteEscaneo = math.min(#allFrames, MAX_SERVERS_A_ESCANEAR)
     
-    -- LÓGICA AUTO-CLEAN (CON SEGURO DE INTENTOS)
+    -- LÓGICA AUTO-CLEAN (CON SEGURO DE INTENTOS) SOLO PARA EL TOP 5
     local firmasActuales = {}
-    for i = zonaInicio, totalFrames do
-        local lbl = frames[i]:FindFirstChild("TextLabel", false)
+    for i = 1, limiteEscaneo do
+        local lbl = allFrames[i]:FindFirstChild("TextLabel", false)
         if lbl and lbl.Text ~= "" then firmasActuales[lbl.Text] = true end
     end
     
     local limpio = false
     for firma, _ in pairs(usados) do
         if not firmasActuales[firma] then
-            -- El servidor no está, sumamos un intento de ausencia
             ausenciaContador[firma] = (ausenciaContador[firma] or 0) + 1
             if ausenciaContador[firma] >= INTENTOS_PARA_LIMPIAR then
                 usados[firma] = nil
@@ -209,23 +208,22 @@ local function escanear()
                 limpio = true
             end
         else
-            -- Si vuelve a aparecer, reseteamos su contador de ausencia
             ausenciaContador[firma] = 0
         end
     end
     if limpio then saveData(); logL.Text = "CLR"; task.delay(0.5, function() logL.Text = "..." end) end
 
-    -- BÚSQUEDA DE CANDIDATOS
+    -- BÚSQUEDA DE CANDIDATOS SOLO EN EL TOP 5
     local candidatos = {}
-    for i = zonaInicio, totalFrames do
-        local lbl = frames[i]:FindFirstChild("TextLabel", false)
+    for i = 1, limiteEscaneo do
+        local lbl = allFrames[i]:FindFirstChild("TextLabel", false)
         if lbl then
             local txt = lbl.Text:lower()
             for name, data in pairs(selectedData) do
                 if data.enabled and txt:find(name:lower(), 1, true) then
                     local val = parseSms(lbl.Text, name)
                     if val >= data.minVal and not usados[lbl.Text] then
-                        table.insert(candidatos, {frame = frames[i], name = name, val = val, firma = lbl.Text})
+                        table.insert(candidatos, {frame = allFrames[i], name = name, val = val, firma = lbl.Text})
                     end
                 end
             end
@@ -269,40 +267,3 @@ task.spawn(function()
 end)
 
 renderPrio()
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
