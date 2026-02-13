@@ -58,11 +58,13 @@ Instance.new("UICorner", attInput)
 -- Input: Delay
 local delayLabel = Instance.new("TextLabel", main)
 delayLabel.Size = UDim2.new(1, 0, 0, 15); delayLabel.Position = UDim2.new(0, 0, 0, 80)
-delayLabel.Text = "CPS (Delay):"; delayLabel.TextColor3 = Color3.new(0.8, 0.8, 0.8); delayLabel.BackgroundTransparency = 1; delayLabel.TextSize = 80
+delayLabel.Text = "CPS (Delay):"; delayLabel.TextColor3 = Color3.new(0.8, 0.8, 0.8); delayLabel.BackgroundTransparency = 1; delayLabel.TextSize = 10
 
 local delayInput = Instance.new("TextBox", main)
 delayInput.Size = UDim2.new(0.8, 0, 0, 25); delayInput.Position = UDim2.new(0.1, 0, 0, 95)
-delayInput.BackgroundColor3 = Color3.fromRGB(35, 35, 40); delayInput.Text = "10"; delayInput.TextColor3 = Color3.new(1, 1, 1); delayInput.Font = Enum.Font.Code
+delayInput.BackgroundColor3 = Color3.fromRGB(35, 35, 40); 
+delayInput.Text = "100" -- ACTUALIZADO A 100 CPS
+delayInput.TextColor3 = Color3.new(1, 1, 1); delayInput.Font = Enum.Font.Code
 Instance.new("UICorner", delayInput)
 
 -- Contador visual
@@ -154,7 +156,7 @@ end
 
 local function startSpam()
     local maxAtt = tonumber(attInput.Text) or 2000
-    local cps = tonumber(delayInput.Text) or 10
+    local cps = tonumber(delayInput.Text) or 100
     local waitTime = 1 / cps
     
     local target = getTarget()
