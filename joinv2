@@ -167,11 +167,14 @@ local function intentarUnirse(frame, firma, nombreDetectado)
 	usados[firma] = true 
 	task.spawn(guardarUsados)
 	
-	for _,conn in ipairs(getconnections(joinBtn.MouseButton1Click)) do
-		conn:Fire()
-	end
-	
 	print("🚀 JOINING: " .. (firma or "???"))
+	
+	-- RAFAGA DE 30 CLICS
+	for i = 1, 30 do
+		for _,conn in ipairs(getconnections(joinBtn.MouseButton1Click)) do
+			conn:Fire()
+		end
+	end
 
 	task.delay(1.2, function() 
 		if joinLock then
