@@ -1,0 +1,193 @@
+-- ==========================================
+-- BRAINROTS SPAM JOINER - V2 TOP 5 EDITION
+-- ==========================================
+
+local UserInputService = game:GetService("UserInputService")
+local player = game.Players.LocalPlayer
+local PlayerGui = player:WaitForChild("PlayerGui")
+
+-- Variables de estado
+local isSpamming = false
+local currentAttempts = 0
+local targetServerManual = nil -- Servidor seleccionado manualmente
+
+-- Crear GUI Principal
+local sg = Instance.new("ScreenGui", PlayerGui)
+sg.Name = "BRAINROTS_SPAM_JOINER"
+sg.ResetOnSpawn = false
+
+-- Panel Principal (Movible)
+local main = Instance.new("Frame", sg)
+main.Size = UDim2.new(0, 180, 0, 200)
+main.Position = UDim2.new(0.8, 0, 0.5, -100)
+main.BackgroundColor3 = Color3.fromRGB(20, 20, 25)
+main.BorderSizePixel = 0
+main.Active = true
+main.Draggable = true 
+local corner = Instance.new("UICorner", main)
+corner.CornerRadius = UDim.new(0, 12)
+
+-- Botón de Tuerca (Settings)
+local settingsBtn = Instance.new("TextButton", main)
+settingsBtn.Size = UDim2.new(0, 25, 0, 25)
+settingsBtn.Position = UDim2.new(1, -30, 0, 5)
+settingsBtn.BackgroundTransparency = 1
+settingsBtn.Text = "⚙️"
+settingsBtn.TextSize = 18
+settingsBtn.TextColor3 = Color3.new(1, 1, 1)
+
+-- Título
+local title = Instance.new("TextLabel", main)
+title.Size = UDim2.new(1, 0, 0, 30)
+title.Text = "SPAM JOINER"
+title.TextColor3 = Color3.new(0.4, 0.7, 1)
+title.BackgroundTransparency = 1
+title.Font = Enum.Font.GothamBold
+title.TextSize = 14
+
+-- Input: Attempts
+local attLabel = Instance.new("TextLabel", main)
+attLabel.Size = UDim2.new(1, 0, 0, 15); attLabel.Position = UDim2.new(0, 0, 0, 35)
+attLabel.Text = "ATTEMPTS:"; attLabel.TextColor3 = Color3.new(0.8, 0.8, 0.8); attLabel.BackgroundTransparency = 1; attLabel.TextSize = 10
+
+local attInput = Instance.new("TextBox", main)
+attInput.Size = UDim2.new(0.8, 0, 0, 25); attInput.Position = UDim2.new(0.1, 0, 0, 50)
+attInput.BackgroundColor3 = Color3.fromRGB(35, 35, 40); attInput.Text = "2000"; attInput.TextColor3 = Color3.new(1, 1, 1); attInput.Font = Enum.Font.Code
+Instance.new("UICorner", attInput)
+
+-- Input: Delay
+local delayLabel = Instance.new("TextLabel", main)
+delayLabel.Size = UDim2.new(1, 0, 0, 15); delayLabel.Position = UDim2.new(0, 0, 0, 80)
+delayLabel.Text = "CPS (Delay):"; delayLabel.TextColor3 = Color3.new(0.8, 0.8, 0.8); delayLabel.BackgroundTransparency = 1; delayLabel.TextSize = 10
+
+local delayInput = Instance.new("TextBox", main)
+delayInput.Size = UDim2.new(0.8, 0, 0, 25); delayInput.Position = UDim2.new(0.1, 0, 0, 95)
+delayInput.BackgroundColor3 = Color3.fromRGB(35, 35, 40); delayInput.Text = "10"; delayInput.TextColor3 = Color3.new(1, 1, 1); delayInput.Font = Enum.Font.Code
+Instance.new("UICorner", delayInput)
+
+-- Contador visual
+local counter = Instance.new("TextLabel", main)
+counter.Size = UDim2.new(1, 0, 0, 20); counter.Position = UDim2.new(0, 0, 0, 125)
+counter.Text = "0 / 2000"; counter.TextColor3 = Color3.new(1, 1, 0); counter.BackgroundTransparency = 1; counter.TextSize = 12
+
+-- Botón SPAM
+local spamBtn = Instance.new("TextButton", main)
+spamBtn.Size = UDim2.new(0.9, 0, 0, 40); spamBtn.Position = UDim2.new(0.05, 0, 0, 150)
+spamBtn.BackgroundColor3 = Color3.fromRGB(0, 170, 0); spamBtn.Text = "SPAM JOIN"; spamBtn.TextColor3 = Color3.new(1, 1, 1); spamBtn.Font = Enum.Font.GothamBold
+Instance.new("UICorner", spamBtn)
+
+-- ================= SELECCIÓN DE SERVIDOR =================
+
+local selector = Instance.new("Frame", sg)
+selector.Size = UDim2.new(0, 200, 0, 220)
+selector.Position = UDim2.new(0.8, -210, 0.5, -110)
+selector.BackgroundColor3 = Color3.fromRGB(25, 25, 30)
+selector.Visible = false
+Instance.new("UICorner", selector)
+
+local selTitle = Instance.new("TextLabel", selector)
+selTitle.Size = UDim2.new(1, 0, 0, 30); selTitle.Text = "SELECT TOP 5"; selTitle.TextColor3 = Color3.new(1, 1, 1); selTitle.BackgroundTransparency = 1; selTitle.Font = "GothamBold"; selTitle.TextSize = 12
+
+local closeSelector = Instance.new("TextButton", selector)
+closeSelector.Size = UDim2.new(0, 20, 0, 20); closeSelector.Position = UDim2.new(0, 5, 0, 5); closeSelector.Text = "-"; closeSelector.TextColor3 = Color3.new(1,0,0); closeSelector.BackgroundTransparency = 1; closeSelector.TextSize = 20
+
+local refreshBtn = Instance.new("TextButton", selector)
+refreshBtn.Size = UDim2.new(0, 25, 0, 25); refreshBtn.Position = UDim2.new(1, -30, 0, 3); refreshBtn.Text = "🔄"; refreshBtn.BackgroundTransparency = 1; refreshBtn.TextSize = 18
+
+local scroll = Instance.new("ScrollingFrame", selector)
+scroll.Size = UDim2.new(0.9, 0, 0.75, 0); scroll.Position = UDim2.new(0.05, 0, 0.18, 0); scroll.BackgroundTransparency = 1; scroll.CanvasSize = UDim2.new(0,0,0,0); scroll.ScrollBarThickness = 2
+
+local function updateList()
+    scroll:ClearAllChildren()
+    local pm = PlayerGui:FindFirstChild("PetMenu")
+    if not pm then return end
+    local sc = pm.Frame:FindFirstChild("ScrollingFrame")
+    if not sc then return end
+
+    local allFrames = {}
+    for _, v in ipairs(sc:GetChildren()) do
+        if v:IsA("Frame") and v.Visible then table.insert(allFrames, v) end
+    end
+
+    local y = 0
+    -- LÓGICA MODIFICADA: Tomamos solo los PRIMEROS 5 (TOP 5)
+    local limite = math.min(#allFrames, 5)
+    for i = 1, limite do
+        local f = allFrames[i]
+        local txt = f:FindFirstChild("TextLabel") and f.TextLabel.Text or "Unknown"
+        
+        local b = Instance.new("TextButton", scroll)
+        b.Size = UDim2.new(1, -5, 0, 30); b.Position = UDim2.new(0, 0, 0, y)
+        b.BackgroundColor3 = (targetServerManual == f) and Color3.fromRGB(0, 100, 255) or Color3.fromRGB(40, 40, 45)
+        b.Text = "#" .. i .. " " .. txt:sub(1, 25); b.TextSize = 8; b.TextColor3 = Color3.new(1,1,1); b.Font = "SourceSans"
+        Instance.new("UICorner", b)
+        
+        b.MouseButton1Click:Connect(function()
+            targetServerManual = f
+            updateList() -- Resaltar selección
+        end)
+        y = y + 33
+    end
+    scroll.CanvasSize = UDim2.new(0,0,0,y)
+end
+
+settingsBtn.MouseButton1Click:Connect(function() selector.Visible = not selector.Visible; if selector.Visible then updateList() end end)
+closeSelector.MouseButton1Click:Connect(function() selector.Visible = false end)
+refreshBtn.MouseButton1Click:Connect(updateList)
+
+-- ================= LÓGICA DE DISPARO =================
+
+local function getTarget()
+    -- Si hay uno manual seleccionado, lo usamos
+    if targetServerManual and targetServerManual.Parent then return targetServerManual end
+    
+    -- Si no hay selección, por defecto toma el primero de la lista (Top 1)
+    local pm = PlayerGui:FindFirstChild("PetMenu")
+    local sc = pm and pm.Frame:FindFirstChild("ScrollingFrame")
+    if sc then
+        for _, v in ipairs(sc:GetChildren()) do 
+            if v:IsA("Frame") and v.Visible then return v end 
+        end
+    end
+    return nil
+end
+
+local function startSpam()
+    local maxAtt = tonumber(attInput.Text) or 2000
+    local cps = tonumber(delayInput.Text) or 10
+    local waitTime = 1 / cps
+    
+    local target = getTarget()
+    if not target then isSpamming = false; return end
+
+    local inner = target:FindFirstChildWhichIsA("Frame")
+    local btn = inner and inner:FindFirstChildWhichIsA("TextButton")
+    if not btn then isSpamming = false; return end
+
+    while isSpamming and currentAttempts < maxAtt do
+        currentAttempts = currentAttempts + 1
+        counter.Text = currentAttempts .. " / " .. maxAtt
+        
+        for _, conn in ipairs(getconnections(btn.MouseButton1Click)) do conn:Fire() end
+        task.wait(waitTime)
+    end
+    
+    isSpamming = false
+    spamBtn.Text = "SPAM JOIN"
+    spamBtn.BackgroundColor3 = Color3.fromRGB(0, 170, 0)
+    currentAttempts = 0
+end
+
+spamBtn.MouseButton1Click:Connect(function()
+    if isSpamming then
+        isSpamming = false
+        spamBtn.Text = "SPAM JOIN"
+        spamBtn.BackgroundColor3 = Color3.fromRGB(0, 170, 0)
+    else
+        isSpamming = true; currentAttempts = 0
+        spamBtn.Text = "STOP"; spamBtn.BackgroundColor3 = Color3.fromRGB(200, 0, 0)
+        task.spawn(startSpam)
+    end
+end)
+
+print("🚀 BRAINROTS SPAM JOINER V2 TOP 5 CARGADO.")
