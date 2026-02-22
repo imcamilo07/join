@@ -37,8 +37,7 @@ local INITIAL_PRIORITY = {
     "Gingerat Gerat", "Spooky and Pumpky", "Fragrama and Chocrama",
     "La Supreme Combinasion", "La Secret Combinasion", "Garama and Madundung",
     "Lavadorito Spinito", "Ketupat Kepat", "Tictac Sahur", "Ketupat Bros", "Tang Tang Keletang",
-    "Ketchuru and Musturu", "Popcuru and Fizzuru", "La Food Combinasion"
-}
+    "Ketchuru and Musturu", "Popcuru and Fizzuru", "La Food Combinasion", "Rosey and Teddy"
 }
 
 local usados = {}
