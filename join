@@ -27,7 +27,7 @@ local ALL_OBJECTS = {
     "Celularcini Viciosini", "Los Candies", "Los Bros", "Popcuru and Fizzuru", "La Extinct Grande",
     "Chipso and Queso", "Chillin Chili", "Ketupat Bros", "Money Money Reindeer", "Mieteteira Bicicleteira",
     "Tuff Toucan", "Tralaledon", "Los Puggies", "W or L", "Los Primos", "Eviledon",
-    "La Taco Combinasion", "Orcaledon", "Swaggy Bros", "La Food Combinasion"
+    "La Taco Combinasion", "Orcaledon", "Swaggy Bros", "La Food Combinasion", "Love Love Bear"
 }
 
 local INITIAL_PRIORITY = {
