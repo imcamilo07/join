@@ -1,17 +1,15 @@
 -- ==========================================
--- ADMIN SPAMMER - ACTIVATED & FLASH EDITION
+-- SUPER ADMIN SPAMMER: FINAL EDITION
 -- ==========================================
 
 local Players = game:GetService("Players")
 local lp = Players.LocalPlayer
 local pgui = lp:WaitForChild("PlayerGui")
-local camera = workspace.CurrentCamera
-local RunService = game:GetService("RunService")
+local Plots = workspace:WaitForChild("Plots")
 
 -- 1. CONFIGURACIÓN
--- Reordenado: Ragdoll primero como pediste
-local EFECTOS = {"ragdoll", "rocket", "balloon"} 
-local AP_IMAGE_ID = "95529031547606"
+local EFECTOS_CLIC = {"ragdoll", "rocket", "balloon"}
+local EFECTOS_ALL = {"jail", "inverse", "tiny", "morph", "jumpscare", "nightvision"}
 local indiceGlobal = 1
 
 local Prioridad = {
@@ -25,32 +23,18 @@ local Prioridad = {
     ["Tang Tang Keletang"] = 79, ["Ketchuru and Musturu"] = 78
 }
 
--- 2. FUNCIÓN DE DISPARO INSTANTÁNEO (USANDO ACTIVATED)
-local function disparar(obj)
-    if not obj then return end
-    -- Disparar el evento Activated directamente (El que funcionó en el test)
-    local conexiones = getconnections(obj.Activated)
-    for _, conn in ipairs(conexiones) do
-        conn:Fire()
-    end
-end
-
--- 3. APERTURA Y CIERRE FLASH (Carga el panel sin mostrarlo)
-local function abrirCerrarFlash()
-    local leftFolder = pgui:WaitForChild("TopbarStandard"):WaitForChild("Holders"):WaitForChild("Left")
-    
-    for _, w in ipairs(leftFolder:GetChildren()) do
-        if w.Name == "Widget" then
-            local iconImage = w:FindFirstChild("IconImage", true)
-            if iconImage and string.find(tostring(iconImage.Image), AP_IMAGE_ID) then
-                local clickRegion = w:FindFirstChild("ClickRegion", true)
-                if clickRegion then
-                    -- Abrir
-                    for _, conn in ipairs(getconnections(clickRegion.MouseButton1Click)) do conn:Fire() end
-                    task.wait(0.1)
-                    -- Cerrar inmediatamente
-                    for _, conn in ipairs(getconnections(clickRegion.MouseButton1Click)) do conn:Fire() end
-                    print("⚡ Admin Panel cargado en segundo plano.")
+-- 2. VARIABLES DE ESTADO Y ESCÁNER
+local mapaDeDuenos = {}
+local function escanearPlots()
+    mapaDeDuenos = {}
+    for _, carpeta in ipairs(Plots:GetChildren()) do
+        local sign = carpeta:FindFirstChild("PlotSign", true)
+        local label = sign and sign:FindFirstChild("TextLabel", true)
+        if label then
+            for _, p in ipairs(Players:GetPlayers()) do
+                if string.find(string.lower(label.Text), string.lower(p.Name)) or 
+                   string.find(string.lower(label.Text), string.lower(p.DisplayName)) then
+                    mapaDeDuenos[carpeta.Name] = p
                     break
                 end
             end
@@ -58,103 +42,177 @@ local function abrirCerrarFlash()
     end
 end
 
--- 4. GUI DE CONTROL (SIN CAMBIOS EN DISEÑO)
+-- 3. FUNCIÓN DE DISPARO
+local function disparar(targetName, efecto)
+    local admin = pgui:FindFirstChild("AdminPanel") and pgui.AdminPanel:FindFirstChild("AdminPanel")
+    if not admin then return end
+    local pBtn = admin.Profiles.ScrollingFrame:FindFirstChild(targetName)
+    local eBtn = admin.Content.ScrollingFrame:FindFirstChild(efecto)
+    if pBtn and eBtn then
+        for _, c in ipairs(getconnections(pBtn.Activated)) do c:Fire() end
+        for _, c in ipairs(getconnections(eBtn.Activated)) do c:Fire() end
+    end
+end
+
+-- 4. GUI PRINCIPAL (MOVIBLE)
 local sg = Instance.new("ScreenGui", pgui)
-sg.Name = "AdminSpammer_Activated_Fix"
+sg.Name = "SuperAdminSpammer_Final"
 sg.ResetOnSpawn = false
 
 local main = Instance.new("Frame", sg)
 main.Size = UDim2.new(0, 170, 0, 32)
-main.Position = UDim2.new(0.5, 126, 0.5, -152) 
+main.Position = _G.SavedAdminPos or UDim2.new(0.5, 126, 0.5, -152)
 main.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
-main.BorderSizePixel = 0
 main.ClipsDescendants = true
+main.Active = true
+main.Draggable = true
 Instance.new("UICorner", main)
 
-local listFrame = Instance.new("Frame", main)
-listFrame.Size = UDim2.new(1, -6, 0, 0)
+main:GetPropertyChangedSignal("Position"):Connect(function() _G.SavedAdminPos = main.Position end)
+
+local listFrame = Instance.new("ScrollingFrame", main)
+listFrame.Size = UDim2.new(1, -6, 0, 200) -- Alto optimizado para 8 jugadores
 listFrame.Position = UDim2.new(0, 3, 0, 38)
 listFrame.BackgroundTransparency = 1
+listFrame.CanvasSize = UDim2.new(0, 0, 0, 0)
+listFrame.ScrollBarThickness = 2
 listFrame.Visible = false
 
 local layout = Instance.new("UIListLayout", listFrame)
 layout.Padding = UDim.new(0, 3)
 layout.SortOrder = Enum.SortOrder.LayoutOrder
 
-local function updateMainSize()
+local function updateSize()
     if listFrame.Visible then
-        main:TweenSize(UDim2.new(0, 170, 0, math.min(layout.AbsoluteContentSize.Y + 45, 250)), "Out", "Quart", 0.2, true)
+        local targetH = math.clamp(layout.AbsoluteContentSize.Y + 45, 45, 250)
+        main:TweenSize(UDim2.new(0, 170, 0, targetH), "Out", "Quart", 0.2, true)
     else
         main:TweenSize(UDim2.new(0, 170, 0, 32), "Out", "Quart", 0.2, true)
     end
 end
 
+-- 5. LÓGICA DE TARJETAS
 local function addPlayer(p)
     if not p or p == lp then return end
-    local card = Instance.new("TextButton", listFrame)
+    
+    local card = Instance.new("Frame", listFrame)
     card.Size = UDim2.new(1, 0, 0, 32)
     card.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
-    card.Text = ""
     card.Name = p.Name
     Instance.new("UICorner", card)
 
-    local dName = Instance.new("TextLabel", card)
-    dName.Size = UDim2.new(1, -35, 0, 12)
-    dName.Position = UDim2.new(0, 34, 0, 4)
+    -- Botón de información/disparo (80%)
+    local infoBtn = Instance.new("TextButton", card)
+    infoBtn.Size = UDim2.new(0.8, 0, 1, 0)
+    infoBtn.BackgroundTransparency = 1
+    infoBtn.Text = ""
+
+    local dName = Instance.new("TextLabel", infoBtn)
+    dName.Size = UDim2.new(0, 0, 0, 15)
+    dName.Position = UDim2.new(0, 5, 0, 3)
     dName.Text = p.DisplayName
-    dName.TextColor3 = Color3.new(1, 1, 1)
     dName.Font = Enum.Font.GothamBold
     dName.TextSize = 9
-    dName.TextXAlignment = "Left"
+    dName.TextColor3 = Color3.new(1,1,1)
     dName.BackgroundTransparency = 1
+    dName.AutomaticSize = Enum.AutomaticSize.X
 
-    local uName = Instance.new("TextLabel", card)
-    uName.Size = UDim2.new(1, -35, 0, 12)
-    uName.Position = UDim2.new(0, 34, 0, 16)
-    uName.TextColor3 = Color3.fromRGB(160, 160, 160)
+    local ownerLabel = Instance.new("TextLabel", infoBtn)
+    ownerLabel.Text = "BASE OWNER"
+    ownerLabel.TextColor3 = Color3.new(1, 0, 0)
+    ownerLabel.Font = Enum.Font.GothamBold
+    ownerLabel.TextSize = 7
+    ownerLabel.Position = UDim2.new(0, 5, 0, 3)
+    ownerLabel.Visible = false
+    ownerLabel.BackgroundTransparency = 1
+
+    local uName = Instance.new("TextLabel", infoBtn)
+    uName.Size = UDim2.new(1, -10, 0, 10)
+    uName.Position = UDim2.new(0, 5, 0, 16)
     uName.Font = Enum.Font.Gotham
     uName.TextSize = 7
-    uName.TextScaled = true
-    uName.TextXAlignment = "Left"
+    uName.TextColor3 = Color3.fromRGB(150, 150, 150)
     uName.BackgroundTransparency = 1
 
+    -- Botón ALL (20%)
+    local allBtn = Instance.new("TextButton", card)
+    allBtn.Size = UDim2.new(0.2, 0, 1, 0)
+    allBtn.Position = UDim2.new(0.8, 0, 0, 0)
+    allBtn.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+    allBtn.BackgroundTransparency = 0.4
+    allBtn.Text = "ALL"
+    allBtn.TextColor3 = Color3.new(1,1,1)
+    allBtn.Rotation = -90
+    allBtn.Font = Enum.Font.GothamBold
+    allBtn.TextSize = 8
+    Instance.new("UICorner", allBtn)
+
+    -- LÓGICA VISUAL Y PRIORIDAD
     local function updateUI()
-        if not p.Parent or not card then return end
+        if not p.Parent then card:Destroy() return end
         local mineral = p:GetAttribute("StealingIndex")
+        local stealing = p:GetAttribute("Stealing")
         uName.Text = "@" .. p.Name .. (mineral and (" | " .. mineral) or "")
         card.LayoutOrder = -(Prioridad[mineral] or 0)
-        card.BackgroundColor3 = p:GetAttribute("Stealing") and Color3.fromRGB(85, 20, 20) or Color3.fromRGB(25, 25, 25)
+
+        -- Detección de zona para Amarillo
+        local enBase = false
+        local char = lp.Character
+        if char and char:FindFirstChild("HumanoidRootPart") then
+            for folder, owner in pairs(mapaDeDuenos) do
+                if owner == p then
+                    local plotFolder = Plots:FindFirstChild(folder)
+                    if plotFolder then
+                        local pv, ps = plotFolder:GetBoundingBox()
+                        local localPos = pv:PointToObjectSpace(char.HumanoidRootPart.Position)
+                        if math.abs(localPos.X) <= ps.X/2 and math.abs(localPos.Z) <= ps.Z/2 then
+                            enBase = true break
+                        end
+                    end
+                end
+            end
+        end
+
+        if enBase then
+            card.BackgroundColor3 = Color3.fromRGB(255, 255, 180)
+            dName.TextColor3 = Color3.new(0,0,0)
+            uName.TextColor3 = Color3.fromRGB(50,50,50)
+            ownerLabel.Visible = true
+            ownerLabel.Position = UDim2.new(0, dName.TextBounds.X + 10, 0, 3)
+        elseif stealing then
+            card.BackgroundColor3 = Color3.fromRGB(85, 20, 20)
+            dName.TextColor3 = Color3.new(1,1,1)
+            uName.TextColor3 = Color3.new(0.8,0.8,0.8)
+            ownerLabel.Visible = false
+        else
+            card.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
+            dName.TextColor3 = Color3.new(1,1,1)
+            uName.TextColor3 = Color3.new(0.6,0.6,0.6)
+            ownerLabel.Visible = false
+        end
     end
 
-    p:GetAttributeChangedSignal("StealingIndex"):Connect(updateUI)
-    p:GetAttributeChangedSignal("Stealing"):Connect(updateUI)
-    updateUI()
-
-    -- LÓGICA DE CLIC ACTUALIZADA
-    card.MouseButton1Click:Connect(function()
-        local adminFrame = pgui:FindFirstChild("AdminPanel") and pgui.AdminPanel:FindFirstChild("AdminPanel")
-        if not adminFrame then return end
-        
-        local profScroll = adminFrame.Profiles.ScrollingFrame
-        local contScroll = adminFrame.Content.ScrollingFrame
-        
-        local targetBtn = profScroll:FindFirstChild(p.Name)
-        local effectBtn = contScroll:FindFirstChild(EFECTOS[indiceGlobal])
-        
-        if targetBtn and effectBtn then
-            disparar(targetBtn) -- Selecciona jugador
-            disparar(effectBtn) -- Aplica efecto
-            indiceGlobal = (indiceGlobal % #EFECTOS) + 1
-        end
+    infoBtn.MouseButton1Click:Connect(function()
+        disparar(p.Name, EFECTOS_CLIC[indiceGlobal])
+        indiceGlobal = (indiceGlobal % #EFECTOS_CLIC) + 1
     end)
+
+    allBtn.MouseButton1Click:Connect(function()
+        for _, ef in ipairs(EFECTOS_ALL) do disparar(p.Name, ef) end
+    end)
+
+    task.spawn(function() while card.Parent do updateUI() task.wait(0.5) end end)
 end
 
 local function refresh()
-    for _, child in ipairs(listFrame:GetChildren()) do if child:IsA("TextButton") then child:Destroy() end end
+    for _, c in ipairs(listFrame:GetChildren()) do if c:IsA("Frame") then c:Destroy() end end
+    escanearPlots()
     for _, p in ipairs(Players:GetPlayers()) do addPlayer(p) end
-    updateMainSize()
+    listFrame.CanvasSize = UDim2.new(0,0,0, layout.AbsoluteContentSize.Y)
+    updateSize()
 end
 
+-- 6. TÍTULO Y EVENTOS
 local titleBtn = Instance.new("TextButton", main)
 titleBtn.Size = UDim2.new(1, 0, 0, 32)
 titleBtn.Text = "Admin Spammer ▼"
@@ -163,10 +221,10 @@ titleBtn.Font = Enum.Font.GothamBold
 titleBtn.BackgroundTransparency = 1
 titleBtn.MouseButton1Click:Connect(function()
     listFrame.Visible = not listFrame.Visible
-    if listFrame.Visible then refresh() else updateMainSize() end
+    if listFrame.Visible then refresh() else updateSize() end
 end)
 
--- 5. EJECUCIÓN
-abrirCerrarFlash()
-Players.PlayerAdded:Connect(refresh)
+Players.PlayerAdded:Connect(function() task.wait(1) refresh() end)
 Players.PlayerRemoving:Connect(refresh)
+
+print("✅ Super Admin Spammer cargado.")
