@@ -1,5 +1,5 @@
 -- ==========================================
--- SUPER ADMIN SPAMMER: FINAL EDITION + PROXIMITY UP
+-- SUPER ADMIN SPAMMER: FINAL EDITION + SAVING
 -- ==========================================
 
 local Players = game:GetService("Players")
@@ -8,15 +8,51 @@ local pgui = lp:WaitForChild("PlayerGui")
 local Plots = workspace:WaitForChild("Plots")
 local RunService = game:GetService("RunService")
 local UIS = game:GetService("UserInputService")
+local HttpService = game:GetService("HttpService")
 
--- 1. CONFIGURACIÓN
+-- Archivo donde se guardará la configuración
+local FILE_NAME = "AdminSettings.json"
+
+-- 1. CONFIGURACIÓN Y ESTADO
 local EFECTOS_CLIC = {"ragdoll", "rocket", "balloon"}
 local EFECTOS_ALL = {"jail", "inverse", "tiny", "morph", "jumpscare", "nightvision"}
 local EFECTOS_PROX = {"inverse", "jail", "tiny", "morph", "jumpscare"}
 local cooldownEfectos = {["inverse"]=0, ["jail"]=0, ["tiny"]=0, ["morph"]=0, ["jumpscare"]=0, ["ALL"]=0}
 local indiceGlobal = 1
 local proximityEnabled = false
+
+-- Valores por defecto (se sobrescribirán si hay un guardado)
 local rangeValue = 50
+local savedPos = UDim2.new(0.5, 126, 0.5, -152)
+
+-- Lógica de Guardado (JSON)
+local function saveSettings()
+    local data = {
+        pos = {
+            XScale = _G.SavedAdminPos.X.Scale,
+            XOffset = _G.SavedAdminPos.X.Offset,
+            YScale = _G.SavedAdminPos.Y.Scale,
+            YOffset = _G.SavedAdminPos.Y.Offset
+        },
+        range = rangeValue
+    }
+    writefile(FILE_NAME, HttpService:JSONEncode(data))
+end
+
+-- Lógica de Carga (JSON)
+local function loadSettings()
+    if isfile(FILE_NAME) then
+        local success, content = pcall(readfile, FILE_NAME)
+        if success then
+            local data = HttpService:JSONDecode(content)
+            savedPos = UDim2.new(data.pos.XScale, data.pos.XOffset, data.pos.YScale, data.pos.YOffset)
+            rangeValue = data.range
+            _G.SavedAdminPos = savedPos
+        end
+    end
+end
+
+loadSettings() -- Cargar antes de crear la GUI
 
 local Prioridad = {
     ["Skibidi Toilet"] = 100, ["Strawberry Elephant"] = 99, ["Meowl"] = 98,
@@ -29,7 +65,7 @@ local Prioridad = {
     ["Tang Tang Keletang"] = 79, ["Ketchuru and Musturu"] = 78
 }
 
--- Círculo Visual (Pies)
+-- Círculo Visual
 local visualCircle = Instance.new("Part")
 visualCircle.Shape = Enum.PartType.Cylinder
 visualCircle.Transparency = 1
@@ -39,7 +75,7 @@ visualCircle.CanCollide = false
 visualCircle.Anchored = true
 visualCircle.Parent = workspace
 
--- 2. VARIABLES DE ESTADO Y ESCÁNER
+-- 2. ESCÁNER DE PLOTS (Tu lógica original)
 local mapaDeDuenos = {}
 local function escanearPlots()
     mapaDeDuenos = {}
@@ -58,7 +94,7 @@ local function escanearPlots()
     end
 end
 
--- 3. FUNCIÓN DE DISPARO
+-- 3. FUNCIÓN DE DISPARO (Tu lógica original)
 local function disparar(targetName, efecto)
     local admin = pgui:FindFirstChild("AdminPanel") and pgui.AdminPanel:FindFirstChild("AdminPanel")
     if not admin then return end
@@ -90,19 +126,23 @@ sg.ResetOnSpawn = false
 
 local main = Instance.new("Frame", sg)
 main.Size = UDim2.new(0, 170, 0, 32)
-main.Position = _G.SavedAdminPos or UDim2.new(0.5, 126, 0.5, -152)
+main.Position = savedPos
 main.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
 main.ClipsDescendants = true
 main.Active = true
 main.Draggable = true
 Instance.new("UICorner", main)
 
-main:GetPropertyChangedSignal("Position"):Connect(function() _G.SavedAdminPos = main.Position end)
+-- Guardar posición cada vez que se mueva
+main:GetPropertyChangedSignal("Position"):Connect(function()
+    _G.SavedAdminPos = main.Position
+    saveSettings()
+end)
 
--- PANEL PROXIMITY (Hacia ARRIBA)
+-- PANEL PROXIMITY
 local proxPanel = Instance.new("Frame", main)
 proxPanel.Size = UDim2.new(1, -6, 0, 35)
-proxPanel.Position = UDim2.new(0, 3, 0, -40) -- Arriba del título
+proxPanel.Position = UDim2.new(0, 3, 0, -40)
 proxPanel.BackgroundColor3 = Color3.fromRGB(25, 15, 30)
 proxPanel.Visible = false
 Instance.new("UICorner", proxPanel)
@@ -110,7 +150,7 @@ Instance.new("UICorner", proxPanel)
 local proxRangeTxt = Instance.new("TextLabel", proxPanel)
 proxRangeTxt.Size = UDim2.new(0.6, 0, 0, 15)
 proxRangeTxt.Position = UDim2.new(0, 5, 0, 2)
-proxRangeTxt.Text = "Range: 50"
+proxRangeTxt.Text = "Range: " .. rangeValue
 proxRangeTxt.TextColor3 = Color3.new(1,1,1)
 proxRangeTxt.Font = Enum.Font.GothamBold
 proxRangeTxt.TextSize = 8
@@ -124,7 +164,7 @@ sliderBack.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
 Instance.new("UICorner", sliderBack)
 
 local sliderFill = Instance.new("Frame", sliderBack)
-sliderFill.Size = UDim2.new(0.25, 0, 1, 0)
+sliderFill.Size = UDim2.new(rangeValue/200, 0, 1, 0)
 sliderFill.BackgroundColor3 = Color3.fromRGB(255, 0, 80)
 Instance.new("UICorner", sliderFill)
 
@@ -138,7 +178,6 @@ proxToggle.Font = Enum.Font.GothamBold
 proxToggle.TextSize = 8
 Instance.new("UICorner", proxToggle)
 
--- Lógica Proximity Toggle/Slider
 proxToggle.MouseButton1Click:Connect(function()
     proximityEnabled = not proximityEnabled
     proxToggle.Text = proximityEnabled and "ON" or "OFF"
@@ -151,7 +190,10 @@ sliderBack.InputBegan:Connect(function(input)
     if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then dragging = true end
 end)
 UIS.InputEnded:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then dragging = false end
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then 
+        dragging = false
+        saveSettings() -- Guardar rango al soltar
+    end
 end)
 UIS.InputChanged:Connect(function(input)
     if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
@@ -179,7 +221,7 @@ local function updateSize()
         local targetH = math.clamp(layout.AbsoluteContentSize.Y + 45, 45, 250)
         main:TweenSize(UDim2.new(0, 170, 0, targetH), "Out", "Quart", 0.2, true)
         proxPanel.Visible = true
-        main.ClipsDescendants = false -- Permitir ver el panel de arriba
+        main.ClipsDescendants = false
     else
         main:TweenSize(UDim2.new(0, 170, 0, 32), "Out", "Quart", 0.2, true)
         proxPanel.Visible = false
@@ -187,7 +229,7 @@ local function updateSize()
     end
 end
 
--- 5. LÓGICA DE TARJETAS (IGUAL)
+-- 5. LÓGICA DE TARJETAS (Tu lógica original)
 local function addPlayer(p)
     if not p or p == lp then return end
     local card = Instance.new("Frame", listFrame)
@@ -349,4 +391,4 @@ end)
 Players.PlayerAdded:Connect(function() task.wait(1) refresh() end)
 Players.PlayerRemoving:Connect(refresh)
 
-print("✅ Super Admin Spammer + Proximity UP cargado.")
+print("✅ Super Admin Spammer: Movible y Persistencia cargada.")
