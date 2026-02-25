@@ -1,24 +1,35 @@
 -- ==========================================
--- PROXIMITY AP vFINAL: PIES FIX & SECUENCIA
+-- SUPER ADMIN SPAMMER: FINAL EDITION + PROXIMITY UP
 -- ==========================================
 
 local Players = game:GetService("Players")
 local lp = Players.LocalPlayer
 local pgui = lp:WaitForChild("PlayerGui")
+local Plots = workspace:WaitForChild("Plots")
 local RunService = game:GetService("RunService")
 local UIS = game:GetService("UserInputService")
 
 -- 1. CONFIGURACIÓN
-local EFECTOS_SECUENCIA = {"inverse", "jail", "tiny", "morph", "jumpscare"}
-local cooldownEfectos = {
-    ["inverse"] = 0, ["jail"] = 0, ["tiny"] = 0, 
-    ["morph"] = 0, ["jumpscare"] = 0, ["ALL"] = 0
+local EFECTOS_CLIC = {"ragdoll", "rocket", "balloon"}
+local EFECTOS_ALL = {"jail", "inverse", "tiny", "morph", "jumpscare", "nightvision"}
+local EFECTOS_PROX = {"inverse", "jail", "tiny", "morph", "jumpscare"}
+local cooldownEfectos = {["inverse"]=0, ["jail"]=0, ["tiny"]=0, ["morph"]=0, ["jumpscare"]=0, ["ALL"]=0}
+local indiceGlobal = 1
+local proximityEnabled = false
+local rangeValue = 50
+
+local Prioridad = {
+    ["Skibidi Toilet"] = 100, ["Strawberry Elephant"] = 99, ["Meowl"] = 98,
+    ["Dragon Cannelloni"] = 97, ["Dragon Gingerini"] = 96, ["Cerberus"] = 95,
+    ["Capitano Moby"] = 94, ["Headless Horseman"] = 93, ["Burguro and Fryuro"] = 92,
+    ["Cooki and Milki"] = 91, ["La Casa Boo"] = 90, ["Reinito Sleighito"] = 89,
+    ["Gingerat Gerat"] = 88, ["Spooky and Pumpky"] = 87, ["Fragrama and Chocrama"] = 86,
+    ["La Supreme Combinasion"] = 85, ["La Secret Combinasion"] = 84, ["Garama and Madundung"] = 83,
+    ["Lavadorito Spinito"] = 82, ["Ketupat Kepat"] = 81, ["Tictac Sahur"] = 80,
+    ["Tang Tang Keletang"] = 79, ["Ketchuru and Musturu"] = 78
 }
 
-local proximityEnabled = false
-local rangeValue = 50 
-
--- 2. CÍRCULO VISUAL (AJUSTADO A LOS PIES)
+-- Círculo Visual (Pies)
 local visualCircle = Instance.new("Part")
 visualCircle.Shape = Enum.PartType.Cylinder
 visualCircle.Transparency = 1
@@ -26,20 +37,37 @@ visualCircle.Color = Color3.fromRGB(255, 0, 80)
 visualCircle.Material = Enum.Material.ForceField
 visualCircle.CanCollide = false
 visualCircle.Anchored = true
-visualCircle.CastShadow = false
 visualCircle.Parent = workspace
 
+-- 2. VARIABLES DE ESTADO Y ESCÁNER
+local mapaDeDuenos = {}
+local function escanearPlots()
+    mapaDeDuenos = {}
+    for _, carpeta in ipairs(Plots:GetChildren()) do
+        local sign = carpeta:FindFirstChild("PlotSign", true)
+        local label = sign and sign:FindFirstChild("TextLabel", true)
+        if label then
+            for _, p in ipairs(Players:GetPlayers()) do
+                if string.find(string.lower(label.Text), string.lower(p.Name)) or 
+                   string.find(string.lower(label.Text), string.lower(p.DisplayName)) then
+                    mapaDeDuenos[carpeta.Name] = p
+                    break
+                end
+            end
+        end
+    end
+end
+
 -- 3. FUNCIÓN DE DISPARO
-local function dispararEfecto(targetName, efecto)
+local function disparar(targetName, efecto)
     local admin = pgui:FindFirstChild("AdminPanel") and pgui.AdminPanel:FindFirstChild("AdminPanel")
     if not admin then return end
     local pBtn = admin.Profiles.ScrollingFrame:FindFirstChild(targetName)
-    if not pBtn then return end
-
-    if efecto == "ALL" then
-        for _, ef in ipairs(EFECTOS_SECUENCIA) do
+    
+    if efecto == "ALL_PROX" then
+        for _, ef in ipairs(EFECTOS_PROX) do
             local eBtn = admin.Content.ScrollingFrame:FindFirstChild(ef)
-            if eBtn then
+            if pBtn and eBtn then
                 for _, c in ipairs(getconnections(pBtn.Activated)) do c:Fire() end
                 task.wait(0.05)
                 for _, c in ipairs(getconnections(eBtn.Activated)) do c:Fire() end
@@ -47,7 +75,7 @@ local function dispararEfecto(targetName, efecto)
         end
     else
         local eBtn = admin.Content.ScrollingFrame:FindFirstChild(efecto)
-        if eBtn then
+        if pBtn and eBtn then
             for _, c in ipairs(getconnections(pBtn.Activated)) do c:Fire() end
             task.wait(0.1)
             for _, c in ipairs(getconnections(eBtn.Activated)) do c:Fire() end
@@ -55,126 +83,260 @@ local function dispararEfecto(targetName, efecto)
     end
 end
 
--- 4. GUI (DRAGGABLE & POSITION SAVED)
+-- 4. GUI PRINCIPAL
 local sg = Instance.new("ScreenGui", pgui)
-sg.Name = "ProximityAP_Final"
+sg.Name = "SuperAdminSpammer_Final"
 sg.ResetOnSpawn = false
 
 local main = Instance.new("Frame", sg)
-main.Size = UDim2.new(0, 220, 0, 110)
-main.Position = _G.SpammerPos or UDim2.new(0.5, -450, 0.5, 0)
-main.BackgroundColor3 = Color3.fromRGB(15, 10, 25)
+main.Size = UDim2.new(0, 170, 0, 32)
+main.Position = _G.SavedAdminPos or UDim2.new(0.5, 126, 0.5, -152)
+main.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
+main.ClipsDescendants = true
 main.Active = true
 main.Draggable = true
 Instance.new("UICorner", main)
 
-main:GetPropertyChangedSignal("Position"):Connect(function() _G.SpammerPos = main.Position end)
+main:GetPropertyChangedSignal("Position"):Connect(function() _G.SavedAdminPos = main.Position end)
 
-local title = Instance.new("TextLabel", main)
-title.Size = UDim2.new(1, -10, 0, 30)
-title.Position = UDim2.new(0, 10, 0, 0)
-title.Text = "Proximity AP Final"
-title.TextColor3 = Color3.new(1, 1, 1)
-title.Font = Enum.Font.GothamBold
-title.TextSize = 13
-title.BackgroundTransparency = 1
-title.TextXAlignment = "Left"
+-- PANEL PROXIMITY (Hacia ARRIBA)
+local proxPanel = Instance.new("Frame", main)
+proxPanel.Size = UDim2.new(1, -6, 0, 35)
+proxPanel.Position = UDim2.new(0, 3, 0, -40) -- Arriba del título
+proxPanel.BackgroundColor3 = Color3.fromRGB(25, 15, 30)
+proxPanel.Visible = false
+Instance.new("UICorner", proxPanel)
 
-local toggle = Instance.new("TextButton", main)
-toggle.Size = UDim2.new(0, 35, 0, 18)
-toggle.Position = UDim2.new(1, -45, 0, 7)
-toggle.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
-toggle.Text = ""
-Instance.new("UICorner", toggle).CornerRadius = UDim.new(1, 0)
+local proxRangeTxt = Instance.new("TextLabel", proxPanel)
+proxRangeTxt.Size = UDim2.new(0.6, 0, 0, 15)
+proxRangeTxt.Position = UDim2.new(0, 5, 0, 2)
+proxRangeTxt.Text = "Range: 50"
+proxRangeTxt.TextColor3 = Color3.new(1,1,1)
+proxRangeTxt.Font = Enum.Font.GothamBold
+proxRangeTxt.TextSize = 8
+proxRangeTxt.BackgroundTransparency = 1
+proxRangeTxt.TextXAlignment = "Left"
 
-local knob = Instance.new("Frame", toggle)
-knob.Size = UDim2.new(0, 14, 0, 14)
-knob.Position = UDim2.new(0, 2, 0.5, -7)
-knob.BackgroundColor3 = Color3.new(1, 1, 1)
-Instance.new("UICorner", knob).CornerRadius = UDim.new(1, 0)
-
-toggle.MouseButton1Click:Connect(function()
-    proximityEnabled = not proximityEnabled
-    toggle.BackgroundColor3 = proximityEnabled and Color3.fromRGB(255, 0, 80) or Color3.fromRGB(40, 40, 40)
-    knob:TweenPosition(proximityEnabled and UDim2.new(1, -16, 0.5, -7) or UDim2.new(0, 2, 0.5, -7), "Out", "Quart", 0.2, true)
-    visualCircle.Transparency = proximityEnabled and 0.8 or 1
-end)
-
-local rangeLabel = Instance.new("TextLabel", main)
-rangeLabel.Size = UDim2.new(1, -20, 0, 20)
-rangeLabel.Position = UDim2.new(0, 10, 0, 45)
-rangeLabel.Text = "Defense Range: 50 studs"
-rangeLabel.TextColor3 = Color3.fromRGB(255, 180, 200)
-rangeLabel.Font = Enum.Font.GothamMedium
-rangeLabel.TextSize = 11
-rangeLabel.BackgroundTransparency = 1
-rangeLabel.TextXAlignment = "Left"
-
-local sliderBack = Instance.new("Frame", main)
-sliderBack.Size = UDim2.new(1, -20, 0, 4)
-sliderBack.Position = UDim2.new(0, 10, 0, 75)
-sliderBack.BackgroundColor3 = Color3.fromRGB(50, 30, 40)
+local sliderBack = Instance.new("Frame", proxPanel)
+sliderBack.Size = UDim2.new(0.6, 0, 0, 4)
+sliderBack.Position = UDim2.new(0, 5, 0, 22)
+sliderBack.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
 Instance.new("UICorner", sliderBack)
 
 local sliderFill = Instance.new("Frame", sliderBack)
 sliderFill.Size = UDim2.new(0.25, 0, 1, 0)
-sliderFill.BackgroundColor3 = Color3.fromRGB(255, 50, 100)
+sliderFill.BackgroundColor3 = Color3.fromRGB(255, 0, 80)
 Instance.new("UICorner", sliderFill)
 
-local sliderBtn = Instance.new("TextButton", sliderFill)
-sliderBtn.Size = UDim2.new(0, 12, 0, 12)
-sliderBtn.Position = UDim2.new(1, -6, 0.5, -6)
-sliderBtn.BackgroundColor3 = Color3.new(1, 1, 1)
-sliderBtn.Text = ""
-Instance.new("UICorner", sliderBtn).CornerRadius = UDim.new(1, 0)
+local proxToggle = Instance.new("TextButton", proxPanel)
+proxToggle.Size = UDim2.new(0, 50, 0, 20)
+proxToggle.Position = UDim2.new(1, -55, 0, 7)
+proxToggle.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+proxToggle.Text = "OFF"
+proxToggle.TextColor3 = Color3.new(1,1,1)
+proxToggle.Font = Enum.Font.GothamBold
+proxToggle.TextSize = 8
+Instance.new("UICorner", proxToggle)
+
+-- Lógica Proximity Toggle/Slider
+proxToggle.MouseButton1Click:Connect(function()
+    proximityEnabled = not proximityEnabled
+    proxToggle.Text = proximityEnabled and "ON" or "OFF"
+    proxToggle.BackgroundColor3 = proximityEnabled and Color3.fromRGB(255, 0, 80) or Color3.fromRGB(40, 40, 40)
+    visualCircle.Transparency = proximityEnabled and 0.8 or 1
+end)
 
 local dragging = false
-local function updateSlider()
-    local mousePos = UIS:GetMouseLocation().X
-    local relativePos = mousePos - sliderBack.AbsolutePosition.X
-    local percentage = math.clamp(relativePos / sliderBack.AbsoluteSize.X, 0, 1)
-    sliderFill.Size = UDim2.new(percentage, 0, 1, 0)
-    rangeValue = math.floor(percentage * 200)
-    rangeLabel.Text = "Defense Range: " .. rangeValue .. " studs"
-end
-
-sliderBtn.InputBegan:Connect(function(input)
+sliderBack.InputBegan:Connect(function(input)
     if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then dragging = true end
 end)
 UIS.InputEnded:Connect(function(input)
     if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then dragging = false end
 end)
 UIS.InputChanged:Connect(function(input)
-    if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then updateSlider() end
+    if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+        local pos = math.clamp((input.Position.X - sliderBack.AbsolutePosition.X) / sliderBack.AbsoluteSize.X, 0, 1)
+        sliderFill.Size = UDim2.new(pos, 0, 1, 0)
+        rangeValue = math.floor(pos * 200)
+        proxRangeTxt.Text = "Range: " .. rangeValue
+    end
 end)
 
--- 5. BUCLE DE ESCANEO
+local listFrame = Instance.new("ScrollingFrame", main)
+listFrame.Size = UDim2.new(1, -6, 0, 200)
+listFrame.Position = UDim2.new(0, 3, 0, 38)
+listFrame.BackgroundTransparency = 1
+listFrame.CanvasSize = UDim2.new(0, 0, 0, 0)
+listFrame.ScrollBarThickness = 2
+listFrame.Visible = false
+
+local layout = Instance.new("UIListLayout", listFrame)
+layout.Padding = UDim.new(0, 3)
+layout.SortOrder = Enum.SortOrder.LayoutOrder
+
+local function updateSize()
+    if listFrame.Visible then
+        local targetH = math.clamp(layout.AbsoluteContentSize.Y + 45, 45, 250)
+        main:TweenSize(UDim2.new(0, 170, 0, targetH), "Out", "Quart", 0.2, true)
+        proxPanel.Visible = true
+        main.ClipsDescendants = false -- Permitir ver el panel de arriba
+    else
+        main:TweenSize(UDim2.new(0, 170, 0, 32), "Out", "Quart", 0.2, true)
+        proxPanel.Visible = false
+        main.ClipsDescendants = true
+    end
+end
+
+-- 5. LÓGICA DE TARJETAS (IGUAL)
+local function addPlayer(p)
+    if not p or p == lp then return end
+    local card = Instance.new("Frame", listFrame)
+    card.Size = UDim2.new(1, 0, 0, 32)
+    card.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
+    card.Name = p.Name
+    Instance.new("UICorner", card)
+
+    local infoBtn = Instance.new("TextButton", card)
+    infoBtn.Size = UDim2.new(0.8, 0, 1, 0)
+    infoBtn.BackgroundTransparency = 1
+    infoBtn.Text = ""
+
+    local dName = Instance.new("TextLabel", infoBtn)
+    dName.Size = UDim2.new(0, 0, 0, 15)
+    dName.Position = UDim2.new(0, 5, 0, 3)
+    dName.Text = p.DisplayName
+    dName.Font = Enum.Font.GothamBold
+    dName.TextSize = 9
+    dName.TextColor3 = Color3.new(1,1,1)
+    dName.BackgroundTransparency = 1
+    dName.AutomaticSize = Enum.AutomaticSize.X
+
+    local ownerLabel = Instance.new("TextLabel", infoBtn)
+    ownerLabel.Text = "BASE OWNER"
+    ownerLabel.TextColor3 = Color3.new(1, 0, 0)
+    ownerLabel.Font = Enum.Font.GothamBold
+    ownerLabel.TextSize = 7
+    ownerLabel.Position = UDim2.new(0, 5, 0, 3)
+    ownerLabel.Visible = false
+    ownerLabel.BackgroundTransparency = 1
+
+    local uName = Instance.new("TextLabel", infoBtn)
+    uName.Size = UDim2.new(1, -10, 0, 10)
+    uName.Position = UDim2.new(0, 5, 0, 16)
+    uName.Font = Enum.Font.Gotham
+    uName.TextSize = 7
+    uName.TextColor3 = Color3.fromRGB(150, 150, 150)
+    uName.BackgroundTransparency = 1
+
+    local allBtn = Instance.new("TextButton", card)
+    allBtn.Size = UDim2.new(0.2, 0, 1, 0)
+    allBtn.Position = UDim2.new(0.8, 0, 0, 0)
+    allBtn.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+    allBtn.BackgroundTransparency = 0.4
+    allBtn.Text = "ALL"
+    allBtn.TextColor3 = Color3.new(1,1,1)
+    allBtn.Rotation = -90
+    allBtn.Font = Enum.Font.GothamBold
+    allBtn.TextSize = 8
+    Instance.new("UICorner", allBtn)
+
+    local function updateUI()
+        if not p.Parent then card:Destroy() return end
+        local mineral = p:GetAttribute("StealingIndex")
+        local stealing = p:GetAttribute("Stealing")
+        uName.Text = "@" .. p.Name .. (mineral and (" | " .. mineral) or "")
+        card.LayoutOrder = -(Prioridad[mineral] or 0)
+
+        local enBase = false
+        local char = lp.Character
+        if char and char:FindFirstChild("HumanoidRootPart") then
+            for folder, owner in pairs(mapaDeDuenos) do
+                if owner == p then
+                    local plotFolder = Plots:FindFirstChild(folder)
+                    if plotFolder then
+                        local pv, ps = plotFolder:GetBoundingBox()
+                        local localPos = pv:PointToObjectSpace(char.HumanoidRootPart.Position)
+                        if math.abs(localPos.X) <= ps.X/2 and math.abs(localPos.Z) <= ps.Z/2 then
+                            enBase = true break
+                        end
+                    end
+                end
+            end
+        end
+
+        if enBase then
+            card.BackgroundColor3 = Color3.fromRGB(255, 255, 180)
+            dName.TextColor3 = Color3.new(0,0,0)
+            uName.TextColor3 = Color3.fromRGB(50,50,50)
+            ownerLabel.Visible = true
+            ownerLabel.Position = UDim2.new(0, dName.TextBounds.X + 10, 0, 3)
+        elseif stealing then
+            card.BackgroundColor3 = Color3.fromRGB(85, 20, 20)
+            dName.TextColor3 = Color3.new(1,1,1)
+            uName.TextColor3 = Color3.new(0.8,0.8,0.8)
+            ownerLabel.Visible = false
+        else
+            card.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
+            dName.TextColor3 = Color3.new(1,1,1)
+            uName.TextColor3 = Color3.new(0.6,0.6,0.6)
+            ownerLabel.Visible = false
+        end
+    end
+
+    infoBtn.MouseButton1Click:Connect(function()
+        disparar(p.Name, EFECTOS_CLIC[indiceGlobal])
+        indiceGlobal = (indiceGlobal % #EFECTOS_CLIC) + 1
+    end)
+
+    allBtn.MouseButton1Click:Connect(function()
+        for _, ef in ipairs(EFECTOS_ALL) do disparar(p.Name, ef) end
+    end)
+
+    task.spawn(function() while card.Parent do updateUI() task.wait(0.5) end end)
+end
+
+local function refresh()
+    for _, c in ipairs(listFrame:GetChildren()) do if c:IsA("Frame") then c:Destroy() end end
+    escanearPlots()
+    for _, p in ipairs(Players:GetPlayers()) do addPlayer(p) end
+    listFrame.CanvasSize = UDim2.new(0,0,0, layout.AbsoluteContentSize.Y)
+    updateSize()
+end
+
+-- 6. TÍTULO Y EVENTOS
+local titleBtn = Instance.new("TextButton", main)
+titleBtn.Size = UDim2.new(1, 0, 0, 32)
+titleBtn.Text = "Admin Spammer ▼"
+titleBtn.TextColor3 = Color3.new(1, 1, 1)
+titleBtn.Font = Enum.Font.GothamBold
+titleBtn.BackgroundTransparency = 1
+titleBtn.MouseButton1Click:Connect(function()
+    listFrame.Visible = not listFrame.Visible
+    refresh()
+end)
+
+-- Bucle Proximity Final
 RunService.Heartbeat:Connect(function()
     local char = lp.Character
     local hrp = char and char:FindFirstChild("HumanoidRootPart")
-    
     if hrp then
-        -- POSICIÓN DEL CÍRCULO EN LOS PIES (Offset -3 en Y)
         visualCircle.Size = Vector3.new(0.1, rangeValue * 2, rangeValue * 2)
         visualCircle.CFrame = (hrp.CFrame * CFrame.new(0, -3, 0)) * CFrame.Angles(0, 0, math.rad(90))
-        
         if proximityEnabled then
             for _, p in ipairs(Players:GetPlayers()) do
                 if p ~= lp and p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
                     local dist = (hrp.Position - p.Character.HumanoidRootPart.Position).Magnitude
-                    
                     if dist <= 40 then
                         if tick() - cooldownEfectos["ALL"] > 60 then
                             cooldownEfectos["ALL"] = tick()
-                            dispararEfecto(p.Name, "ALL")
+                            disparar(p.Name, "ALL_PROX")
                         end
                     elseif dist <= rangeValue then
-                        -- Secuencia inteligente: Busca el primer efecto de la lista que no esté en cooldown
-                        for _, ef in ipairs(EFECTOS_SECUENCIA) do
+                        for _, ef in ipairs(EFECTOS_PROX) do
                             if tick() - cooldownEfectos[ef] > 60 then
                                 cooldownEfectos[ef] = tick()
-                                dispararEfecto(p.Name, ef)
-                                break -- Dispara solo uno y sale del loop para este jugador
+                                disparar(p.Name, ef)
+                                break
                             end
                         end
                     end
@@ -184,4 +346,7 @@ RunService.Heartbeat:Connect(function()
     end
 end)
 
-print("🛡️ Proximity AP Final cargado. Círculo en pies y secuencia optimizada.")
+Players.PlayerAdded:Connect(function() task.wait(1) refresh() end)
+Players.PlayerRemoving:Connect(refresh)
+
+print("✅ Super Admin Spammer + Proximity UP cargado.")
