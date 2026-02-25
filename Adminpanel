@@ -1,5 +1,5 @@
 -- ==========================================
--- SUPER ADMIN SPAMMER: FINAL EDITION + SAVING
+-- SUPER ADMIN SPAMMER: FINAL EDITION + SAVING (FIXED)
 -- ==========================================
 
 local Players = game:GetService("Players")
@@ -21,38 +21,46 @@ local cooldownEfectos = {["inverse"]=0, ["jail"]=0, ["tiny"]=0, ["morph"]=0, ["j
 local indiceGlobal = 1
 local proximityEnabled = false
 
--- Valores por defecto (se sobrescribirán si hay un guardado)
+-- Valores por defecto
 local rangeValue = 50
 local savedPos = UDim2.new(0.5, 126, 0.5, -152)
+_G.SavedAdminPos = savedPos -- Inicialización inmediata para evitar error de nil
 
--- Lógica de Guardado (JSON)
+-- Lógica de Guardado corregida
 local function saveSettings()
-    local data = {
-        pos = {
-            XScale = _G.SavedAdminPos.X.Scale,
-            XOffset = _G.SavedAdminPos.X.Offset,
-            YScale = _G.SavedAdminPos.Y.Scale,
-            YOffset = _G.SavedAdminPos.Y.Offset
-        },
-        range = rangeValue
-    }
-    writefile(FILE_NAME, HttpService:JSONEncode(data))
+    -- Validación: Solo guarda si la variable existe y tiene datos
+    if _G.SavedAdminPos and _G.SavedAdminPos.X then
+        local data = {
+            pos = {
+                XScale = _G.SavedAdminPos.X.Scale,
+                XOffset = _G.SavedAdminPos.X.Offset,
+                YScale = _G.SavedAdminPos.Y.Scale,
+                YOffset = _G.SavedAdminPos.Y.Offset
+            },
+            range = rangeValue
+        }
+        pcall(function()
+            writefile(FILE_NAME, HttpService:JSONEncode(data))
+        end)
+    end
 end
 
--- Lógica de Carga (JSON)
+-- Lógica de Carga corregida
 local function loadSettings()
     if isfile(FILE_NAME) then
         local success, content = pcall(readfile, FILE_NAME)
         if success then
-            local data = HttpService:JSONDecode(content)
-            savedPos = UDim2.new(data.pos.XScale, data.pos.XOffset, data.pos.YScale, data.pos.YOffset)
-            rangeValue = data.range
-            _G.SavedAdminPos = savedPos
+            local s, data = pcall(function() return HttpService:JSONDecode(content) end)
+            if s and data and data.pos then
+                savedPos = UDim2.new(data.pos.XScale, data.pos.XOffset, data.pos.YScale, data.pos.YOffset)
+                rangeValue = data.range or 50
+                _G.SavedAdminPos = savedPos
+            end
         end
     end
 end
 
-loadSettings() -- Cargar antes de crear la GUI
+loadSettings()
 
 local Prioridad = {
     ["Skibidi Toilet"] = 100, ["Strawberry Elephant"] = 99, ["Meowl"] = 98,
@@ -75,7 +83,7 @@ visualCircle.CanCollide = false
 visualCircle.Anchored = true
 visualCircle.Parent = workspace
 
--- 2. ESCÁNER DE PLOTS (Tu lógica original)
+-- 2. ESCÁNER DE PLOTS
 local mapaDeDuenos = {}
 local function escanearPlots()
     mapaDeDuenos = {}
@@ -94,7 +102,7 @@ local function escanearPlots()
     end
 end
 
--- 3. FUNCIÓN DE DISPARO (Tu lógica original)
+-- 3. FUNCIÓN DE DISPARO
 local function disparar(targetName, efecto)
     local admin = pgui:FindFirstChild("AdminPanel") and pgui.AdminPanel:FindFirstChild("AdminPanel")
     if not admin then return end
@@ -192,7 +200,7 @@ end)
 UIS.InputEnded:Connect(function(input)
     if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then 
         dragging = false
-        saveSettings() -- Guardar rango al soltar
+        saveSettings() 
     end
 end)
 UIS.InputChanged:Connect(function(input)
@@ -229,7 +237,7 @@ local function updateSize()
     end
 end
 
--- 5. LÓGICA DE TARJETAS (Tu lógica original)
+-- 5. LÓGICA DE TARJETAS
 local function addPlayer(p)
     if not p or p == lp then return end
     local card = Instance.new("Frame", listFrame)
@@ -391,4 +399,4 @@ end)
 Players.PlayerAdded:Connect(function() task.wait(1) refresh() end)
 Players.PlayerRemoving:Connect(refresh)
 
-print("✅ Super Admin Spammer: Movible y Persistencia cargada.")
+print("✅ Super Admin Spammer: Guardado corregido y funcionando.")
