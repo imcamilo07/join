@@ -1,5 +1,5 @@
 -- ==========================================
--- SUPER ADMIN SPAMMER: FINAL EDITION + SAVING (FIXED)
+-- SUPER ADMIN SPAMMER: OPTIMIZED EDITION
 -- ==========================================
 
 local Players = game:GetService("Players")
@@ -10,7 +10,6 @@ local RunService = game:GetService("RunService")
 local UIS = game:GetService("UserInputService")
 local HttpService = game:GetService("HttpService")
 
--- Archivo donde se guardará la configuración
 local FILE_NAME = "AdminSettings.json"
 
 -- 1. CONFIGURACIÓN Y ESTADO
@@ -21,14 +20,12 @@ local cooldownEfectos = {["inverse"]=0, ["jail"]=0, ["tiny"]=0, ["morph"]=0, ["j
 local indiceGlobal = 1
 local proximityEnabled = false
 
--- Valores por defecto
 local rangeValue = 50
 local savedPos = UDim2.new(0.5, 126, 0.5, -152)
-_G.SavedAdminPos = savedPos -- Inicialización inmediata para evitar error de nil
+_G.SavedAdminPos = savedPos
 
--- Lógica de Guardado corregida
+-- Lógica de Guardado
 local function saveSettings()
-    -- Validación: Solo guarda si la variable existe y tiene datos
     if _G.SavedAdminPos and _G.SavedAdminPos.X then
         local data = {
             pos = {
@@ -39,13 +36,10 @@ local function saveSettings()
             },
             range = rangeValue
         }
-        pcall(function()
-            writefile(FILE_NAME, HttpService:JSONEncode(data))
-        end)
+        pcall(function() writefile(FILE_NAME, HttpService:JSONEncode(data)) end)
     end
 end
 
--- Lógica de Carga corregida
 local function loadSettings()
     if isfile(FILE_NAME) then
         local success, content = pcall(readfile, FILE_NAME)
@@ -83,7 +77,7 @@ visualCircle.CanCollide = false
 visualCircle.Anchored = true
 visualCircle.Parent = workspace
 
--- 2. ESCÁNER DE PLOTS
+-- 2. ESCÁNER DE PLOTS (Optimizado: Solo corre si el menú está abierto)
 local mapaDeDuenos = {}
 local function escanearPlots()
     mapaDeDuenos = {}
@@ -108,22 +102,11 @@ local function disparar(targetName, efecto)
     if not admin then return end
     local pBtn = admin.Profiles.ScrollingFrame:FindFirstChild(targetName)
     
-    if efecto == "ALL_PROX" then
-        for _, ef in ipairs(EFECTOS_PROX) do
-            local eBtn = admin.Content.ScrollingFrame:FindFirstChild(ef)
-            if pBtn and eBtn then
-                for _, c in ipairs(getconnections(pBtn.Activated)) do c:Fire() end
-                task.wait(0.05)
-                for _, c in ipairs(getconnections(eBtn.Activated)) do c:Fire() end
-            end
-        end
-    else
-        local eBtn = admin.Content.ScrollingFrame:FindFirstChild(efecto)
-        if pBtn and eBtn then
-            for _, c in ipairs(getconnections(pBtn.Activated)) do c:Fire() end
-            task.wait(0.1)
-            for _, c in ipairs(getconnections(eBtn.Activated)) do c:Fire() end
-        end
+    local eBtn = admin.Content.ScrollingFrame:FindFirstChild(efecto)
+    if pBtn and eBtn then
+        for _, c in ipairs(getconnections(pBtn.Activated)) do c:Fire() end
+        task.wait(0.1)
+        for _, c in ipairs(getconnections(eBtn.Activated)) do c:Fire() end
     end
 end
 
@@ -141,7 +124,6 @@ main.Active = true
 main.Draggable = true
 Instance.new("UICorner", main)
 
--- Guardar posición cada vez que se mueva
 main:GetPropertyChangedSignal("Position"):Connect(function()
     _G.SavedAdminPos = main.Position
     saveSettings()
@@ -193,18 +175,18 @@ proxToggle.MouseButton1Click:Connect(function()
     visualCircle.Transparency = proximityEnabled and 0.8 or 1
 end)
 
-local dragging = false
+local sliderDragging = false
 sliderBack.InputBegan:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then dragging = true end
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then sliderDragging = true end
 end)
 UIS.InputEnded:Connect(function(input)
     if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then 
-        dragging = false
+        sliderDragging = false
         saveSettings() 
     end
 end)
 UIS.InputChanged:Connect(function(input)
-    if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+    if sliderDragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
         local pos = math.clamp((input.Position.X - sliderBack.AbsolutePosition.X) / sliderBack.AbsoluteSize.X, 0, 1)
         sliderFill.Size = UDim2.new(pos, 0, 1, 0)
         rangeValue = math.floor(pos * 200)
@@ -237,7 +219,7 @@ local function updateSize()
     end
 end
 
--- 5. LÓGICA DE TARJETAS
+-- 5. LÓGICA DE TARJETAS (Optimización: Solo se actualizan si el panel está visible)
 local function addPlayer(p)
     if not p or p == lp then return end
     local card = Instance.new("Frame", listFrame)
@@ -292,6 +274,9 @@ local function addPlayer(p)
 
     local function updateUI()
         if not p.Parent then card:Destroy() return end
+        -- SUSPENSIÓN DE PROCESOS: Si el panel está cerrado, no calculamos nada
+        if not listFrame.Visible then return end
+
         local mineral = p:GetAttribute("StealingIndex")
         local stealing = p:GetAttribute("Stealing")
         uName.Text = "@" .. p.Name .. (mineral and (" | " .. mineral) or "")
@@ -304,99 +289,4 @@ local function addPlayer(p)
                 if owner == p then
                     local plotFolder = Plots:FindFirstChild(folder)
                     if plotFolder then
-                        local pv, ps = plotFolder:GetBoundingBox()
-                        local localPos = pv:PointToObjectSpace(char.HumanoidRootPart.Position)
-                        if math.abs(localPos.X) <= ps.X/2 and math.abs(localPos.Z) <= ps.Z/2 then
-                            enBase = true break
-                        end
-                    end
-                end
-            end
-        end
-
-        if enBase then
-            card.BackgroundColor3 = Color3.fromRGB(255, 255, 180)
-            dName.TextColor3 = Color3.new(0,0,0)
-            uName.TextColor3 = Color3.fromRGB(50,50,50)
-            ownerLabel.Visible = true
-            ownerLabel.Position = UDim2.new(0, dName.TextBounds.X + 10, 0, 3)
-        elseif stealing then
-            card.BackgroundColor3 = Color3.fromRGB(85, 20, 20)
-            dName.TextColor3 = Color3.new(1,1,1)
-            uName.TextColor3 = Color3.new(0.8,0.8,0.8)
-            ownerLabel.Visible = false
-        else
-            card.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
-            dName.TextColor3 = Color3.new(1,1,1)
-            uName.TextColor3 = Color3.new(0.6,0.6,0.6)
-            ownerLabel.Visible = false
-        end
-    end
-
-    infoBtn.MouseButton1Click:Connect(function()
-        disparar(p.Name, EFECTOS_CLIC[indiceGlobal])
-        indiceGlobal = (indiceGlobal % #EFECTOS_CLIC) + 1
-    end)
-
-    allBtn.MouseButton1Click:Connect(function()
-        for _, ef in ipairs(EFECTOS_ALL) do disparar(p.Name, ef) end
-    end)
-
-    task.spawn(function() while card.Parent do updateUI() task.wait(0.5) end end)
-end
-
-local function refresh()
-    for _, c in ipairs(listFrame:GetChildren()) do if c:IsA("Frame") then c:Destroy() end end
-    escanearPlots()
-    for _, p in ipairs(Players:GetPlayers()) do addPlayer(p) end
-    listFrame.CanvasSize = UDim2.new(0,0,0, layout.AbsoluteContentSize.Y)
-    updateSize()
-end
-
--- 6. TÍTULO Y EVENTOS
-local titleBtn = Instance.new("TextButton", main)
-titleBtn.Size = UDim2.new(1, 0, 0, 32)
-titleBtn.Text = "Admin Spammer ▼"
-titleBtn.TextColor3 = Color3.new(1, 1, 1)
-titleBtn.Font = Enum.Font.GothamBold
-titleBtn.BackgroundTransparency = 1
-titleBtn.MouseButton1Click:Connect(function()
-    listFrame.Visible = not listFrame.Visible
-    refresh()
-end)
-
--- Bucle Proximity Final
-RunService.Heartbeat:Connect(function()
-    local char = lp.Character
-    local hrp = char and char:FindFirstChild("HumanoidRootPart")
-    if hrp then
-        visualCircle.Size = Vector3.new(0.1, rangeValue * 2, rangeValue * 2)
-        visualCircle.CFrame = (hrp.CFrame * CFrame.new(0, -3, 0)) * CFrame.Angles(0, 0, math.rad(90))
-        if proximityEnabled then
-            for _, p in ipairs(Players:GetPlayers()) do
-                if p ~= lp and p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
-                    local dist = (hrp.Position - p.Character.HumanoidRootPart.Position).Magnitude
-                    if dist <= 40 then
-                        if tick() - cooldownEfectos["ALL"] > 60 then
-                            cooldownEfectos["ALL"] = tick()
-                            disparar(p.Name, "ALL_PROX")
-                        end
-                    elseif dist <= rangeValue then
-                        for _, ef in ipairs(EFECTOS_PROX) do
-                            if tick() - cooldownEfectos[ef] > 60 then
-                                cooldownEfectos[ef] = tick()
-                                disparar(p.Name, ef)
-                                break
-                            end
-                        end
-                    end
-                end
-            end
-        end
-    end
-end)
-
-Players.PlayerAdded:Connect(function() task.wait(1) refresh() end)
-Players.PlayerRemoving:Connect(refresh)
-
-print("✅ Super Admin Spammer: Guardado corregido y funcionando.")
+                        local pv, ps
