@@ -1,5 +1,5 @@
 -- ==========================================
--- SUPER ADMIN SPAMMER: OPTIMIZED & FIXED
+-- SUPER ADMIN SPAMMER: ULTRA OPTIMIZED (FIXED)
 -- ==========================================
 
 local Players = game:GetService("Players")
@@ -15,27 +15,23 @@ local FILE_NAME = "AdminSettings.json"
 -- 1. CONFIGURACIÓN Y ESTADO
 local EFECTOS_CLIC = {"ragdoll", "rocket", "balloon"}
 local EFECTOS_ALL = {"jail", "inverse", "tiny", "morph", "jumpscare", "nightvision"}
-local EFECTOS_PROX = {"inverse", "jail", "tiny", "morph", "jumpscare"}
-local cooldownEfectos = {["inverse"]=0, ["jail"]=0, ["tiny"]=0, ["morph"]=0, ["jumpscare"]=0, ["ALL"]=0}
+local EFECTOS_PROX = {"jail", "inverse", "tiny", "morph", "jumpscare", "nightvision"}
+local cooldownEfectos = {["jail"]=0, ["inverse"]=0, ["tiny"]=0, ["morph"]=0, ["jumpscare"]=0, ["nightvision"]=0}
+local yaDisparados = {} 
+local updateFunctions = {} -- Tabla segura para las funciones de actualización
 local indiceGlobal = 1
 local proximityEnabled = false
 
 local rangeValue = 50
--- Posición inicial por defecto por si falla la carga
 local defaultPos = UDim2.new(0.5, 0, 0.5, 0)
 _G.SavedAdminPos = defaultPos
 
--- Lógica de Guardado (Blindada contra NIL)
+-- Lógica de Guardado
 local function saveSettings()
     local currentPos = _G.SavedAdminPos
     if currentPos and typeof(currentPos) == "UDim2" then
         local data = {
-            pos = {
-                XScale = currentPos.X.Scale,
-                XOffset = currentPos.X.Offset,
-                YScale = currentPos.Y.Scale,
-                YOffset = currentPos.Y.Offset
-            },
+            pos = {XScale = currentPos.X.Scale, XOffset = currentPos.X.Offset, YScale = currentPos.Y.Scale, YOffset = currentPos.Y.Offset},
             range = rangeValue
         }
         pcall(function() writefile(FILE_NAME, HttpService:JSONEncode(data)) end)
@@ -89,9 +85,9 @@ local function escanearPlots()
         local sign = carpeta:FindFirstChild("PlotSign", true)
         local label = sign and sign:FindFirstChild("TextLabel", true)
         if label then
+            local text = string.lower(label.Text)
             for _, p in ipairs(Players:GetPlayers()) do
-                if string.find(string.lower(label.Text), string.lower(p.Name)) or 
-                   string.find(string.lower(label.Text), string.lower(p.DisplayName)) then
+                if string.find(text, string.lower(p.Name)) or string.find(text, string.lower(p.DisplayName)) then
                     mapaDeDuenos[carpeta.Name] = p
                     break
                 end
@@ -105,7 +101,6 @@ local function disparar(targetName, efecto)
     local admin = pgui:FindFirstChild("AdminPanel") and pgui.AdminPanel:FindFirstChild("AdminPanel")
     if not admin then return end
     local pBtn = admin.Profiles.ScrollingFrame:FindFirstChild(targetName)
-    
     local eBtn = admin.Content.ScrollingFrame:FindFirstChild(efecto)
     if pBtn and eBtn then
         for _, c in ipairs(getconnections(pBtn.Activated)) do c:Fire() end
@@ -128,7 +123,6 @@ main.Active = true
 main.Draggable = true
 Instance.new("UICorner", main)
 
--- Evento de guardado optimizado
 main:GetPropertyChangedSignal("Position"):Connect(function()
     _G.SavedAdminPos = main.Position
     saveSettings()
@@ -178,6 +172,7 @@ proxToggle.MouseButton1Click:Connect(function()
     proxToggle.Text = proximityEnabled and "ON" or "OFF"
     proxToggle.BackgroundColor3 = proximityEnabled and Color3.fromRGB(255, 0, 80) or Color3.fromRGB(40, 40, 40)
     visualCircle.Transparency = proximityEnabled and 0.8 or 1
+    if not proximityEnabled then table.clear(yaDisparados) end
 end)
 
 local sliderDragging = false
@@ -224,7 +219,7 @@ local function updateSize()
     end
 end
 
--- 5. LÓGICA DE TARJETAS
+-- 5. LÓGICA DE TARJETAS (Arreglo del error de Atributo)
 local function addPlayer(p)
     if not p or p == lp then return end
     local card = Instance.new("Frame", listFrame)
@@ -277,27 +272,24 @@ local function addPlayer(p)
     allBtn.TextSize = 8
     Instance.new("UICorner", allBtn)
 
-    local function updateUI()
-        if not p.Parent then card:Destroy() return end
-        if not listFrame.Visible then return end
-
+    -- Guardamos la función en la tabla externa indexada por el objeto
+    updateFunctions[card] = function()
+        if not p.Parent then card:Destroy() updateFunctions[card] = nil return end
         local mineral = p:GetAttribute("StealingIndex")
         local stealing = p:GetAttribute("Stealing")
         uName.Text = "@" .. p.Name .. (mineral and (" | " .. mineral) or "")
         card.LayoutOrder = -(Prioridad[mineral] or 0)
 
         local enBase = false
-        local char = lp.Character
-        if char and char:FindFirstChild("HumanoidRootPart") then
+        local lpChar = lp.Character
+        if lpChar and lpChar:FindFirstChild("HumanoidRootPart") then
             for folder, owner in pairs(mapaDeDuenos) do
                 if owner == p then
                     local plotFolder = Plots:FindFirstChild(folder)
                     if plotFolder then
                         local pv, ps = plotFolder:GetBoundingBox()
-                        local localPos = pv:PointToObjectSpace(char.HumanoidRootPart.Position)
-                        if math.abs(localPos.X) <= ps.X/2 and math.abs(localPos.Z) <= ps.Z/2 then
-                            enBase = true break
-                        end
+                        local localPos = pv:PointToObjectSpace(lpChar.HumanoidRootPart.Position)
+                        if math.abs(localPos.X) <= ps.X/2 and math.abs(localPos.Z) <= ps.Z/2 then enBase = true break end
                     end
                 end
             end
@@ -330,11 +322,10 @@ local function addPlayer(p)
     allBtn.MouseButton1Click:Connect(function()
         for _, ef in ipairs(EFECTOS_ALL) do disparar(p.Name, ef) end
     end)
-
-    task.spawn(function() while card.Parent do updateUI() task.wait(0.5) end end)
 end
 
 local function refresh()
+    updateFunctions = {} -- Limpiar tabla al refrescar
     for _, c in ipairs(listFrame:GetChildren()) do if c:IsA("Frame") then c:Destroy() end end
     escanearPlots()
     for _, p in ipairs(Players:GetPlayers()) do addPlayer(p) end
@@ -355,31 +346,55 @@ titleBtn.MouseButton1Click:Connect(function()
     updateSize()
 end)
 
--- Bucle Proximity Inteligente
-RunService.Heartbeat:Connect(function()
-    if not proximityEnabled and not listFrame.Visible then 
-        visualCircle.Transparency = 1
-        return 
-    end
-
+-- BUCLE CENTRAL
+RunService.RenderStepped:Connect(function()
+    if not proximityEnabled and not listFrame.Visible then visualCircle.Transparency = 1 return end
     local char = lp.Character
     local hrp = char and char:FindFirstChild("HumanoidRootPart")
     if hrp then
         visualCircle.Size = Vector3.new(0.1, rangeValue * 2, rangeValue * 2)
         visualCircle.CFrame = (hrp.CFrame * CFrame.new(0, -3, 0)) * CFrame.Angles(0, 0, math.rad(90))
         visualCircle.Transparency = proximityEnabled and 0.8 or 1
+    end
+end)
+
+task.spawn(function()
+    while true do
+        task.wait(0.25)
         
+        if listFrame.Visible then
+            for card, upFunc in pairs(updateFunctions) do
+                upFunc()
+            end
+        end
+
         if proximityEnabled then
-            for _, p in ipairs(Players:GetPlayers()) do
-                if p ~= lp and p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
-                    local dist = (hrp.Position - p.Character.HumanoidRootPart.Position).Magnitude
-                    if dist <= rangeValue then
-                        for _, ef in ipairs(EFECTOS_PROX) do
-                            if tick() - cooldownEfectos[ef] > 60 then
-                                cooldownEfectos[ef] = tick()
-                                disparar(p.Name, ef)
-                                break
+            local char = lp.Character
+            local hrp = char and char:FindFirstChild("HumanoidRootPart")
+            if hrp then
+                local myPos = hrp.Position
+                for _, p in ipairs(Players:GetPlayers()) do
+                    if p ~= lp and p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
+                        local p_hrp = p.Character.HumanoidRootPart
+                        local dist = (myPos - p_hrp.Position).Magnitude
+                        
+                        if dist <= rangeValue then
+                            if not yaDisparados[p.Name] then
+                                yaDisparados[p.Name] = true
+                                task.spawn(function()
+                                    for _, ef in ipairs(EFECTOS_PROX) do
+                                        if tick() - (cooldownEfectos[ef] or 0) > 60 then
+                                            if (hrp.Position - p_hrp.Position).Magnitude <= rangeValue then
+                                                cooldownEfectos[ef] = tick()
+                                                disparar(p.Name, ef)
+                                                task.wait(0.1)
+                                            else break end
+                                        end
+                                    end
+                                end)
                             end
+                        else
+                            yaDisparados[p.Name] = nil
                         end
                     end
                 end
@@ -391,4 +406,4 @@ end)
 Players.PlayerAdded:Connect(function() task.wait(1) if listFrame.Visible then refresh() end end)
 Players.PlayerRemoving:Connect(function() if listFrame.Visible then refresh() end end)
 
-print("✅ Versión Optimizada: Errores de guardado corregidos.")
+print("✅ Versión ULTRA-OPTIMIZADA cargada y sin errores de Atributos.")
