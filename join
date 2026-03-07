@@ -27,12 +27,12 @@ local ALL_OBJECTS = {
     "Celularcini Viciosini", "Los Candies", "Los Bros", "Popcuru and Fizzuru", "La Extinct Grande",
     "Chipso and Queso", "Chillin Chili", "Ketupat Bros", "Money Money Reindeer", "Mieteteira Bicicleteira",
     "Tuff Toucan", "Tralaledon", "Los Puggies", "W or L", "Los Primos", "Eviledon",
-    "La Taco Combinasion", "Orcaledon", "Swaggy Bros", "La Food Combinasion", "Love Love Bear", "Celestial Pegasus"
+    "La Taco Combinasion", "Orcaledon", "Swaggy Bros", "La Food Combinasion", "Love Love Bear", "Celestial Pegasus", "Griffin"
 }
 
 local INITIAL_PRIORITY = {
     "Strawberry Elephant", "Meowl", "Skibidi Toilet", "Dragon Cannelloni",
-    "Dragon Gingerini", "Hydra Dragon Cannelloni", "Cerberus", "Capitano Moby", "Headless Horseman",
+    "Dragon Gingerini", "Hydra Dragon Cannelloni", "Griffin", "Cerberus", "Capitano Moby", "Headless Horseman",
     "Burguro and Fryuro", "Celestial Pegasus", "Cooki and Milki", "La Casa Boo", "Reinito Sleighito",
     "Gingerat Gerat", "Spooky and Pumpky", "Fragrama and Chocrama",
     "La Supreme Combinasion", "La Secret Combinasion", "Garama and Madundung",
