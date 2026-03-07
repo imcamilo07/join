@@ -1,5 +1,5 @@
 -- ==========================================
--- SUPER ADMIN SPAMMER: ULTRA OPTIMIZED (V3.0)
+-- SUPER ADMIN SPAMMER: ULTRA OPTIMIZED (V3.1)
 -- ==========================================
 
 local Players = game:GetService("Players")
@@ -12,12 +12,11 @@ local HttpService = game:GetService("HttpService")
 
 local FILE_NAME = "AdminSettings.json"
 
--- 1. CONFIGURACIÓN Y ESTADO (ACTUALIZADO CON NUEVOS EFECTOS Y COOLDOWNS)
+-- 1. CONFIGURACIÓN Y ESTADO
 local EFECTOS_CLIC = {"ragdoll", "rocket", "balloon"}
 local EFECTOS_ALL = {"jail", "inverse", "tiny", "morph", "jumpscare", "nightvision"}
 local EFECTOS_PROX = {"jail", "inverse", "tiny", "morph", "jumpscare", "nightvision", "rocket", "balloon", "ragdoll"}
 
--- Cooldowns específicos pedidos
 local cooldownEfectos = {
     ["jail"]=0, ["inverse"]=0, ["tiny"]=0, ["morph"]=0, ["jumpscare"]=0, ["nightvision"]=0,
     ["rocket"]=0, ["balloon"]=0, ["ragdoll"]=0
@@ -36,7 +35,7 @@ local rangeValue = 50
 local defaultPos = UDim2.new(0.5, 0, 0.5, 0)
 _G.SavedAdminPos = defaultPos
 
--- Lógica de Guardado (SIN CAMBIOS)
+-- Lógica de Guardado
 local function saveSettings()
     local currentPos = _G.SavedAdminPos
     if currentPos and typeof(currentPos) == "UDim2" then
@@ -77,7 +76,7 @@ local Prioridad = {
     ["Tang Tang Keletang"] = 79, ["Ketchuru and Musturu"] = 78
 }
 
--- Círculo Visual (SIN CAMBIOS)
+-- Círculo Visual
 local visualCircle = Instance.new("Part")
 visualCircle.Shape = Enum.PartType.Cylinder
 visualCircle.Transparency = 1
@@ -87,7 +86,7 @@ visualCircle.CanCollide = false
 visualCircle.Anchored = true
 visualCircle.Parent = workspace
 
--- 2. ESCÁNER DE PLOTS (SIN CAMBIOS)
+-- 2. ESCÁNER DE PLOTS
 local mapaDeDuenos = {}
 local function escanearPlots()
     mapaDeDuenos = {}
@@ -106,20 +105,19 @@ local function escanearPlots()
     end
 end
 
--- 3. FUNCIÓN DE DISPARO (ACTUALIZADA: INSTANTÁNEA / SIN WAIT)
+-- 3. FUNCIÓN DE DISPARO (INSTANTÁNEA)
 local function disparar(targetName, efecto)
     local admin = pgui:FindFirstChild("AdminPanel") and pgui.AdminPanel:FindFirstChild("AdminPanel")
     if not admin then return end
     local pBtn = admin.Profiles.ScrollingFrame:FindFirstChild(targetName)
     local eBtn = admin.Content.ScrollingFrame:FindFirstChild(efecto)
     if pBtn and eBtn then
-        -- Selección y efecto AL MISMO TIEMPO (Sin task.wait)
         for _, c in ipairs(getconnections(pBtn.Activated)) do c:Fire() end
         for _, c in ipairs(getconnections(eBtn.Activated)) do c:Fire() end
     end
 end
 
--- 4. GUI PRINCIPAL (SIN CAMBIOS)
+-- 4. GUI PRINCIPAL
 local sg = Instance.new("ScreenGui", pgui)
 sg.Name = "SuperAdminSpammer_Final"
 sg.ResetOnSpawn = false
@@ -138,7 +136,7 @@ main:GetPropertyChangedSignal("Position"):Connect(function()
     saveSettings()
 end)
 
--- PANEL PROXIMITY (SIN CAMBIOS)
+-- PANEL PROXIMITY
 local proxPanel = Instance.new("Frame", main)
 proxPanel.Size = UDim2.new(1, -6, 0, 35)
 proxPanel.Position = UDim2.new(0, 3, 0, -40)
@@ -229,7 +227,7 @@ local function updateSize()
     end
 end
 
--- 5. LÓGICA DE TARJETAS (SIN CAMBIOS EN OPTIMIZACIÓN)
+-- 5. LÓGICA DE TARJETAS (FUSIONADA CON DETECCIÓN VISUAL)
 local function addPlayer(p)
     if not p or p == lp then return end
     local card = Instance.new("Frame", listFrame)
@@ -252,6 +250,15 @@ local function addPlayer(p)
     dName.TextColor3 = Color3.new(1,1,1)
     dName.BackgroundTransparency = 1
     dName.AutomaticSize = Enum.AutomaticSize.X
+
+    local ownerLabel = Instance.new("TextLabel", infoBtn)
+    ownerLabel.Text = "BASE OWNER"
+    ownerLabel.TextColor3 = Color3.new(1, 0, 0)
+    ownerLabel.Font = Enum.Font.GothamBold
+    ownerLabel.TextSize = 7
+    ownerLabel.Position = UDim2.new(0, 5, 0, 3)
+    ownerLabel.Visible = false
+    ownerLabel.BackgroundTransparency = 1
 
     local uName = Instance.new("TextLabel", infoBtn)
     uName.Size = UDim2.new(1, -10, 0, 10)
@@ -276,8 +283,44 @@ local function addPlayer(p)
     updateFunctions[card] = function()
         if not p.Parent then card:Destroy() updateFunctions[card] = nil return end
         local mineral = p:GetAttribute("StealingIndex")
+        local stealing = p:GetAttribute("Stealing")
         uName.Text = "@" .. p.Name .. (mineral and (" | " .. mineral) or "")
         card.LayoutOrder = -(Prioridad[mineral] or 0)
+
+        -- Lógica de Base (Detección de dueño de terreno)
+        local enBase = false
+        local lpChar = lp.Character
+        if lpChar and lpChar:FindFirstChild("HumanoidRootPart") then
+            for folder, owner in pairs(mapaDeDuenos) do
+                if owner == p then
+                    local plotFolder = Plots:FindFirstChild(folder)
+                    if plotFolder then
+                        local pv, ps = plotFolder:GetBoundingBox()
+                        local localPos = pv:PointToObjectSpace(lpChar.HumanoidRootPart.Position)
+                        if math.abs(localPos.X) <= ps.X/2 and math.abs(localPos.Z) <= ps.Z/2 then enBase = true break end
+                    end
+                end
+            end
+        end
+
+        -- Aplicación de colores según estado
+        if enBase then
+            card.BackgroundColor3 = Color3.fromRGB(255, 255, 180) -- Amarillo Base
+            dName.TextColor3 = Color3.new(0,0,0)
+            uName.TextColor3 = Color3.fromRGB(50,50,50)
+            ownerLabel.Visible = true
+            ownerLabel.Position = UDim2.new(0, dName.TextBounds.X + 10, 0, 3)
+        elseif stealing then
+            card.BackgroundColor3 = Color3.fromRGB(85, 20, 20) -- Rojo Robo
+            dName.TextColor3 = Color3.new(1,1,1)
+            uName.TextColor3 = Color3.new(0.8,0.8,0.8)
+            ownerLabel.Visible = false
+        else
+            card.BackgroundColor3 = Color3.fromRGB(25, 25, 25) -- Normal
+            dName.TextColor3 = Color3.new(1,1,1)
+            uName.TextColor3 = Color3.new(0.6,0.6,0.6)
+            ownerLabel.Visible = false
+        end
     end
 
     infoBtn.MouseButton1Click:Connect(function()
@@ -285,11 +328,8 @@ local function addPlayer(p)
         indiceGlobal = (indiceGlobal % #EFECTOS_CLIC) + 1
     end)
 
-    -- BOTÓN ALL ACTUALIZADO: RÁFAGA EXPLOSIVA (SIN WAITS)
     allBtn.MouseButton1Click:Connect(function()
-        for _, ef in ipairs(EFECTOS_ALL) do 
-            disparar(p.Name, ef) 
-        end
+        for _, ef in ipairs(EFECTOS_ALL) do disparar(p.Name, ef) end
     end)
 end
 
@@ -315,7 +355,6 @@ titleBtn.MouseButton1Click:Connect(function()
     updateSize()
 end)
 
--- BUCLE CENTRAL (SIN CAMBIOS)
 RunService.RenderStepped:Connect(function()
     if not proximityEnabled and not listFrame.Visible then visualCircle.Transparency = 1 return end
     local char = lp.Character
@@ -327,7 +366,6 @@ RunService.RenderStepped:Connect(function()
     end
 end)
 
--- BUCLE DE PROXIMITY (ACTUALIZADO CON COOLDOWNS ESPECÍFICOS)
 task.spawn(function()
     while true do
         task.wait(0.25)
@@ -350,14 +388,11 @@ task.spawn(function()
                                 yaDisparados[p.Name] = true
                                 task.spawn(function()
                                     for _, ef in ipairs(EFECTOS_PROX) do
-                                        -- Lógica de cooldown: 120s para rocket, 30s para balloon/ragdoll, 60s resto
                                         local cdMax = TIEMPOS_ESPECIFICOS[ef] or 60
                                         if tick() - (cooldownEfectos[ef] or 0) > cdMax then
                                             if (hrp.Position - p_hrp.Position).Magnitude <= rangeValue then
                                                 cooldownEfectos[ef] = tick()
                                                 disparar(p.Name, ef)
-                                                -- Mantenemos un mini-delay interno solo en el bucle automático 
-                                                -- para que no se sature el servidor, pero el disparo es instantáneo
                                                 task.wait(0.05) 
                                             else break end
                                         end
@@ -377,4 +412,4 @@ end)
 Players.PlayerAdded:Connect(function() task.wait(1) if listFrame.Visible then refresh() end end)
 Players.PlayerRemoving:Connect(function() if listFrame.Visible then refresh() end end)
 
-print("✅ ULTRA-OPTIMIZED V3: Instant Shot & Enhanced Proximity Ready.")
+print("✅ ULTRA-OPTIMIZED V3.1: Visual Status & Instant Shot Ready.")
