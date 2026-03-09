@@ -28,7 +28,7 @@ local ALL_OBJECTS = {
     "Chipso and Queso", "Chillin Chili", "Ketupat Bros", "Money Money Reindeer", "Mieteteira Bicicleteira",
     "Tuff Toucan", "Tralaledon", "Los Puggies", "W or L", "Los Primos", "Eviledon",
     "La Taco Combinasion", "Orcaledon", "Swaggy Bros", "La Food Combinasion", "Love Love Bear", "Celestial Pegasus", "Griffin",
-    "Elefanto Frigo", "Cigno Fulgoro"
+    "Elefanto Frigo", "Cigno Fulgoro", "Nacho Spyder"
 }
 
 local INITIAL_PRIORITY = {
@@ -38,7 +38,7 @@ local INITIAL_PRIORITY = {
     "Gingerat Gerat", "Elefanto Frigo", "Spooky and Pumpky", "Fragrama and Chocrama",
     "La Supreme Combinasion", "La Secret Combinasion", "Garama and Madundung",
     "Lavadorito Spinito", "Ketupat Kepat", "Tictac Sahur", "Ketupat Bros", "Tang Tang Keletang",
-    "Ketchuru and Musturu", "Popcuru and Fizzuru", "La Food Combinasion", "Rosey and Teddy", "Cigno Fulgoro"
+    "Ketchuru and Musturu", "Popcuru and Fizzuru", "La Food Combinasion", "Rosey and Teddy", "Cigno Fulgoro", "Nacho Spyder"
 }
 
 local usados = {}
