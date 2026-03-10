@@ -39,8 +39,9 @@ local INITIAL_PRIORITY = {
     "Gingerat Gerat", "Elefanto Frigo", "Spooky and Pumpky", "Fragrama and Chocrama",
     "La Supreme Combinasion", "La Secret Combinasion", "Garama and Madundung",
     "Lavadorito Spinito", "Ketupat Kepat", "Tictac Sahur", "Ketupat Bros", "Tang Tang Keletang",
-    "Ketchuru and Musturu", "Popcuru and Fizzuru", "La Food Combinasion", "Rosey and Teddy", "Cigno Fulgoro", "Nacho Spyder" 
+    "Ketchuru and Musturu", "Popcuru and Fizzuru", "La Food Combinasion", "Rosey and Teddy", "Cigno Fulgoro", "Nacho Spyder", 
     "Signore Carapace", "Fishino Clownino", "Los Amigos", "Los Sekolahs", "Spinny Hammy", "Love Love Bear", "Sammyni Fattini"
+
 }
 
 local usados = {}
