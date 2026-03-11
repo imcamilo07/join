@@ -29,7 +29,7 @@ local ALL_OBJECTS = {
     "Tuff Toucan", "Tralaledon", "Los Puggies", "W or L", "Los Primos", "Eviledon",
     "La Taco Combinasion", "Orcaledon", "Swaggy Bros", "La Food Combinasion", "Love Love Bear", "Celestial Pegasus", "Griffin",
     "Elefanto Frigo", "Cigno Fulgoro", "Nacho Spyder", "Signore Carapace", "Fishino Clownino", "Los Amigos",
-    "Los Sekolahs", "Spinny Hammy", "Love Love Bear", "Sammyni Fattini"
+    "Los Sekolahs", "Spinny Hammy", "Love Love Bear", "Sammyni Fattini", "Ventoliero Pavonero"
 }
 
 local INITIAL_PRIORITY = {
@@ -40,8 +40,8 @@ local INITIAL_PRIORITY = {
     "La Supreme Combinasion", "La Secret Combinasion", "Garama and Madundung",
     "Lavadorito Spinito", "Ketupat Kepat", "Tictac Sahur", "Ketupat Bros", "Tang Tang Keletang",
     "Ketchuru and Musturu", "Popcuru and Fizzuru", "La Food Combinasion", "Rosey and Teddy", "Cigno Fulgoro", "Nacho Spyder", 
-    "Signore Carapace", "Fishino Clownino", "Los Amigos", "Los Sekolahs", "Spinny Hammy", "Love Love Bear", "Sammyni Fattini"
-
+    "Signore Carapace", "Fishino Clownino", "Los Amigos", "Los Sekolahs", "Spinny Hammy", "Love Love Bear", "Sammyni Fattini",
+    "Ventoliero Pavonero"
 }
 
 local usados = {}
