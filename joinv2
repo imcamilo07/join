@@ -4,13 +4,13 @@ local MAX_WAIT_TIME = 0.2
 
 -- LISTA DE PRIORIDAD
 local TARGET_LIST = {
-    "Nacho Spyder"
-    "Elefanto Frigo"
+    "Nacho Spyder",
+    "Ventoliero Pavonero",
+    "Elefanto Frigo",
 	"Ketchuru and Musturu",
 	"Tang Tang Keletang",
 	"Tictac Sahur",
 	"Ketupat Kepat",
-    "Elefanto Frigo"
 	"Lavadorito Spinito",
 	"Garama and Madundung",
 	"La Secret Combinasion",
