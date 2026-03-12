@@ -35,7 +35,7 @@ local ALL_OBJECTS = {
 local INITIAL_PRIORITY = {
     "Strawberry Elephant", "Meowl", "Skibidi Toilet", "Dragon Cannelloni",
     "Dragon Gingerini", "Hydra Dragon Cannelloni", "Griffin", "Cerberus", "Capitano Moby", "Headless Horseman",
-    "Burguro and Fryuro", "Celestial Pegasus", " Tirilikalika Tirilikalako", "Cooki and Milki", "La Casa Boo", "Reinito Sleighito",
+    "Burguro and Fryuro", "Celestial Pegasus", "Tirilikalika Tirilikalako", "Cooki and Milki", "La Casa Boo", "Reinito Sleighito",
     "Gingerat Gerat", "Elefanto Frigo", "Spooky and Pumpky", "Fragrama and Chocrama",
     "La Supreme Combinasion", "La Secret Combinasion", "Garama and Madundung",
     "Lavadorito Spinito", "Ketupat Kepat", "Tictac Sahur", "Ketupat Bros", "Tang Tang Keletang",
