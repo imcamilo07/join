@@ -138,8 +138,8 @@ local title = Instance.new("TextLabel", main); title.Size = UDim2.new(0.3, 0, 0,
 local logL = Instance.new("TextLabel", main); logL.Size = UDim2.new(0.1, 0, 0, 30); logL.Position = UDim2.new(0.35, 0, 0, 5); logL.Text = "..."; logL.TextColor3 = Color3.new(1,1,1); logL.BackgroundTransparency = 1; logL.Font = "SourceSansBold"
 
 -- BOTONES SUPERIORES (AUTO Y PRIME)
-local autoBtn = Instance.new("TextButton", main); autoBtn.Size = UDim2.new(0, 80, 0, 30); autoBtn.Position = UDim2.new(1, -180, 0, 5); autoBtn.Text = "AUTO: OFF"; autoBtn.BackgroundColor3 = Color3.fromRGB(150, 50, 50); autoBtn.TextColor3 = Color3.new(1,1,1); Instance.new("UICorner", autoBtn)
-local primeBtn = Instance.new("TextButton", main); primeBtn.Size = UDim2.new(0, 80, 0, 30); primeBtn.Position = UDim2.new(1, -90, 0, 5); primeBtn.Text = "PRIME"; primeBtn.BackgroundTransparency = 1; primeBtn.TextColor3 = Color3.fromRGB(255, 215, 0); primeBtn.Font = "SourceSansBold"; Instance.new("UICorner", primeBtn)
+local autoBtn = Instance.new("TextButton", main); autoBtn.Size = UDim2.new(0, 100, 0, 30); autoBtn.Position = UDim2.new(1, -110, 0, 5); autoBtn.Text = "AUTO: OFF"; autoBtn.BackgroundColor3 = Color3.fromRGB(150, 50, 50); autoBtn.TextColor3 = Color3.new(1,1,1); Instance.new("UICorner", autoBtn)
+local primeBtn = Instance.new("TextButton", main); primeBtn.Size = UDim2.new(0, 80, 0, 30); primeBtn.Position = UDim2.new(1, -200, 0, 5); primeBtn.Text = "PRIME"; primeBtn.BackgroundTransparency = 1; primeBtn.TextColor3 = Color3.fromRGB(255, 215, 0); primeBtn.Font = "SourceSansBold"; Instance.new("UICorner", primeBtn)
 local primeStroke = Instance.new("UIStroke", primeBtn); primeStroke.Color = Color3.fromRGB(255, 215, 0); primeStroke.Thickness = 2; primeStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
 
 local scrollSel = Instance.new("ScrollingFrame", main); scrollSel.Size = UDim2.new(0.45, 0, 0.82, 0); scrollSel.Position = UDim2.new(0.02, 0, 0.15, 0); scrollSel.BackgroundTransparency = 1; scrollSel.CanvasSize = UDim2.new(0,0,0,#ALL_OBJECTS*35)
