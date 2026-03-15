@@ -1,5 +1,5 @@
 -- ==========================================
--- BRAINROTS AUTO-JOINER PREMIUM V16 (TOP 5 SCAN)
+-- BRAINROTS AUTO-JOINER PREMIUM V17 (PRIME MODE)
 -- ==========================================
 
 local UserInputService = game:GetService("UserInputService")
@@ -46,10 +46,12 @@ local INITIAL_PRIORITY = {
 
 local usados = {}
 local ausenciaContador = {} 
-local selectedData = {}
+local selectedData = {}      -- Lista para AUTO
+local primeSelectedData = {} -- Lista para PRIME
 local priorityList = {unpack(INITIAL_PRIORITY)}
 local joinLock = false
 local autoRefresh = false 
+local primeActive = false    -- Estado de PRIME
 local btnCPos = UDim2.new(0.5, 257, 0.1, 58)
 
 -- PERSISTENCIA
@@ -59,6 +61,7 @@ local function loadData()
         if ok then 
             btnCPos = UDim2.new(data.pos.X.Scale, data.pos.X.Offset, data.pos.Y.Scale, data.pos.Y.Offset)
             selectedData = data.sel or {}
+            primeSelectedData = data.primeSel or {} -- Cargar lista PRIME
             priorityList = data.prio or priorityList
         end
     end
@@ -69,6 +72,7 @@ local function saveData()
     local data = {
         pos = {X = {Scale = btnCPos.X.Scale, Offset = btnCPos.X.Offset}, Y = {Scale = btnCPos.Y.Scale, Offset = btnCPos.Y.Offset}},
         sel = selectedData,
+        primeSel = primeSelectedData, -- Guardar lista PRIME
         prio = priorityList,
         auto = false 
     }
@@ -77,7 +81,11 @@ local function saveData()
 end
 
 loadData()
-for _, name in ipairs(ALL_OBJECTS) do if not selectedData[name] then selectedData[name] = {enabled = false, minVal = 0} end end
+-- Inicializar ambas listas si faltan objetos
+for _, name in ipairs(ALL_OBJECTS) do 
+    if not selectedData[name] then selectedData[name] = {enabled = false, minVal = 0} end 
+    if not primeSelectedData[name] then primeSelectedData[name] = {enabled = false, minVal = 0} end 
+end
 
 -- ================= INTERFAZ =================
 local gui = Instance.new("ScreenGui", PlayerGui); gui.Name = "BRAINROTS_V13"; gui.ResetOnSpawn = false
@@ -126,22 +134,51 @@ triggerC.InputEnded:Connect(function(input)
 end)
 
 local main = Instance.new("Frame", gui); main.Name = "Main"; main.Visible = false; main.Size = UDim2.new(0, 450, 0, 300); main.Position = UDim2.new(0.5, -225, 0.5, -150); main.BackgroundColor3 = Color3.fromRGB(15, 15, 15); Instance.new("UICorner", main)
-local title = Instance.new("TextLabel", main); title.Size = UDim2.new(0.45, 0, 0, 30); title.Position = UDim2.new(0.02, 0, 0, 5); title.Text = "BRAINROTS"; title.TextColor3 = Color3.new(1,1,1); title.BackgroundTransparency = 1; title.Font = "SourceSansBold"; title.TextXAlignment = "Left"
-local logL = Instance.new("TextLabel", main); logL.Size = UDim2.new(0.1, 0, 0, 30); logL.Position = UDim2.new(0.45, 0, 0, 5); logL.Text = "..."; logL.TextColor3 = Color3.new(1,1,1); logL.BackgroundTransparency = 1; logL.Font = "SourceSansBold"
+local title = Instance.new("TextLabel", main); title.Size = UDim2.new(0.3, 0, 0, 30); title.Position = UDim2.new(0.02, 0, 0, 5); title.Text = "BRAINROTS"; title.TextColor3 = Color3.new(1,1,1); title.BackgroundTransparency = 1; title.Font = "SourceSansBold"; title.TextXAlignment = "Left"
+local logL = Instance.new("TextLabel", main); logL.Size = UDim2.new(0.1, 0, 0, 30); logL.Position = UDim2.new(0.35, 0, 0, 5); logL.Text = "..."; logL.TextColor3 = Color3.new(1,1,1); logL.BackgroundTransparency = 1; logL.Font = "SourceSansBold"
 
-local autoBtn = Instance.new("TextButton", main); autoBtn.Size = UDim2.new(0, 100, 0, 30); autoBtn.Position = UDim2.new(1, -110, 0, 5); autoBtn.Text = "AUTO: OFF"; autoBtn.BackgroundColor3 = Color3.fromRGB(150, 50, 50); autoBtn.TextColor3 = Color3.new(1,1,1); Instance.new("UICorner", autoBtn)
-autoBtn.MouseButton1Click:Connect(function()
-    autoRefresh = not autoRefresh; autoBtn.Text = autoRefresh and "AUTO: ON" or "AUTO: OFF"; autoBtn.BackgroundColor3 = autoRefresh and Color3.fromRGB(0, 100, 255) or Color3.fromRGB(150, 50, 50)
-end)
+-- BOTONES SUPERIORES (AUTO Y PRIME)
+local autoBtn = Instance.new("TextButton", main); autoBtn.Size = UDim2.new(0, 80, 0, 30); autoBtn.Position = UDim2.new(1, -180, 0, 5); autoBtn.Text = "AUTO: OFF"; autoBtn.BackgroundColor3 = Color3.fromRGB(150, 50, 50); autoBtn.TextColor3 = Color3.new(1,1,1); Instance.new("UICorner", autoBtn)
+local primeBtn = Instance.new("TextButton", main); primeBtn.Size = UDim2.new(0, 80, 0, 30); primeBtn.Position = UDim2.new(1, -90, 0, 5); primeBtn.Text = "PRIME"; primeBtn.BackgroundTransparency = 1; primeBtn.TextColor3 = Color3.fromRGB(255, 215, 0); primeBtn.Font = "SourceSansBold"; Instance.new("UICorner", primeBtn)
+local primeStroke = Instance.new("UIStroke", primeBtn); primeStroke.Color = Color3.fromRGB(255, 215, 0); primeStroke.Thickness = 2; primeStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
 
 local scrollSel = Instance.new("ScrollingFrame", main); scrollSel.Size = UDim2.new(0.45, 0, 0.82, 0); scrollSel.Position = UDim2.new(0.02, 0, 0.15, 0); scrollSel.BackgroundTransparency = 1; scrollSel.CanvasSize = UDim2.new(0,0,0,#ALL_OBJECTS*35)
 local scrollPrio = Instance.new("ScrollingFrame", main); scrollPrio.Size = UDim2.new(0.48, 0, 0.82, 0); scrollPrio.Position = UDim2.new(0.5, 0, 0.15, 0); scrollPrio.BackgroundTransparency = 1
 
-local function renderPrio()
+local function updateScrollList()
+    scrollSel:ClearAllChildren()
+    local currentData = primeActive and primeSelectedData or selectedData
+    for i, name in ipairs(ALL_OBJECTS) do
+        local f = Instance.new("Frame", scrollSel); f.Size = UDim2.new(1,-10,0,30); f.Position = UDim2.new(0,0,0,(i-1)*33); f.BackgroundColor3 = Color3.fromRGB(25,25,25); Instance.new("UICorner", f)
+        local b = Instance.new("TextButton", f); b.Size = UDim2.new(0.72,0,1,0); b.Text = name; b.TextSize = 9; b.BackgroundColor3 = currentData[name].enabled and (primeActive and Color3.fromRGB(200, 160, 0) or Color3.fromRGB(0, 100, 255)) or Color3.fromRGB(50,50,50); b.TextColor3 = Color3.new(1,1,1); b.ClipsDescendants = true; Instance.new("UICorner", b)
+        local v = Instance.new("TextBox", f); v.Size = UDim2.new(0.24,0,1,0); v.Position = UDim2.new(0.76,0,0,0); v.PlaceholderText = "M/s"; v.Text = currentData[name].minVal > 0 and tostring(currentData[name].minVal) or ""; v.BackgroundColor3 = Color3.fromRGB(40,40,40); v.TextColor3 = Color3.new(1,1,1); v.TextSize = 10; Instance.new("UICorner", v)
+        b.MouseButton1Click:Connect(function()
+            currentData[name].enabled = not currentData[name].enabled
+            b.BackgroundColor3 = currentData[name].enabled and (primeActive and Color3.fromRGB(200, 160, 0) or Color3.fromRGB(0, 100, 255)) or Color3.fromRGB(50,50,50)
+            renderPrio(); saveData()
+        end)
+        v.FocusLost:Connect(function() currentData[name].minVal = tonumber(v.Text) or 0; saveData() end)
+    end
+end
+
+autoBtn.MouseButton1Click:Connect(function()
+    if primeActive then primeActive = false; primeBtn.BackgroundTransparency = 1; primeBtn.BackgroundColor3 = Color3.fromRGB(0,0,0) end
+    autoRefresh = not autoRefresh; autoBtn.Text = autoRefresh and "AUTO: ON" or "AUTO: OFF"; autoBtn.BackgroundColor3 = autoRefresh and Color3.fromRGB(0, 100, 255) or Color3.fromRGB(150, 50, 50)
+    updateScrollList(); renderPrio()
+end)
+
+primeBtn.MouseButton1Click:Connect(function()
+    if autoRefresh then autoRefresh = false; autoBtn.Text = "AUTO: OFF"; autoBtn.BackgroundColor3 = Color3.fromRGB(150, 50, 50) end
+    primeActive = not primeActive; primeBtn.BackgroundTransparency = primeActive and 0.5 or 1; primeBtn.BackgroundColor3 = primeActive and Color3.fromRGB(100, 85, 0) or Color3.fromRGB(0,0,0)
+    updateScrollList(); renderPrio()
+end)
+
+function renderPrio()
     scrollPrio:ClearAllChildren()
     local y = 0
+    local currentData = primeActive and primeSelectedData or selectedData
     for i, name in ipairs(priorityList) do
-        if selectedData[name].enabled then
+        if currentData[name].enabled then
             local f = Instance.new("Frame", scrollPrio); f.Size = UDim2.new(1,-10,0,25); f.Position = UDim2.new(0,0,0,y); f.BackgroundColor3 = Color3.fromRGB(30,30,30); Instance.new("UICorner", f)
             local t = Instance.new("TextLabel", f); t.Size = UDim2.new(0.75,0,1,0); t.Text = name; t.TextColor3 = Color3.new(1,1,1); t.BackgroundTransparency = 1; t.TextSize = 10; t.TextXAlignment = "Left"; t.Position = UDim2.new(0,5,0,0)
             local up = Instance.new("TextButton", f); up.Size = UDim2.new(0,20,0,12); up.Position = UDim2.new(0.85,0,0,0); up.Text = "▲"; up.BackgroundTransparency = 1; up.TextColor3 = Color3.new(1,1,1); up.TextSize = 10
@@ -154,76 +191,41 @@ local function renderPrio()
     scrollPrio.CanvasSize = UDim2.new(0,0,0,y)
 end
 
-for i, name in ipairs(ALL_OBJECTS) do
-    local f = Instance.new("Frame", scrollSel); f.Size = UDim2.new(1,-10,0,30); f.Position = UDim2.new(0,0,0,(i-1)*33); f.BackgroundColor3 = Color3.fromRGB(25,25,25); Instance.new("UICorner", f)
-    local b = Instance.new("TextButton", f); b.Size = UDim2.new(0.72,0,1,0); b.Text = name; b.TextSize = 9; b.BackgroundColor3 = selectedData[name].enabled and Color3.fromRGB(0, 100, 255) or Color3.fromRGB(50,50,50); b.TextColor3 = Color3.new(1,1,1); b.ClipsDescendants = true; Instance.new("UICorner", b)
-    local v = Instance.new("TextBox", f); v.Size = UDim2.new(0.24,0,1,0); v.Position = UDim2.new(0.76,0,0,0); v.PlaceholderText = "M/s"; v.Text = selectedData[name].minVal > 0 and tostring(selectedData[name].minVal) or ""; v.BackgroundColor3 = Color3.fromRGB(40,40,40); v.TextColor3 = Color3.new(1,1,1); v.TextSize = 10; Instance.new("UICorner", v)
-    b.MouseButton1Click:Connect(function()
-        selectedData[name].enabled = not selectedData[name].enabled
-        b.BackgroundColor3 = selectedData[name].enabled and Color3.fromRGB(0, 100, 255) or Color3.fromRGB(50,50,50)
-        renderPrio(); saveData()
-    end)
-    v.FocusLost:Connect(function() selectedData[name].minVal = tonumber(v.Text) or 0; saveData() end)
-end
-
 -- ================= MOTOR =================
 local function parseSms(txt, targetName)
-    local lowTxt = txt:lower()
-    local lowTarget = targetName:lower()
-    local startIdx = lowTxt:find(lowTarget, 1, true)
-    
+    local lowTxt = txt:lower(); local lowTarget = targetName:lower(); local startIdx = lowTxt:find(lowTarget, 1, true)
     if startIdx then
-        local sub = txt:sub(startIdx + #targetName)
-        local n = sub:match("(%d+%.?%d*)")
-        local val = tonumber(n) or 0
-        if sub:find("B") and sub:find("B") < 15 then val = val * 1000 end
-        return val
-    end
-    return 0
+        local sub = txt:sub(startIdx + #targetName); local n = sub:match("(%d+%.?%d*)"); local val = tonumber(n) or 0
+        if sub:find("B") and sub:find("B") < 15 then val = val * 1000 end; return val
+    end; return 0
 end
 
 local function escanear()
-    if joinLock or not autoRefresh then return end
-    local pm = PlayerGui:FindFirstChild("PetMenu")
-    if not pm then return end
+    if joinLock or (not autoRefresh and not primeActive) then return end
+    local pm = PlayerGui:FindFirstChild("PetMenu"); if not pm then return end
     
-    local allFrames = {}
-    for _,v in ipairs(pm.Frame.ScrollingFrame:GetChildren()) do 
-        if v:IsA("Frame") and v.Visible then table.insert(allFrames, v) end 
-    end
-    
-    -- LÓGICA MODIFICADA: Escanear solo los primeros 5
+    local allFrames = {}; for _,v in ipairs(pm.Frame.ScrollingFrame:GetChildren()) do if v:IsA("Frame") and v.Visible then table.insert(allFrames, v) end end
     local limiteEscaneo = math.min(#allFrames, MAX_SERVERS_A_ESCANEAR)
     
-    -- LÓGICA AUTO-CLEAN (CON SEGURO DE INTENTOS) SOLO PARA EL TOP 5
-    local firmasActuales = {}
-    for i = 1, limiteEscaneo do
-        local lbl = allFrames[i]:FindFirstChild("TextLabel", false)
-        if lbl and lbl.Text ~= "" then firmasActuales[lbl.Text] = true end
-    end
+    local firmasActuales = {}; for i = 1, limiteEscaneo do local lbl = allFrames[i]:FindFirstChild("TextLabel", false); if lbl and lbl.Text ~= "" then firmasActuales[lbl.Text] = true end end
     
     local limpio = false
     for firma, _ in pairs(usados) do
         if not firmasActuales[firma] then
             ausenciaContador[firma] = (ausenciaContador[firma] or 0) + 1
-            if ausenciaContador[firma] >= INTENTOS_PARA_LIMPIAR then
-                usados[firma] = nil
-                ausenciaContador[firma] = nil
-                limpio = true
-            end
-        else
-            ausenciaContador[firma] = 0
-        end
+            if ausenciaContador[firma] >= INTENTOS_PARA_LIMPIAR then usados[firma] = nil; ausenciaContador[firma] = nil; limpio = true end
+        else ausenciaContador[firma] = 0 end
     end
     if limpio then saveData(); logL.Text = "CLR"; task.delay(0.5, function() logL.Text = "..." end) end
 
-    -- BÚSQUEDA DE CANDIDATOS SOLO EN EL TOP 5
     local candidatos = {}
+    local currentData = primeActive and primeSelectedData or selectedData -- MOTOR DECIDE QUE LISTA USAR
+    
     for i = 1, limiteEscaneo do
         local lbl = allFrames[i]:FindFirstChild("TextLabel", false)
         if lbl then
             local txt = lbl.Text:lower()
-            for name, data in pairs(selectedData) do
+            for name, data in pairs(currentData) do
                 if data.enabled and txt:find(name:lower(), 1, true) then
                     local val = parseSms(lbl.Text, name)
                     if val >= data.minVal and not usados[lbl.Text] then
@@ -236,51 +238,31 @@ local function escanear()
 
     if #candidatos > 0 then
         table.sort(candidatos, function(a,b)
-            local pA = table.find(priorityList, a.name) or 999
-            local pB = table.find(priorityList, b.name) or 999
+            local pA = table.find(priorityList, a.name) or 999; local pB = table.find(priorityList, b.name) or 999
             return pA < pB
         end)
-        
         local mejor = candidatos[1]
         joinLock = true; usados[mejor.firma] = true; ausenciaContador[mejor.firma] = 0; saveData()
         writefile(FILE_LAST_JOIN, mejor.name .. " $" .. mejor.val .. "M/s")
-        
         local btn = mejor.frame:FindFirstChildWhichIsA("Frame"):FindFirstChildWhichIsA("TextButton")
-        
-        -- SONIDO AGREGADO (UNA SOLA VEZ)
-        local s = Instance.new("Sound")
-        s.SoundId = "rbxassetid://128387076668435"
-        s.Volume = 1
-        s.Parent = game:GetService("SoundService")
-        s:Play()
-        game:GetService("Debris"):AddItem(s, 2)
-
-        -- RAFAGA DE 200 CLICS (AUMENTADO)
-        for i = 1, 200 do
-            for _,c in ipairs(getconnections(btn.MouseButton1Click)) do c:Fire() end
-        end
-        
+        local s = Instance.new("Sound", game:GetService("SoundService")); s.SoundId = "rbxassetid://128387076668435"; s.Volume = 1; s:Play(); game:GetService("Debris"):AddItem(s, 2)
+        for i = 1, 200 do for _,c in ipairs(getconnections(btn.MouseButton1Click)) do c:Fire() end end
         task.delay(1.5, function() joinLock = false end)
     end
 end
 
 task.spawn(function()
     while true do
-        if autoRefresh and not joinLock then
+        if (autoRefresh or primeActive) and not joinLock then
             local pm = PlayerGui:FindFirstChild("PetMenu")
             if pm then
-                for _,o in ipairs(pm.Frame:GetDescendants()) do
-                    if o:IsA("TextButton") and o.Text == "Refresh" then
-                        for _,c in ipairs(getconnections(o.MouseButton1Click)) do c:Fire() end
-                        break
-                    end
-                end
-                task.wait(MAX_WAIT_TIME)
-                escanear()
+                for _,o in ipairs(pm.Frame:GetDescendants()) do if o:IsA("TextButton") and o.Text == "Refresh" then for _,c in ipairs(getconnections(o.MouseButton1Click)) do c:Fire() end; break end end
+                task.wait(MAX_WAIT_TIME); escanear()
             end
         end
         task.wait(0.01)
     end
 end)
 
+updateScrollList()
 renderPrio()
