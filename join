@@ -1,5 +1,6 @@
 -- ==========================================
 -- BRAINROTS AUTO-JOINER PREMIUM V17 (PRIME MODE)
+-- VERSION CALIBRADA: REFRESH FISICO 543, 154
 -- ==========================================
 
 local UserInputService = game:GetService("UserInputService")
@@ -46,12 +47,12 @@ local INITIAL_PRIORITY = {
 
 local usados = {}
 local ausenciaContador = {} 
-local selectedData = {}      -- Lista para AUTO
-local primeSelectedData = {} -- Lista para PRIME
+local selectedData = {}
+local primeSelectedData = {}
 local priorityList = {unpack(INITIAL_PRIORITY)}
 local joinLock = false
 local autoRefresh = false 
-local primeActive = false    -- Estado de PRIME
+local primeActive = false
 local btnCPos = UDim2.new(0.5, 257, 0.1, 58)
 
 -- PERSISTENCIA
@@ -61,7 +62,7 @@ local function loadData()
         if ok then 
             btnCPos = UDim2.new(data.pos.X.Scale, data.pos.X.Offset, data.pos.Y.Scale, data.pos.Y.Offset)
             selectedData = data.sel or {}
-            primeSelectedData = data.primeSel or {} -- Cargar lista PRIME
+            primeSelectedData = data.primeSel or {}
             priorityList = data.prio or priorityList
         end
     end
@@ -72,7 +73,7 @@ local function saveData()
     local data = {
         pos = {X = {Scale = btnCPos.X.Scale, Offset = btnCPos.X.Offset}, Y = {Scale = btnCPos.Y.Scale, Offset = btnCPos.Y.Offset}},
         sel = selectedData,
-        primeSel = primeSelectedData, -- Guardar lista PRIME
+        primeSel = primeSelectedData,
         prio = priorityList,
         auto = false 
     }
@@ -81,7 +82,6 @@ local function saveData()
 end
 
 loadData()
--- Inicializar ambas listas si faltan objetos
 for _, name in ipairs(ALL_OBJECTS) do 
     if not selectedData[name] then selectedData[name] = {enabled = false, minVal = 0} end 
     if not primeSelectedData[name] then primeSelectedData[name] = {enabled = false, minVal = 0} end 
@@ -137,7 +137,6 @@ local main = Instance.new("Frame", gui); main.Name = "Main"; main.Visible = fals
 local title = Instance.new("TextLabel", main); title.Size = UDim2.new(0.3, 0, 0, 30); title.Position = UDim2.new(0.02, 0, 0, 5); title.Text = "BRAINROTS"; title.TextColor3 = Color3.new(1,1,1); title.BackgroundTransparency = 1; title.Font = "SourceSansBold"; title.TextXAlignment = "Left"
 local logL = Instance.new("TextLabel", main); logL.Size = UDim2.new(0.1, 0, 0, 30); logL.Position = UDim2.new(0.35, 0, 0, 5); logL.Text = "..."; logL.TextColor3 = Color3.new(1,1,1); logL.BackgroundTransparency = 1; logL.Font = "SourceSansBold"
 
--- BOTONES SUPERIORES (AUTO Y PRIME)
 local autoBtn = Instance.new("TextButton", main); autoBtn.Size = UDim2.new(0, 100, 0, 30); autoBtn.Position = UDim2.new(1, -110, 0, 5); autoBtn.Text = "AUTO: OFF"; autoBtn.BackgroundColor3 = Color3.fromRGB(150, 50, 50); autoBtn.TextColor3 = Color3.new(1,1,1); Instance.new("UICorner", autoBtn)
 local primeBtn = Instance.new("TextButton", main); primeBtn.Size = UDim2.new(0, 80, 0, 30); primeBtn.Position = UDim2.new(1, -200, 0, 5); primeBtn.Text = "PRIME"; primeBtn.BackgroundTransparency = 1; primeBtn.TextColor3 = Color3.fromRGB(255, 215, 0); primeBtn.Font = "SourceSansBold"; Instance.new("UICorner", primeBtn)
 local primeStroke = Instance.new("UIStroke", primeBtn); primeStroke.Color = Color3.fromRGB(255, 215, 0); primeStroke.Thickness = 2; primeStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
@@ -219,7 +218,7 @@ local function escanear()
     if limpio then saveData(); logL.Text = "CLR"; task.delay(0.5, function() logL.Text = "..." end) end
 
     local candidatos = {}
-    local currentData = primeActive and primeSelectedData or selectedData -- MOTOR DECIDE QUE LISTA USAR
+    local currentData = primeActive and primeSelectedData or selectedData
     
     for i = 1, limiteEscaneo do
         local lbl = allFrames[i]:FindFirstChild("TextLabel", false)
@@ -251,12 +250,18 @@ local function escanear()
     end
 end
 
+-- BUCLE DE MOTOR CALIBRADO (CAMBIO FISICO)
 task.spawn(function()
     while true do
         if (autoRefresh or primeActive) and not joinLock then
             local pm = PlayerGui:FindFirstChild("PetMenu")
             if pm then
-                for _,o in ipairs(pm.Frame:GetDescendants()) do if o:IsA("TextButton") and o.Text == "Refresh" then for _,c in ipairs(getconnections(o.MouseButton1Click)) do c:Fire() end; break end end
+                -- Lógica de Auto-Refresh Físico (X: 543, Y: 154)
+                if getgenv().mousemoveabs and getgenv().mouse1click then
+                    getgenv().mousemoveabs(543, 154)
+                    getgenv().mouse1click()
+                end
+                
                 task.wait(MAX_WAIT_TIME); escanear()
             end
         end
