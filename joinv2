@@ -4,15 +4,15 @@ local MAX_WAIT_TIME = 0.2
 
 -- LISTA DE PRIORIDAD (Mantenida intacta)
 local TARGET_LIST = {
-    "Nacho Spyder", "Ventoliero Pavonero", "Elefanto Frigo", "Ketchuru and Musturu",
-    "Tang Tang Keletang", "Tictac Sahur", "Ketupat Kepat", "Lavadorito Spinito",
-    "Garama and Madundung", "La Secret Combinasion", "Love Love Bear", "Fragrama and Chocrama",
-    "Spooky and Pumpky", "La Food Combinasion", "Popcuru and Fizzuru", "Gingerat Gerat",
-    "Reinito Sleighito", "La Casa Boo", "Headless Horseman", "Ketupat Bros",
+    "Nacho Spyder", "Ventoliero Pavonero", "Sammyni Fattini", "Elefanto Frigo", "Ketchuru and Musturu",
+    "Tang Tang Keletang", "Tictac Sahur", "Ketupat Kepat", "Lavadorito Spinito", "Dug dug dug",
+    "Garama and Madundung", "Foxini Lanternini", "Fishino Clownino", "Los Amigos", "Cloverat Clapat", "La Secret Combinasion", "Fragrama and Chocrama",
+    "Spooky and Pumpky", "Los Sekolahs", "La Food Combinasion", "Fortunu and Cashuru", "Popcuru and Fizzuru", "Gingerat Gerat",
+    "Reinito Sleighito", "La Casa Boo", "Ketupat Bros", "Love Love Bear",
     "Rosey and Teddy", "Cooki and Milki", "Burguro and Fryuro", "Ginger Gerat",
     "Capitano Moby", "Cerberus", "Tirilikalika Tirilikalako", "Celestial Pegasus",
-    "La Supreme Combinasion", "Griffin", "Dragon Gingerini", "Dragon Cannelloni",
-    "Meowl", "Skibidi Toilet", "Strawberry Elephant"
+    "La Supreme Combinasion", "Griffin", "Signore Carapace", "Dragon Cannelloni", "Dragon Gingerini",
+    "Meowl", "Skibidi Toilet", "Strawberry Elephant",  "Headless Horseman"
 }
 
 -- ================= SETUP =================
