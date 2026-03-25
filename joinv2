@@ -2,43 +2,17 @@
 local MAX_SERVERS_A_ESCANEAR = 5 
 local MAX_WAIT_TIME = 0.2
 
--- LISTA DE PRIORIDAD
+-- LISTA DE PRIORIDAD (Mantenida intacta)
 local TARGET_LIST = {
-    "Nacho Spyder",
-    "Ventoliero Pavonero",
-    "Elefanto Frigo",
-	"Ketchuru and Musturu",
-	"Tang Tang Keletang",
-	"Tictac Sahur",
-	"Ketupat Kepat",
-	"Lavadorito Spinito",
-	"Garama and Madundung",
-	"La Secret Combinasion",
-    "Love Love Bear",
-	"Fragrama and Chocrama",
-	"Spooky and Pumpky",
-    "La Food Combinasion",
-    "Popcuru and Fizzuru", 
-	"Gingerat Gerat",
-	"Reinito Sleighito",
-	"La Casa Boo",
-	"Headless Horseman",
-    "Ketupat Bros",
-    "Rosey and Teddy",
-	"Cooki and Milki",
-	"Burguro and Fryuro",
-	"Ginger Gerat",
-	"Capitano Moby",
-    "Cerberus",
-    "Tirilikalika Tirilikalako",
-    "Celestial Pegasus",
-    "La Supreme Combinasion",
-    "Griffin",
-	"Dragon Gingerini",
-	"Dragon Cannelloni",
-	"Meowl",
-	"Skibidi Toilet",
-	"Strawberry Elephant"
+    "Nacho Spyder", "Ventoliero Pavonero", "Elefanto Frigo", "Ketchuru and Musturu",
+    "Tang Tang Keletang", "Tictac Sahur", "Ketupat Kepat", "Lavadorito Spinito",
+    "Garama and Madundung", "La Secret Combinasion", "Love Love Bear", "Fragrama and Chocrama",
+    "Spooky and Pumpky", "La Food Combinasion", "Popcuru and Fizzuru", "Gingerat Gerat",
+    "Reinito Sleighito", "La Casa Boo", "Headless Horseman", "Ketupat Bros",
+    "Rosey and Teddy", "Cooki and Milki", "Burguro and Fryuro", "Ginger Gerat",
+    "Capitano Moby", "Cerberus", "Tirilikalika Tirilikalako", "Celestial Pegasus",
+    "La Supreme Combinasion", "Griffin", "Dragon Gingerini", "Dragon Cannelloni",
+    "Meowl", "Skibidi Toilet", "Strawberry Elephant"
 }
 
 -- ================= SETUP =================
@@ -57,7 +31,6 @@ local scrolling = mainFrame:WaitForChild("ScrollingFrame")
 
 local usados = {} 
 local joinLock = false 
-local cachedRefreshBtn = nil 
 local FILE_NAME = "auto_join_final_v5.json" 
 
 local NAME_VALUES = {}
@@ -98,62 +71,34 @@ local function parseValor(txt)
 end
 
 -- ================= GUI =================
-local gui = Instance.new("ScreenGui")
-gui.Name = "AUTO_JOIN_FINAL_V5"
+local gui = Instance.new("ScreenGui", PlayerGui)
+gui.Name = "AUTO_JOIN_FINAL_V5_PRIME"
 gui.ResetOnSpawn = false
-gui.DisplayOrder = 999999
-gui.Parent = PlayerGui
 
-local bigBtn = Instance.new("TextButton")
-bigBtn.Size = UDim2.new(0,300,0,100)
-bigBtn.Position = UDim2.new(1,-320,0.5,-50)
-bigBtn.BackgroundColor3 = Color3.fromRGB(0,170,0)
-bigBtn.TextColor3 = Color3.new(1,1,1)
-bigBtn.TextScaled = true
-bigBtn.Font = Enum.Font.SourceSansBold
-bigBtn.Visible = false
-bigBtn.Parent = gui
+local bigBtn = Instance.new("TextButton", gui)
+bigBtn.Size = UDim2.new(0,300,0,100); bigBtn.Position = UDim2.new(1,-320,0.5,-50)
+bigBtn.BackgroundColor3 = Color3.fromRGB(0,170,0); bigBtn.TextColor3 = Color3.new(1,1,1)
+bigBtn.TextScaled = true; bigBtn.Font = Enum.Font.SourceSansBold; bigBtn.Visible = false
 
-local logsFrame = Instance.new("Frame")
-logsFrame.Size = UDim2.new(0,250,0,200) 
-logsFrame.Position = UDim2.new(0, 10, 0.5, 50) 
-logsFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
-logsFrame.Visible = false 
-logsFrame.Parent = gui
-Instance.new("UICorner", logsFrame)
+local logsFrame = Instance.new("Frame", gui)
+logsFrame.Size = UDim2.new(0,250,0,200); logsFrame.Position = UDim2.new(0, 10, 0.5, 50) 
+logsFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 20); logsFrame.Visible = false; Instance.new("UICorner", logsFrame)
 
-local logsTitle = Instance.new("TextLabel")
-logsTitle.Size = UDim2.new(1,0,0,25)
-logsTitle.BackgroundTransparency = 1
-logsTitle.Text = "🔍 ESCANEANDO TOP 5 (FIRST)" -- Cambiado el nombre
-logsTitle.TextColor3 = Color3.fromRGB(255, 200, 0)
-logsTitle.Font = Enum.Font.SourceSansBold
-logsTitle.TextSize = 14
-logsTitle.Parent = logsFrame
+local logsTitle = Instance.new("TextLabel", logsFrame)
+logsTitle.Size = UDim2.new(1,0,0,25); logsTitle.BackgroundTransparency = 1
+logsTitle.Text = "🔍 ESCANEANDO TOP 5 (PRIME)"; logsTitle.TextColor3 = Color3.fromRGB(255, 200, 0); logsTitle.Font = "SourceSansBold"
 
-local logsText = Instance.new("TextLabel")
-logsText.Size = UDim2.new(1,-10,1,-30)
-logsText.Position = UDim2.new(0,5,0,30)
-logsText.BackgroundTransparency = 1
-logsText.TextXAlignment = Enum.TextXAlignment.Left
-logsText.TextYAlignment = Enum.TextYAlignment.Top
-logsText.Text = "Esperando..."
-logsText.TextColor3 = Color3.new(1,1,1)
-logsText.Font = Enum.Font.Code
-logsText.TextSize = 12
-logsText.Parent = logsFrame
+local logsText = Instance.new("TextLabel", logsFrame)
+logsText.Size = UDim2.new(1,-10,1,-30); logsText.Position = UDim2.new(0,5,0,30); logsText.BackgroundTransparency = 1
+logsText.TextXAlignment = "Left"; logsText.TextYAlignment = "Top"; logsText.TextColor3 = Color3.new(1,1,1); logsText.Font = "Code"; logsText.TextSize = 12
 
 local function updateLogs(servidores, waitTime)
 	local txt = ""
-	for i = 1, #servidores do -- Cambiado para mostrar en orden 1 al 5
+	for i = 1, #servidores do
 		local srv = servidores[i]
-		local estado = "✅"
-		if srv.usado then estado = "⛔" end
-		if srv.valor == 0 then estado = "🔻" end
-		
+		local estado = srv.usado and "⛔" or (srv.valor == 0 and "🔻" or "✅")
 		local displayName = srv.encontrado or "---"
 		if #displayName > 18 then displayName = displayName:sub(1,16)..".." end
-		
 		txt = txt .. "["..srv.idx.."] " .. displayName .. " " .. estado .. "\n"
 	end
 	if waitTime then txt = txt .. "----------------\nCarga: " .. string.format("%.2f", waitTime) .. "s" end
@@ -164,208 +109,88 @@ end
 
 local function intentarUnirse(frame, firma, nombreDetectado)
 	if joinLock then return end
-	joinLock = true
-	bigBtn.Visible = false
-
+	joinLock = true; bigBtn.Visible = false
 	local inner = frame:FindFirstChildWhichIsA("Frame")
-	if not inner then joinLock = false return end
-	local joinBtn = inner:FindFirstChildWhichIsA("TextButton")
+	local joinBtn = inner and inner:FindFirstChildWhichIsA("TextButton")
 	if not joinBtn then joinLock = false return end
 
-	usados[firma] = true 
-	task.spawn(guardarUsados)
+	usados[firma] = true; task.spawn(guardarUsados)
+	local s = Instance.new("Sound", game:GetService("SoundService")); s.SoundId = "rbxassetid://128387076668435"; s:Play(); game:GetService("Debris"):AddItem(s, 2)
 	
-	print("🚀 JOINING: " .. (firma or "???"))
-
-	-- SONIDO DE ALERTA (Añadido)
-	local sound = Instance.new("Sound")
-	sound.SoundId = "rbxassetid://128387076668435" -- Sonido de Ping/Notificación
-	sound.Volume = 1
-	sound.Parent = game:GetService("SoundService")
-	sound:Play()
-	game:GetService("Debris"):AddItem(sound, 2)
-	
-	-- RAFAGA DE 30 CLICS (Sin tocar)
-	for i = 1, 200 do
-		for _,conn in ipairs(getconnections(joinBtn.MouseButton1Click)) do
-			conn:Fire()
-		end
-	end
-
-	task.delay(1.2, function() 
-		if joinLock then
-			joinLock = false
-		end
-	end)
+	for i = 1, 200 do for _,c in ipairs(getconnections(joinBtn.MouseButton1Click)) do c:Fire() end end
+	task.delay(1.2, function() joinLock = false end)
 end
 
 local function listoParaEscanear()
-	local frames = scrolling:GetChildren()
-	local count = 0
-	for i = 1, #frames do
-		if frames[i]:IsA("Frame") and frames[i].Visible then
-			count += 1
-			if count >= MAX_SERVERS_A_ESCANEAR then return true end
-		end
-	end
-	return false
+	local frames, count = scrolling:GetChildren(), 0
+	for i = 1, #frames do if frames[i]:IsA("Frame") and frames[i].Visible then count += 1 end end
+	return count >= MAX_SERVERS_A_ESCANEAR
 end
 
 local function escanearSmart()
 	if joinLock then return end
-	
-	local rawChildren = scrolling:GetChildren()
-    local framesValidos = {}
+	local framesValidos = {}
+    for _,obj in ipairs(scrolling:GetChildren()) do if obj:IsA("Frame") and obj.Visible then table.insert(framesValidos, obj) end end
     
-    for _,obj in ipairs(rawChildren) do
-        if obj:IsA("Frame") and obj.Visible then
-            table.insert(framesValidos, obj)
-        end
-    end
-    
-	local candidatos = {}
-	local logsData = {} 
-	
-    -- LÓGICA MODIFICADA: Ahora escanea desde el índice 1 hasta el 5 (los primeros)
+	local candidatos, logsData = {}, {}
     local limite = math.min(#framesValidos, MAX_SERVERS_A_ESCANEAR)
     
     for i = 1, limite do
         local obj = framesValidos[i]
         local lbl = obj:FindFirstChild("TextLabel", false) 
-        
         if lbl and lbl.Text then
-            local txt = lbl.Text
-            local val, nombreEncontrado = parseValor(txt) 
-            
-            local firma = txt 
-            local isUsed = usados[firma] ~= nil
-            
-            table.insert(logsData, {
-                idx = i,
-                firma = firma, 
-                valor = val, 
-                encontrado = nombreEncontrado, 
-                usado = isUsed
-            })
-
-            if val > 0 and not isUsed then
-                table.insert(candidatos, {
-                    frame = obj,
-                    valor = val,
-                    firma = firma,
-                    nombre = nombreEncontrado
-                })
-            end
+            local val, nombreEncontrado = parseValor(lbl.Text) 
+            local isUsed = usados[lbl.Text] ~= nil
+            table.insert(logsData, {idx = i, firma = lbl.Text, valor = val, encontrado = nombreEncontrado, usado = isUsed})
+            if val > 0 and not isUsed then table.insert(candidatos, {frame = obj, valor = val, firma = lbl.Text, nombre = nombreEncontrado}) end
         end
     end
-	
 	updateLogs(logsData)
-
 	if #candidatos > 0 then
 		table.sort(candidatos, function(a,b) return a.valor > b.valor end)
-		local mejor = candidatos[1]
-		
-		bigBtn.Text = "JOIN: " .. mejor.nombre
-		bigBtn.Visible = true
-		
-		task.defer(function()
-			intentarUnirse(mejor.frame, mejor.firma, mejor.nombre)
-		end)
+		bigBtn.Text = "JOIN: " .. candidatos[1].nombre; bigBtn.Visible = true
+		task.defer(function() intentarUnirse(candidatos[1].frame, candidatos[1].firma, candidatos[1].nombre) end)
 		return true
-	else
-		bigBtn.Visible = false
-		return false
 	end
+	bigBtn.Visible = false; return false
 end
 
--- ================= EXTRAS =================
+-- ================= INTERFAZ CONTROL =================
 
-local function getRefreshBtn()
-	if cachedRefreshBtn and cachedRefreshBtn.Parent then return cachedRefreshBtn end
-	for _,obj in ipairs(mainFrame:GetDescendants()) do
-		if obj:IsA("TextButton") and (obj.Text == "Refresh" or obj.ContentText == "Refresh") then
-			cachedRefreshBtn = obj
-			return obj
-		end
-	end
-end
+local controlPanel = Instance.new("Frame", gui)
+controlPanel.Size = UDim2.new(0,160,0,130); controlPanel.Position = UDim2.new(1,-450,0.5,-65); controlPanel.BackgroundColor3 = Color3.fromRGB(25,25,25); controlPanel.Draggable = true; controlPanel.Active = true; Instance.new("UICorner", controlPanel)
 
-local function fireRefresh()
-	local btn = getRefreshBtn()
-	if btn then
-		for _,conn in ipairs(getconnections(btn.MouseButton1Click)) do
-			conn:Fire()
-		end
-	end
-end
+local logsBtn = Instance.new("TextButton", controlPanel)
+logsBtn.Size = UDim2.new(1,-10,0,25); logsBtn.Position = UDim2.new(0,5,0,5); logsBtn.Text = "LOGS: OFF"; logsBtn.BackgroundColor3 = Color3.fromRGB(200, 150, 0)
 
-local controlPanel = Instance.new("Frame")
-controlPanel.Size = UDim2.new(0,160,0,130) 
-controlPanel.Position = UDim2.new(1,-450,0.5,-65)
-controlPanel.BackgroundColor3 = Color3.fromRGB(25,25,25)
-controlPanel.Active = true
-controlPanel.Draggable = true
-controlPanel.Parent = gui
-Instance.new("UICorner", controlPanel)
+local autoBtn = Instance.new("TextButton", controlPanel)
+autoBtn.Size = UDim2.new(1,-10,0,40); autoBtn.Position = UDim2.new(0,5,0,35); autoBtn.Text = "AUTO: OFF"; autoBtn.TextScaled = true; autoBtn.BackgroundColor3 = Color3.fromRGB(150,50,50); autoBtn.Font = "SourceSansBold"
 
-local logsBtn = Instance.new("TextButton")
-logsBtn.Size = UDim2.new(1,-10,0,25)
-logsBtn.Position = UDim2.new(0,5,0,5)
-logsBtn.Text = "LOGS: OFF"
-logsBtn.BackgroundColor3 = Color3.fromRGB(200, 150, 0)
-logsBtn.TextColor3 = Color3.new(1,1,1)
-logsBtn.Parent = controlPanel
-
-local autoBtn = Instance.new("TextButton")
-autoBtn.Size = UDim2.new(1,-10,0,40)
-autoBtn.Position = UDim2.new(0,5,0,35)
-autoBtn.Text = "AUTO: OFF"
-autoBtn.TextScaled = true
-autoBtn.BackgroundColor3 = Color3.fromRGB(150,50,50)
-autoBtn.TextColor3 = Color3.new(1,1,1)
-autoBtn.Font = Enum.Font.SourceSansBold
-autoBtn.Parent = controlPanel
-
-local cleanBtn = Instance.new("TextButton")
-cleanBtn.Size = UDim2.new(1,-10,0,30)
-cleanBtn.Position = UDim2.new(0,5,0,80)
-cleanBtn.Text = "CLEAN DATA"
-cleanBtn.BackgroundColor3 = Color3.fromRGB(60,60,60)
-cleanBtn.TextColor3 = Color3.new(1,1,1)
-cleanBtn.Parent = controlPanel
+local cleanBtn = Instance.new("TextButton", controlPanel)
+cleanBtn.Size = UDim2.new(1,-10,0,30); cleanBtn.Position = UDim2.new(0,5,0,80); cleanBtn.Text = "CLEAN DATA"; cleanBtn.BackgroundColor3 = Color3.fromRGB(60,60,60)
 
 local autoRefresh = false
+logsBtn.MouseButton1Click:Connect(function() logsFrame.Visible = not logsFrame.Visible; logsBtn.Text = logsFrame.Visible and "LOGS: ON" or "LOGS: OFF" end)
+autoBtn.MouseButton1Click:Connect(function() autoRefresh = not autoRefresh; autoBtn.Text = autoRefresh and "AUTO: ON" or "AUTO: OFF"; autoBtn.BackgroundColor3 = autoRefresh and Color3.fromRGB(0,150,0) or Color3.fromRGB(150,50,50) end)
+cleanBtn.MouseButton1Click:Connect(function() usados = {}; if isfile(FILE_NAME) then delfile(FILE_NAME) end; cleanBtn.Text = "BORRADO!"; updateLogs({}); task.delay(1, function() cleanBtn.Text = "CLEAN DATA" end) end)
 
-logsBtn.MouseButton1Click:Connect(function()
-	logsFrame.Visible = not logsFrame.Visible
-	logsBtn.Text = logsFrame.Visible and "LOGS: ON" or "LOGS: OFF"
-end)
-
-autoBtn.MouseButton1Click:Connect(function()
-	autoRefresh = not autoRefresh
-	autoBtn.Text = autoRefresh and "AUTO: ON" or "AUTO: OFF"
-	autoBtn.BackgroundColor3 = autoRefresh and Color3.fromRGB(0,150,0) or Color3.fromRGB(150,50,50)
-	if autoRefresh and not joinLock then escanearSmart() end
-end)
-
-cleanBtn.MouseButton1Click:Connect(function()
-	usados = {}
-	if isfile(FILE_NAME) then delfile(FILE_NAME) end
-	cleanBtn.Text = "BORRADO!"
-	updateLogs({}) 
-	task.delay(1, function() cleanBtn.Text = "CLEAN DATA" end)
-end)
+-- ================= BUCLE PRIME (CLICK VIRTUAL) =================
 
 task.spawn(function()
 	while true do
 		if autoRefresh and not joinLock then
-			fireRefresh()
+			-- SISTEMA DE CLICK VIRTUAL (PRIME MODE)
+			if getgenv().mousemoveabs and getgenv().mouse1click then
+				getgenv().mousemoveabs(543, 154)
+				getgenv().mouse1click()
+			end
+			
 			local start = tick()
 			while not listoParaEscanear() and (tick() - start) < MAX_WAIT_TIME do
 				task.wait()
 			end
 			local waitTime = tick() - start
-			task.wait(0.03) 
+			task.wait(0.03) -- Delay de calibración
 			escanearSmart()
 			if logsFrame.Visible then
 				logsText.Text = logsText.Text .. "\n(Wait: " .. string.format("%.2f", waitTime) .. "s)"
