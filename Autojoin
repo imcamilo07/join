@@ -210,10 +210,6 @@ scroll.Position = UDim2.new(0,10,0,60)
 scroll.CanvasSize = UDim2.new(0,0,0,200)
 scroll.BackgroundTransparency = 1
 
-createItem("La Ginger Sekolah","$1B/s",0)
-createItem("La Secret Combinasion","$125M/s",40)
-createItem("Nuclearo Dinossauro","$243M/s",80)
-
 -- FILTERS (ARREGLADO)
 local list = {"Skibidi Toilet","Strawberry","Elephant","Meowl"}
 
@@ -283,6 +279,10 @@ local function createItem(name,value,y)
     join.TextColor3 = Color3.fromRGB(80,170,255)
 	Instance.new("UICorner", join)
 end
+
+createItem("La Ginger Sekolah","$1B/s",0)
+createItem("La Secret Combinasion","$125M/s",40)
+createItem("Nuclearo Dinossauro","$243M/s",80)
 
 -- MINI GUI (QUITADA)
 local miniGui = Instance.new("ScreenGui")
