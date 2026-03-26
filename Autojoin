@@ -210,15 +210,6 @@ scroll.Position = UDim2.new(0,10,0,60)
 scroll.CanvasSize = UDim2.new(0,0,0,200)
 scroll.BackgroundTransparency = 1
 
-	local join = Instance.new("TextButton", item)
-	join.Text = "Join"
-	join.Size = UDim2.new(0,55,0,20)
-	join.Position = UDim2.new(1,-65,0.5,-10)
-	join.BackgroundColor3 = Color3.fromRGB(20,40,80)
-	join.TextColor3 = Color3.new(80,170,255)
-	Instance.new("UICorner", join)
-end
-
 createItem("La Ginger Sekolah","$1B/s",0)
 createItem("La Secret Combinasion","$125M/s",40)
 createItem("Nuclearo Dinossauro","$243M/s",80)
@@ -303,10 +294,6 @@ close.MouseButton1Click:Connect(function()
 	main.Visible = false
 	miniGui.Enabled = true
 end)
-
-local Players = game:GetService("Players")
-local UIS = game:GetService("UserInputService")
-local player = Players.LocalPlayer
 
 -- SHADOW (fake glow exterior)
 local shadow = Instance.new("Frame", miniGui)
