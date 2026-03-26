@@ -210,34 +210,6 @@ scroll.Position = UDim2.new(0,10,0,60)
 scroll.CanvasSize = UDim2.new(0,0,0,200)
 scroll.BackgroundTransparency = 1
 
-local function createItem(name,value,y)
-	local item = Instance.new("Frame", scroll)
-	item.Size = UDim2.new(1,0,0,32)
-	item.Position = UDim2.new(0,0,0,y)
-	item.BackgroundColor3 = Color3.fromRGB(15,25,50)
-	Instance.new("UICorner", item)
-
-	local txt = Instance.new("TextLabel", item)
-	txt.Text = name.." "..value
-	txt.Size = UDim2.new(0.6,0,1,0)
-	txt.BackgroundTransparency = 1
-	txt.TextSize = 9
-	txt.TextColor3 = Color3.new(1,1,1)
-
-	local spam = Instance.new("TextButton", item)
-	spam.Text = "Spam Join"
-	spam.Size = UDim2.new(0,75,0,20)
-	spam.Position = UDim2.new(1,-150,0.5,-10)
-	spam.BackgroundColor3 = Color3.fromRGB(50,20,20)
-	spam.TextColor3 = Color3.fromRGB(255,80,80)
-	Instance.new("UICorner", spam)
-
-	local active = false
-	spam.MouseButton1Click:Connect(function()
-		active = not active
-		spam.Text = active and "Stop" or "Spam Join"
-	end)
-
 	local join = Instance.new("TextButton", item)
 	join.Text = "Join"
 	join.Size = UDim2.new(0,55,0,20)
@@ -317,7 +289,7 @@ local function createItem(name,value,y)
 	join.Size = UDim2.new(0,55,0,20)
 	join.Position = UDim2.new(1,-65,0.5,-10)
 	join.BackgroundColor3 = Color3.fromRGB(20,40,80)
-  join.TextColor3 = Color3.fromRGB(80,170,255)
+    join.TextColor3 = Color3.fromRGB(80,170,255)
 	Instance.new("UICorner", join)
 end
 
@@ -435,6 +407,7 @@ end
 createLine("V1: OFF", 16, Color3.fromRGB(255,80,80), "v1")
 createLine("V2: OFF", 26, Color3.fromRGB(255,80,80), "v2")
 createLine("Autojoin: OFF", 36, Color3.fromRGB(255,80,80), "a")
+updateMini()
 
 frame.InputBegan:Connect(function(input)
 	if input.UserInputType == Enum.UserInputType.Touch then
