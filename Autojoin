@@ -242,8 +242,8 @@ local function createItem(name,value,y)
 	join.Text = "Join"
 	join.Size = UDim2.new(0,55,0,20)
 	join.Position = UDim2.new(1,-65,0.5,-10)
-	join.BackgroundColor3 = Color3.fromRGB(40,80,160)
-	join.TextColor3 = Color3.new(1,1,1)
+	join.BackgroundColor3 = Color3.fromRGB(20,40,80)
+	join.TextColor3 = Color3.new(80,170,255)
 	Instance.new("UICorner", join)
 end
 
@@ -322,6 +322,11 @@ local function createItem(name,value,y)
 end
 
 -- MINI GUI (QUITADA)
+local miniGui = Instance.new("ScreenGui")
+miniGui.Name = "MiniAtlasUltra"
+miniGui.Parent = player:WaitForChild("PlayerGui")
+miniGui.Enabled = false -- inicia apagada
+
 close.MouseButton1Click:Connect(function()
 	main.Visible = false
 	miniGui.Enabled = true
@@ -331,14 +336,8 @@ local Players = game:GetService("Players")
 local UIS = game:GetService("UserInputService")
 local player = Players.LocalPlayer
 
--- GUI
-local miniGui = Instance.new("ScreenGui")
-miniGui.Name = "MiniAtlasUltra"
-miniGui.Parent = player:WaitForChild("PlayerGui")
-miniGui.Enabled = false -- inicia apagada
-
 -- SHADOW (fake glow exterior)
-local shadow = Instance.new("Frame", gui)
+local shadow = Instance.new("Frame", miniGui)
 shadow.Size = UDim2.new(0, 150, 0, 55)
 shadow.Position = UDim2.new(1, -165, 0, 110)
 shadow.BackgroundColor3 = Color3.fromRGB(0, 170, 255)
@@ -347,7 +346,7 @@ shadow.BorderSizePixel = 0
 Instance.new("UICorner", shadow).CornerRadius = UDim.new(0, 12)
 
 -- FRAME PRINCIPAL
-local frame = Instance.new("Frame", gui)
+local frame = Instance.new("Frame", miniGui)
 frame.Size = UDim2.new(0, 145, 0, 50)
 frame.Position = shadow.Position
 frame.BackgroundColor3 = Color3.fromRGB(15, 20, 35)
@@ -404,25 +403,7 @@ title.TextSize = 11
 title.TextColor3 = Color3.fromRGB(255,255,255)
 title.TextXAlignment = Enum.TextXAlignment.Left
 
--- LINEA
 
-	local dot = Instance.new("Frame", container)
-	dot.Size = UDim2.new(0, 4, 0, 4)
-	dot.Position = UDim2.new(0, 0, 0.5, -2)
-	dot.BackgroundColor3 = color
-	dot.BorderSizePixel = 0
-	Instance.new("UICorner", dot).CornerRadius = UDim.new(1,0)
-
-	local label = Instance.new("TextLabel", container)
-	label.Size = UDim2.new(1, -6, 1, 0)
-	label.Position = UDim2.new(0, 6, 0, 0)
-	label.BackgroundTransparency = 1
-	label.Text = text
-	label.Font = Enum.Font.Gotham
-	label.TextSize = 9
-	label.TextColor3 = color
-	label.TextXAlignment = Enum.TextXAlignment.Left
-end
 
 -- DATOS
 local function createLine(text, y, color, id)
