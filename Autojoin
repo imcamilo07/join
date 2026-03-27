@@ -1,6 +1,7 @@
 local Players = game:GetService("Players")
 local UIS = game:GetService("UserInputService")
 local player = Players.LocalPlayer
+local TweenService = game:Getservice("TweenService")
 
 local gui = Instance.new("ScreenGui", player:WaitForChild("PlayerGui"))
 
@@ -114,16 +115,29 @@ autoBtn.TextColor3 = Color3.fromRGB(255,255,255)
 moveUnderline(autoBtn)
 
 local function switch(page,btn)
-	for _,p in pairs(pages:GetChildren()) do p.Visible = false end
-	for _,b in pairs(tabs:GetChildren()) do
-		if b:IsA("TextButton") then
-			b.TextColor3 = Color3.fromRGB(160,160,160)
-		end
-	end
-	
-	page.Visible = true
-	btn.TextColor3 = Color3.fromRGB(255,255,255)
-	moveUnderline(btn)
+    for _,p in pairs(pages:GetChildren()) do
+        if p ~= page then
+            p.Visible = false
+        end
+    end
+
+    for _,b in pairs(tabs:GetChildren()) do
+        if b:IsA("TextButton") then
+            b.TextColor3 = Color3.fromRGB(160,160,160)
+        end
+    end
+
+    page.Visible = true
+    page.Position = UDim2.new(1,0,0,0) -- empieza fuera
+
+    -- animación slide
+    local tween = TweenService:Create(page, TweenInfo.new(0.25, Enum.EasingStyle.Quad), {
+        Position = UDim2.new(0,0,0,0)
+    })
+    tween:Play()
+
+    btn.TextColor3 = Color3.fromRGB(255,255,255)
+    moveUnderline(btn)
 end
 
 autoBtn.MouseButton1Click:Connect(function() switch(autoPage,autoBtn) end)
@@ -396,9 +410,30 @@ createLine("V2: OFF", 26, Color3.fromRGB(255,80,80), "v2")
 createLine("Autojoin: OFF", 36, Color3.fromRGB(255,80,80), "a")
 updateMini()
 
+local touchStartTime = 0
+local moved = false
+
 frame.InputBegan:Connect(function(input)
-	if input.UserInputType == Enum.UserInputType.Touch then
-		main.Visible = true
-		miniGui.Enabled = false
-	end
+    if input.UserInputType == Enum.UserInputType.Touch then
+        touchStartTime = tick()
+        moved = false
+    end
+end)
+
+frame.InputChanged:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.Touch then
+        moved = true
+    end
+end)
+
+frame.InputEnded:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.Touch then
+        local duration = tick() - touchStartTime
+
+        -- solo abre si fue tap rápido y no arrastre
+        if duration < 0.2 and not moved then
+            main.Visible = true
+            miniGui.Enabled = false
+        end
+    end
 end)
