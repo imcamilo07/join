@@ -2,11 +2,33 @@ local Players = game:GetService("Players")
 local UIS = game:GetService("UserInputService")
 local player = Players.LocalPlayer
 local TweenService = game:GetService("TweenService")
+local HttpService = game:GetService("HttpService")
 
 local gui = Instance.new("ScreenGui", player:WaitForChild("PlayerGui"))
 
 -- MAIN
 local main = Instance.new("Frame", gui)
+local function savePositions()
+    local data = {
+        main = {
+            X = main.Position.X.Offset,
+            Y = main.Position.Y.Offset
+        },
+        mini = {
+            X = frame.Position.X.Offset,
+            Y = frame.Position.Y.Offset
+        }
+    }
+
+    writefile("atlas_gui.json", HttpService:JSONEncode(data))
+end
+if isfile("atlas_gui.json") then
+    local data = HttpService:JSONDecode(readfile("atlas_gui.json"))
+
+    main.Position = UDim2.new(0.5, data.main.X, 0.5, data.main.Y)
+    frame.Position = UDim2.new(0, data.mini.X, 0, data.mini.Y)
+    shadow.Position = frame.Position
+end
 main.Size = UDim2.new(0, 340, 0, 366)
 main.Position = UDim2.new(0.5, -173, 0.5, -209)
 main.BackgroundColor3 = Color3.fromRGB(8,12,25)
@@ -31,9 +53,10 @@ UIS.InputChanged:Connect(function(input)
 end)
 
 UIS.InputEnded:Connect(function(input)
-	if input.UserInputType == Enum.UserInputType.Touch then
-		dragging = false
-	end
+    if input.UserInputType == Enum.UserInputType.Touch then
+        dragging = false
+        savePositions() -- 👈 AQUI
+    end
 end)
 
 -- TITLE
@@ -138,6 +161,10 @@ local function switch(page,btn)
     end
 
     page.Visible = true
+    btn.TextColor3=
+   Color3.fromRGB(255,255,255)
+     moveUnderline(btn)
+    end
     
 
 autoBtn.MouseButton1Click:Connect(function() switch(autoPage,autoBtn) end)
@@ -360,9 +387,10 @@ UIS.InputChanged:Connect(function(input)
 end)
 
 UIS.InputEnded:Connect(function(input)
-	if input.UserInputType == Enum.UserInputType.Touch then
-		dragging = false
-	end
+    if input.UserInputType == Enum.UserInputType.Touch then
+        dragging = false
+        savePositions() -- 👈 AQUI
+    end
 end)
 
 -- TITLE
