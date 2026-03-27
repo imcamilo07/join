@@ -22,6 +22,8 @@ local function savePositions()
 
     writefile("atlas_gui.json", HttpService:JSONEncode(data))
 end
+
+main.Size = UDim2.new(0, 340, 0, 366)
 if isfile("atlas_gui.json") then
     local data = HttpService:JSONDecode(readfile("atlas_gui.json"))
 
@@ -29,8 +31,6 @@ if isfile("atlas_gui.json") then
     frame.Position = UDim2.new(0, data.mini.X, 0, data.mini.Y)
     shadow.Position = frame.Position
 end
-main.Size = UDim2.new(0, 340, 0, 366)
-main.Position = UDim2.new(0.5, -173, 0.5, -209)
 main.BackgroundColor3 = Color3.fromRGB(8,12,25)
 Instance.new("UICorner", main).CornerRadius = UDim.new(0,12)
 
@@ -347,6 +347,13 @@ Instance.new("UICorner", shadow).CornerRadius = UDim.new(0, 12)
 
 -- FRAME PRINCIPAL
 local frame = Instance.new("Frame", miniGui)
+if isfile("atlas_gui.json") then
+    local data = HttpService:JSONDecode(readfile("atlas_gui.json"))
+
+    main.Position = UDim2.new(0.5, data.main.X, 0.5, data.main.Y)
+    frame.Position = UDim2.new(0, data.mini.X, 0, data.mini.Y)
+    shadow.Position = frame.Position
+end
 frame.Size = UDim2.new(0, 145, 0, 50)
 frame.Position = shadow.Position
 frame.BackgroundColor3 = Color3.fromRGB(15, 20, 35)
