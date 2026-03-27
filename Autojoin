@@ -89,7 +89,17 @@ underline.Size = UDim2.new(0,50,0,2)
 underline.BackgroundColor3 = Color3.fromRGB(0,170,255)
 
 local function moveUnderline(btn)
-	underline.Position = UDim2.new(0, btn.Position.X.Offset + 20, 1, -2)
+    local goal = {
+        Position = UDim2.new(0, btn.Position.X.Offset + 20, 1, -2)
+    }
+
+    local tween = TweenService:Create(
+        underline,
+        TweenInfo.new(0.25, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
+        goal
+    )
+
+    tween:Play()
 end
 
 -- PAGES
@@ -128,17 +138,7 @@ local function switch(page,btn)
     end
 
     page.Visible = true
-    page.Position = UDim2.new(1,0,0,0) -- empieza fuera
-
-    -- animación slide
-    local tween = TweenService:Create(page, TweenInfo.new(0.25, Enum.EasingStyle.Quad), {
-        Position = UDim2.new(0,0,0,0)
-    })
-    tween:Play()
-
-    btn.TextColor3 = Color3.fromRGB(255,255,255)
-    moveUnderline(btn)
-end
+    
 
 autoBtn.MouseButton1Click:Connect(function() switch(autoPage,autoBtn) end)
 filterBtn.MouseButton1Click:Connect(function() switch(filterPage,filterBtn) end)
@@ -411,18 +411,23 @@ createLine("Autojoin: OFF", 36, Color3.fromRGB(255,80,80), "a")
 updateMini()
 
 local touchStartTime = 0
+local startPosTouch
 local moved = false
 
 frame.InputBegan:Connect(function(input)
     if input.UserInputType == Enum.UserInputType.Touch then
         touchStartTime = tick()
+        startPosTouch = input.Position
         moved = false
     end
 end)
 
 frame.InputChanged:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.Touch then
-        moved = true
+    if input.UserInputType == Enum.UserInputType.Touch and startPosTouch then
+        local delta = (input.Position - startPosTouch).Magnitude
+        if delta > 10 then -- 👈 movimiento real
+            moved = true
+        end
     end
 end)
 
@@ -430,7 +435,6 @@ frame.InputEnded:Connect(function(input)
     if input.UserInputType == Enum.UserInputType.Touch then
         local duration = tick() - touchStartTime
 
-        -- solo abre si fue tap rápido y no arrastre
         if duration < 0.2 and not moved then
             main.Visible = true
             miniGui.Enabled = false
