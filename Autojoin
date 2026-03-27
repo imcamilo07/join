@@ -8,8 +8,6 @@ local gui = Instance.new("ScreenGui", player:WaitForChild("PlayerGui"))
 
 -- MAIN
 local main = Instance.new("Frame", gui)
-
--- [ESTA FUNCIÓN SE QUEDA IGUAL]
 local function savePositions()
     local data = {
         main = {
@@ -21,11 +19,16 @@ local function savePositions()
             Y = frame.Position.Y.Offset
         }
     }
-    pcall(function()
-        writefile("atlas_gui.json", HttpService:JSONEncode(data))
-    end)
-end
 
+    writefile("atlas_gui.json", HttpService:JSONEncode(data))
+end
+if isfile("atlas_gui.json") then
+    local data = HttpService:JSONDecode(readfile("atlas_gui.json"))
+
+    main.Position = UDim2.new(0.5, data.main.X, 0.5, data.main.Y)
+    frame.Position = UDim2.new(0, data.mini.X, 0, data.mini.Y)
+    shadow.Position = frame.Position
+end
 main.Size = UDim2.new(0, 340, 0, 366)
 main.Position = UDim2.new(0.5, -173, 0.5, -209)
 main.BackgroundColor3 = Color3.fromRGB(8,12,25)
@@ -52,7 +55,7 @@ end)
 UIS.InputEnded:Connect(function(input)
     if input.UserInputType == Enum.UserInputType.Touch then
         dragging = false
-        savePositions() -- 👈 GUARDA AL SOLTAR
+        savePositions() -- 👈 AQUI
     end
 end)
 
@@ -158,17 +161,19 @@ local function switch(page,btn)
     end
 
     page.Visible = true
-    btn.TextColor3 = Color3.fromRGB(255,255,255)
-    moveUnderline(btn)
-end
+    btn.TextColor3=
+   Color3.fromRGB(255,255,255)
+     moveUnderline(btn)
+    end
     
+
 autoBtn.MouseButton1Click:Connect(function() switch(autoPage,autoBtn) end)
 filterBtn.MouseButton1Click:Connect(function() switch(filterPage,filterBtn) end)
 miscBtn.MouseButton1Click:Connect(function() switch(miscPage,miscBtn) end)
 
 -- TOGGLES
 local toggles = {}
-local miniLabels = {}
+local miniLabels = {} -- para conectar mini gui
 
 local function makeBtn(text,x)
 	local b = Instance.new("TextButton", autoPage)
@@ -211,7 +216,7 @@ local function toggle(btn,id)
 		btn.TextColor3 = Color3.fromRGB(255,80,80)
 	end
 
-	updateMini()
+	updateMini() -- 🔥 ACTUALIZA MINI GUI
 end
 
 local clear = makeBtn("CLEAR",0)
@@ -246,20 +251,20 @@ scroll.Position = UDim2.new(0,10,0,60)
 scroll.CanvasSize = UDim2.new(0,0,0,200)
 scroll.BackgroundTransparency = 1
 
--- FILTERS
+-- FILTERS (ARREGLADO)
 local list = {"Skibidi Toilet","Strawberry","Elephant","Meowl"}
 
 for i,name in pairs(list) do
 	local t = Instance.new("TextLabel", filterPage)
 	t.Text = name
-	t.Position = UDim2.new(0,10,0,(i-1)*26)
+	t.Position = UDim2.new(0,10,0,(i-1)*26) -- 👈 más juntos
 	t.Size = UDim2.new(0,150,0,22)
 	t.BackgroundTransparency = 1
 	t.TextColor3 = Color3.new(1,1,1)
 	t.TextXAlignment = Enum.TextXAlignment.Left
 
 	local box = Instance.new("TextBox", filterPage)
-	box.PlaceholderText = "M/s"
+	box.PlaceholderText = "M/s" -- 👈 AQUÍ ESTÁ BIEN (no escrito fijo)
 	box.Text = ""
 	box.ClearTextOnFocus = false
 	box.Position = UDim2.new(1,-70,0,(i-1)*26)
@@ -270,7 +275,7 @@ for i,name in pairs(list) do
 	Instance.new("UICorner", box)
 end
 
--- LIVE FEED ITEMS
+-- LIVE FEED ITEMS (ARREGLADO)
 local function createItem(name,value,y)
 	local item = Instance.new("Frame", scroll)
 	item.Size = UDim2.new(1,0,0,32)
@@ -287,6 +292,7 @@ local function createItem(name,value,y)
 	txt.TextColor3 = Color3.new(1,1,1)
 	txt.TextXAlignment = Enum.TextXAlignment.Left
 
+	-- SPAM (SIEMPRE ROJO)
 	local spam = Instance.new("TextButton", item)
 	spam.Text = "Spam Join"
 	spam.Size = UDim2.new(0,75,0,20)
@@ -299,10 +305,13 @@ local function createItem(name,value,y)
 	spam.MouseButton1Click:Connect(function()
 		active = not active
 		spam.Text = active and "Stop" or "Spam Join"
+
+		-- 👇 SIEMPRE ROJO
 		spam.BackgroundColor3 = Color3.fromRGB(50,20,20)
 		spam.TextColor3 = Color3.fromRGB(255,80,80)
 	end)
 
+	-- JOIN (AZUL COMO AUTOJOIN)
 	local join = Instance.new("TextButton", item)
 	join.Text = "Join"
 	join.Size = UDim2.new(0,55,0,20)
@@ -316,17 +325,18 @@ createItem("La Ginger Sekolah","$1B/s",0)
 createItem("La Secret Combinasion","$125M/s",40)
 createItem("Nuclearo Dinossauro","$243M/s",80)
 
--- MINI GUI
+-- MINI GUI (QUITADA)
 local miniGui = Instance.new("ScreenGui")
 miniGui.Name = "MiniAtlasUltra"
 miniGui.Parent = player:WaitForChild("PlayerGui")
-miniGui.Enabled = false
+miniGui.Enabled = false -- inicia apagada
 
 close.MouseButton1Click:Connect(function()
 	main.Visible = false
 	miniGui.Enabled = true
 end)
 
+-- SHADOW (fake glow exterior)
 local shadow = Instance.new("Frame", miniGui)
 shadow.Size = UDim2.new(0, 150, 0, 55)
 shadow.Position = UDim2.new(1, -165, 0, 110)
@@ -335,6 +345,7 @@ shadow.BackgroundTransparency = 0.85
 shadow.BorderSizePixel = 0
 Instance.new("UICorner", shadow).CornerRadius = UDim.new(0, 12)
 
+-- FRAME PRINCIPAL
 local frame = Instance.new("Frame", miniGui)
 frame.Size = UDim2.new(0, 145, 0, 50)
 frame.Position = shadow.Position
@@ -344,29 +355,31 @@ frame.BorderSizePixel = 0
 frame.Active = true
 Instance.new("UICorner", frame).CornerRadius = UDim.new(0, 10)
 
+-- GLOW BORDE
 local stroke = Instance.new("UIStroke", frame)
 stroke.Color = Color3.fromRGB(0,170,255)
 stroke.Thickness = 1.2
 stroke.Transparency = 0.4
 
--- DRAG MINI
-local draggingMini, dragStartMini, startPosMini
+-- DRAG
+local dragging, dragStart, startPos
+
 frame.InputBegan:Connect(function(input)
 	if input.UserInputType == Enum.UserInputType.Touch then
-		draggingMini = true
-		dragStartMini = input.Position
-		startPosMini = frame.Position
+		dragging = true
+		dragStart = input.Position
+		startPos = frame.Position
 	end
 end)
 
 UIS.InputChanged:Connect(function(input)
-	if draggingMini and input.UserInputType == Enum.UserInputType.Touch then
-		local delta = input.Position - dragStartMini
+	if dragging and input.UserInputType == Enum.UserInputType.Touch then
+		local delta = input.Position - dragStart
 		local newPos = UDim2.new(
-			startPosMini.X.Scale,
-			startPosMini.X.Offset + delta.X,
-			startPosMini.Y.Scale,
-			startPosMini.Y.Offset + delta.Y
+			startPos.X.Scale,
+			startPos.X.Offset + delta.X,
+			startPos.Y.Scale,
+			startPos.Y.Offset + delta.Y
 		)
 		frame.Position = newPos
 		shadow.Position = newPos
@@ -375,22 +388,25 @@ end)
 
 UIS.InputEnded:Connect(function(input)
     if input.UserInputType == Enum.UserInputType.Touch then
-        draggingMini = false
-        savePositions() -- 👈 GUARDA AL SOLTAR
+        dragging = false
+        savePositions() -- 👈 AQUI
     end
 end)
 
-local titleMini = Instance.new("TextLabel", frame)
-titleMini.Size = UDim2.new(1, -8, 0, 14)
-titleMini.Position = UDim2.new(0, 6, 0, 2)
-titleMini.BackgroundTransparency = 1
-titleMini.Text = "Atlas Finder"
-titleMini.Font = Enum.Font.GothamBold
-titleMini.TextSize = 11
-titleMini.TextColor3 = Color3.fromRGB(255,255,255)
-titleMini.TextXAlignment = Enum.TextXAlignment.Left
+-- TITLE
+local title = Instance.new("TextLabel", frame)
+title.Size = UDim2.new(1, -8, 0, 14)
+title.Position = UDim2.new(0, 6, 0, 2)
+title.BackgroundTransparency = 1
+title.Text = "Atlas Finder"
+title.Font = Enum.Font.GothamBold
+title.TextSize = 11
+title.TextColor3 = Color3.fromRGB(255,255,255)
+title.TextXAlignment = Enum.TextXAlignment.Left
 
--- DATOS MINI
+
+
+-- DATOS
 local function createLine(text, y, color, id)
 	local container = Instance.new("Frame", frame)
 	container.Size = UDim2.new(1, -10, 0, 12)
@@ -437,33 +453,19 @@ end)
 frame.InputChanged:Connect(function(input)
     if input.UserInputType == Enum.UserInputType.Touch and startPosTouch then
         local delta = (input.Position - startPosTouch).Magnitude
-        if delta > 10 then moved = true end
+        if delta > 10 then -- 👈 movimiento real
+            moved = true
+        end
     end
 end)
 
 frame.InputEnded:Connect(function(input)
     if input.UserInputType == Enum.UserInputType.Touch then
         local duration = tick() - touchStartTime
+
         if duration < 0.2 and not moved then
             main.Visible = true
             miniGui.Enabled = false
         end
     end
 end)
-
--- ==========================================
--- CARGA DE POSICIONES (AL FINAL PARA QUE NO HAYA ERROR)
--- ==========================================
-if isfile("atlas_gui.json") then
-    local success, content = pcall(function() return readfile("atlas_gui.json") end)
-    if success then
-        local data = HttpService:JSONDecode(content)
-        if data.main then
-            main.Position = UDim2.new(0.5, data.main.X, 0.5, data.main.Y)
-        end
-        if data.mini then
-            frame.Position = UDim2.new(startPosMini.X.Scale, data.mini.X, startPosMini.Y.Scale, data.mini.Y)
-            shadow.Position = frame.Position
-        end
-    end
-end
