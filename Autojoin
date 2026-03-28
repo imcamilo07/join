@@ -24,7 +24,16 @@ local function savePositions()
 end
 
 main.Size = UDim2.new(0, 340, 0, 366)
-if not isfile("atlas_gui.json") then
+if isfile("atlas_gui.json") then
+    local data = HttpService:JSONDecode(readfile("atlas_gui.json"))
+
+    main.Position = UDim2.new(
+        data.main.X.Scale,
+        data.main.X.Offset,
+        data.main.Y.Scale,
+        data.main.Y.Offset
+    )
+else
     main.Position = UDim2.new(0.5, -173, 0.5, -209)
 end
 main.BackgroundColor3 = Color3.fromRGB(8,12,25)
