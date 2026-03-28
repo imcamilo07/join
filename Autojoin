@@ -343,6 +343,8 @@ Instance.new("UICorner", shadow).CornerRadius = UDim.new(0, 12)
 
 -- FRAME PRINCIPAL
 local frame = Instance.new("Frame", miniGui)
+frame.Size = UDim2.new(0, 145, 0, 50)
+frame.Position = shadow.Position
 if isfile("atlas_gui.json") then
     local data = HttpService:JSONDecode(readfile("atlas_gui.json"))
 
@@ -350,8 +352,6 @@ if isfile("atlas_gui.json") then
     frame.Position = UDim2.new(0, data.mini.X, 0, data.mini.Y)
     shadow.Position = frame.Position
 end
-frame.Size = UDim2.new(0, 145, 0, 50)
-frame.Position = shadow.Position
 frame.BackgroundColor3 = Color3.fromRGB(15, 20, 35)
 frame.BackgroundTransparency = 0.08
 frame.BorderSizePixel = 0
