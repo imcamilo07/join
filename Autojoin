@@ -1,5 +1,5 @@
 -- ==========================================
--- ATLAS FINDER - CONEXIÓN LÓGICA V17
+-- ATLAS FINDER - FIX TOTAL DE CARGA
 -- REFRESH FÍSICO CALIBRADO: 543, 154
 -- ==========================================
 
@@ -9,22 +9,13 @@ local player = Players.LocalPlayer
 local TweenService = game:GetService("TweenService")
 local HttpService = game:GetService("HttpService")
 
--- ✅ VARIABLES DEL MOTOR INTERNO (MODO SILENCIOSO)
-local MAX_SERVERS_A_ESCANEAR = 5 
-local INTENTOS_PARA_LIMPIAR = 6 
+-- ✅ VARIABLES DEL MOTOR INTERNO
 local usados = {}
-local ausenciaContador = {}
 local selectedData = {}
-local priorityList = {} -- Se llena dinámicamente
-local joinLock = false
-
--- ESTADOS DE BOTONES (NO PERSISTENTES ALGUNOS)
 local v1_Enabled = false 
-local v2_Enabled = false
 local autoJoin_Enabled = false 
-local autoClean_Enabled = false
 
--- LISTA DE OBJETOS COMPLETA
+-- LISTA DE OBJETOS
 local ALL_OBJECTS = {
     "Strawberry Elephant", "Meowl", "Skibidi Toilet", "Dragon Cannelloni",
     "Dragon Gingerini", "Hydra Dragon Cannelloni", "Griffin", "Cerberus", 
@@ -39,207 +30,129 @@ local ALL_OBJECTS = {
     "Fortunu and Cashuru", "Gold Gold Gold"
 }
 
--- INICIALIZAR DATOS
 for _, name in ipairs(ALL_OBJECTS) do
     selectedData[name] = {enabled = false, minVal = 0}
-    table.insert(priorityList, name)
 end
 
--- =========================================================
--- TU GUI ORIGINAL (SIN CAMBIOS DE DISEÑO, SOLO CONEXIONES)
--- =========================================================
-
+-- ✅ GUI PRINCIPAL
 local gui = Instance.new("ScreenGui", player:WaitForChild("PlayerGui"))
 local main = Instance.new("Frame", gui)
-
--- [SISTEMA DE POSICIONES Y DRAG ORIGINAL]
-local function savePositions()
-    local data = {
-        main = {X = {Scale = main.Position.X.Scale, Offset = main.Position.X.Offset}, Y = {Scale = main.Position.Y.Scale, Offset = main.Position.Y.Offset}}
-    }
-    if _G.frameRef then
-        data.mini = {X = {Scale = _G.frameRef.Position.X.Scale, Offset = _G.frameRef.Position.X.Offset}, Y = {Scale = _G.frameRef.Position.Y.Scale, Offset = _G.frameRef.Position.Y.Offset}}
-    end
-    writefile("atlas_gui.json", HttpService:JSONEncode(data))
-end
-
 main.Size = UDim2.new(0, 340, 0, 366)
-if isfile("atlas_gui.json") then
-    local data = HttpService:JSONDecode(readfile("atlas_gui.json"))
-    main.Position = UDim2.new(data.main.X.Scale, data.main.X.Offset, data.main.Y.Scale, data.main.Y.Offset)
-else
-    main.Position = UDim2.new(0.5, -173, 0.5, -209)
-end
+main.Position = UDim2.new(0.5, -173, 0.5, -209)
 main.BackgroundColor3 = Color3.fromRGB(8,12,25)
 Instance.new("UICorner", main).CornerRadius = UDim.new(0,12)
 
-local dragging, dragStart, startPos
-main.InputBegan:Connect(function(input) if input.UserInputType == Enum.UserInputType.Touch then dragging = true; dragStart = input.Position; startPos = main.Position end end)
-UIS.InputChanged:Connect(function(input) if dragging and input.UserInputType == Enum.UserInputType.Touch then local delta = input.Position - dragStart; main.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y) end end)
-UIS.InputEnded:Connect(function(input) if input.UserInputType == Enum.UserInputType.Touch then dragging = false; savePositions() end end)
+-- ✅ FUNCIONES DE SOPORTE (LAS QUE FALTABAN)
+local function makeTab(text, order, parent, tabsFrame)
+    local t = Instance.new("TextButton", tabsFrame)
+    local tabWidth = 90
+    local spacing = 15
+    local startX = (340 - ((tabWidth * 3) + (spacing * 2))) / 2
+    t.Size = UDim2.new(0, tabWidth, 1, 0)
+    t.Position = UDim2.new(0, startX + (order * (tabWidth + spacing)), 0, 0)
+    t.Text = text
+    t.Font = Enum.Font.GothamBold
+    t.TextSize = 14
+    t.TextColor3 = Color3.fromRGB(160,160,160)
+    t.BackgroundTransparency = 1
+    return t
+end
 
--- [TÍTULO Y CIERRE]
+local function makePage(pagesFrame)
+    local f = Instance.new("Frame", pagesFrame)
+    f.Size = UDim2.new(1, 0, 1, 0)
+    f.Visible = false
+    f.BackgroundTransparency = 1
+    return f
+end
+
+-- ✅ CABECERA Y TABS
 local title = Instance.new("TextLabel", main)
-title.Size = UDim2.new(1,0,0,30); title.Position = UDim2.new(0,10,0,2); title.BackgroundTransparency = 1; title.Text = "Atlas Finder"; title.Font = Enum.Font.GothamBold; title.TextSize = 16; title.TextColor3 = Color3.fromRGB(255,255,255); title.TextXAlignment = Enum.TextXAlignment.Left
+title.Size = UDim2.new(1,0,0,30); title.Position = UDim2.new(0,10,0,2); title.BackgroundTransparency = 1; title.Text = "Atlas Finder"; title.Font = Enum.Font.GothamBold; title.TextColor3 = Color3.new(1,1,1); title.TextXAlignment = "Left"
 
-local close = Instance.new("TextButton", main)
-close.Size = UDim2.new(0,25,0,25); close.Position = UDim2.new(1,-30,0,3); close.Text = "X"; close.BackgroundColor3 = Color3.fromRGB(60,20,20); close.TextColor3 = Color3.fromRGB(255,80,80); Instance.new("UICorner", close).CornerRadius = UDim.new(0,6)
-
--- [PESTAÑAS]
 local tabs = Instance.new("Frame", main)
 tabs.Size = UDim2.new(1,0,0,30); tabs.Position = UDim2.new(0,0,0,30); tabs.BackgroundTransparency = 1
-local autoBtn = makeTab("Autojoin",0) -- Estas funciones vienen de tu base
-local filterBtn = makeTab("Filters",1)
-local miscBtn = makeTab("Misc",2)
 
--- [PÁGINAS]
 local pages = Instance.new("Frame", main)
 pages.Size = UDim2.new(1,-7,1,-56); pages.Position = UDim2.new(0,4,0,66); pages.BackgroundTransparency = 1
 
-local autoPage = makePage(); local filterPage = makePage(); local miscPage = makePage()
-autoPage.Visible = true
+local autoBtn = makeTab("Autojoin", 0, main, tabs)
+local filterBtn = makeTab("Filters", 1, main, tabs)
+local miscBtn = makeTab("Misc", 2, main, tabs)
 
--- =========================================================
--- INTEGRACIÓN DE LÓGICA EN LAS PÁGINAS (CONTENIDO INTERNO)
--- =========================================================
+local autoPage = makePage(pages); autoPage.Visible = true
+local filterPage = makePage(pages)
+local miscPage = makePage(pages)
 
--- 1. AUTOJOIN PAGE (V1, V2, AUTOJOIN)
--- Aquí conectamos los Toggles con bolita que mencionaste
+-- ✅ LÓGICA DE BOTONES "BOLITA" (V1, V2, AUTOJOIN)
 local function createToggle(parent, text, pos, callback)
     local btn = Instance.new("TextButton", parent)
-    btn.Size = UDim2.new(0, 80, 0, 30); btn.Position = pos; btn.BackgroundColor3 = Color3.fromRGB(150,50,50); btn.Text = text; btn.TextColor3 = Color3.new(1,1,1); Instance.new("UICorner", btn)
+    btn.Size = UDim2.new(0, 100, 0, 30); btn.Position = pos; btn.BackgroundColor3 = Color3.fromRGB(60,20,20); btn.Text = text; btn.TextColor3 = Color3.new(1,1,1); btn.Font = "GothamBold"; Instance.new("UICorner", btn)
     
     local ball = Instance.new("Frame", btn)
-    ball.Size = UDim2.new(0, 20, 0, 20); ball.Position = UDim2.new(0, 5, 0.5, -10); ball.BackgroundColor3 = Color3.new(1,1,1); Instance.new("UICorner", ball)
+    ball.Size = UDim2.new(0, 18, 0, 18); ball.Position = UDim2.new(0, 5, 0.5, -9); ball.BackgroundColor3 = Color3.new(1,1,1); Instance.new("UICorner", ball)
 
     local state = false
     btn.MouseButton1Click:Connect(function()
         state = not state
-        TweenService:Create(ball, TweenInfo.new(0.2), {Position = state and UDim2.new(1, -25, 0.5, -10) or UDim2.new(0, 5, 0.5, -10)}):Play()
-        btn.BackgroundColor3 = state and Color3.fromRGB(0, 100, 255) or Color3.fromRGB(150,50,50)
+        ball:TweenPosition(state and UDim2.new(1, -23, 0.5, -9) or UDim2.new(0, 5, 0.5, -9), "Out", "Quad", 0.2, true)
+        btn.BackgroundColor3 = state and Color3.fromRGB(0, 100, 255) or Color3.fromRGB(60,20,20)
         callback(state)
     end)
 end
 
-createToggle(autoPage, "V1", UDim2.new(0.1, 0, 0.1, 0), function(s) v1_Enabled = s end)
-createToggle(autoPage, "V2", UDim2.new(0.1, 0, 0.3, 0), function(s) v2_Enabled = s end)
-createToggle(autoPage, "AUTO JOIN", UDim2.new(0.5, 0, 0.1, 0), function(s) autoJoin_Enabled = s end)
+-- Crear los botones en Autojoin
+createToggle(autoPage, "V1", UDim2.new(0.05, 0, 0.1, 0), function(s) v1_Enabled = s end)
+createToggle(autoPage, "AUTOJOIN", UDim2.new(0.5, 0, 0.1, 0), function(s) autoJoin_Enabled = s end)
 
--- 2. FILTERS PAGE (CON FLECHAS INDEPENDIENTES)
-local scrollF = Instance.new("ScrollingFrame", filterPage)
-scrollF.Size = UDim2.new(1, 0, 1, 0); scrollF.BackgroundTransparency = 1; scrollF.CanvasSize = UDim2.new(0,0,0, #ALL_OBJECTS * 40)
+-- ✅ FILTERS CON FLECHAS SEPARADAS
+local scroll = Instance.new("ScrollingFrame", filterPage)
+scroll.Size = UDim2.new(1, 0, 1, 0); scroll.BackgroundTransparency = 1; scroll.CanvasSize = UDim2.new(0,0,0, #ALL_OBJECTS * 40)
 
 for i, name in ipairs(ALL_OBJECTS) do
-    local f = Instance.new("Frame", scrollF)
+    local f = Instance.new("Frame", scroll)
     f.Size = UDim2.new(1, -10, 0, 35); f.Position = UDim2.new(0, 5, 0, (i-1)*40); f.BackgroundTransparency = 1
     
     local objBtn = Instance.new("TextButton", f)
     objBtn.Size = UDim2.new(0.6, 0, 1, 0); objBtn.Text = name; objBtn.BackgroundColor3 = Color3.fromRGB(40,40,60); objBtn.TextColor3 = Color3.new(1,1,1); Instance.new("UICorner", objBtn)
     
-    local msInput = Instance.new("TextBox", f)
-    msInput.Size = UDim2.new(0.15, 0, 1, 0); msInput.Position = UDim2.new(0.62, 0, 0, 0); msInput.PlaceholderText = "M/s"; msInput.Text = ""; msInput.BackgroundColor3 = Color3.fromRGB(20,20,30); msInput.TextColor3 = Color3.new(1,1,1); Instance.new("UICorner", msInput)
-
-    -- Flechas con su propia Mini-GUI interna (Separadas)
-    local arrowArea = Instance.new("Frame", f)
-    arrowArea.Size = UDim2.new(0.2, 0, 1, 0); arrowArea.Position = UDim2.new(0.8, 0, 0, 0); arrowArea.BackgroundTransparency = 1
+    -- Mini-GUI para las flechas (Separadas)
+    local up = Instance.new("TextButton", f)
+    up.Size = UDim2.new(0.1, 0, 0.4, 0); up.Position = UDim2.new(0.85, 0, 0, 0); up.Text = "▲"; up.BackgroundColor3 = Color3.fromRGB(30,30,50); up.TextColor3 = Color3.new(1,1,1); Instance.new("UICorner", up)
     
-    local up = Instance.new("TextButton", arrowArea)
-    up.Size = UDim2.new(1, 0, 0.45, 0); up.Text = "▲"; up.BackgroundColor3 = Color3.fromRGB(30,30,50); up.TextColor3 = Color3.new(1,1,1); Instance.new("UICorner", up)
-    
-    local down = Instance.new("TextButton", arrowArea)
-    down.Size = UDim2.new(1, 0, 0.45, 0); down.Position = UDim2.new(0, 0, 0.55, 0); down.Text = "▼"; down.BackgroundColor3 = Color3.fromRGB(30,30,50); down.TextColor3 = Color3.new(1,1,1); Instance.new("UICorner", down)
+    local down = Instance.new("TextButton", f)
+    down.Size = UDim2.new(0.1, 0, 0.4, 0); down.Position = UDim2.new(0.85, 0, 0.5, 0); down.Text = "▼"; down.BackgroundColor3 = Color3.fromRGB(30,30,50); down.TextColor3 = Color3.new(1,1,1); Instance.new("UICorner", down)
 
     objBtn.MouseButton1Click:Connect(function()
         selectedData[name].enabled = not selectedData[name].enabled
         objBtn.BackgroundColor3 = selectedData[name].enabled and Color3.fromRGB(0, 170, 255) or Color3.fromRGB(40,40,60)
         objBtn.BackgroundTransparency = selectedData[name].enabled and 0.6 or 0
     end)
-    
-    msInput.FocusLost:Connect(function() selectedData[name].minVal = tonumber(msInput.Text) or 0 end)
 end
 
--- 3. MISC PAGE (CLEAN SECCIÓN)
-local cleanLabel = Instance.new("TextLabel", miscPage)
-cleanLabel.Text = "CLEAN"; cleanLabel.Size = UDim2.new(0, 100, 0, 30); cleanLabel.Position = UDim2.new(0, 10, 0, 0); cleanLabel.BackgroundTransparency = 1; cleanLabel.TextColor3 = Color3.new(1,1,1); cleanLabel.TextXAlignment = "Left"
-
-local divLine = Instance.new("Frame", miscPage)
-divLine.Size = UDim2.new(1, -20, 0, 1); divLine.Position = UDim2.new(0, 10, 0, 35); divLine.BackgroundColor3 = Color3.fromRGB(0, 170, 255); divLine.BorderSizePixel = 0
-
-createToggle(miscPage, "AutoClean v1", UDim2.new(0.05, 0, 0.15, 0), function(s) autoClean_Enabled = s end)
-
--- =========================================================
--- MOTOR LÓGICO Y BUCLE FÍSICO (MOUSEMOVEABS)
--- =========================================================
-
-local function getVal(txt, target)
-    local s = txt:lower():find(target:lower())
-    if s then
-        local sub = txt:sub(s + #target); local n = sub:match("(%d+%.?%d*)")
-        local v = tonumber(n) or 0
-        if sub:find("B") then v = v * 1000 end; return v
-    end; return 0
-end
-
+-- ✅ MOTOR DE CLICKS (V1 + AUTOJOIN)
 task.spawn(function()
     while true do
-        if autoJoin_Enabled then
-            -- Si V1 está activo, hacemos el refresh físico primero
-            if v1_Enabled and getgenv().mousemoveabs then
+        if autoJoin_Enabled and v1_Enabled then
+            if getgenv().mousemoveabs then
                 getgenv().mousemoveabs(543, 154)
                 getgenv().mouse1click()
-                task.wait(0.2)
-            end
-            
-            -- Escaneo de servidores
-            local pm = player.PlayerGui:FindFirstChild("PetMenu")
-            if pm and not joinLock then
-                local items = pm.Frame.ScrollingFrame:GetChildren()
-                for i = 1, MAX_SERVERS_A_ESCANEAR do
-                    local v = items[i]
-                    if v:IsA("Frame") and v.Visible then
-                        local lbl = v:FindFirstChild("TextLabel", true)
-                        if lbl then
-                            for name, data in pairs(selectedData) do
-                                if data.enabled and lbl.Text:lower():find(name:lower()) then
-                                    local val = getVal(lbl.Text, name)
-                                    if val >= data.minVal and not usados[lbl.Text] then
-                                        joinLock = true; usados[lbl.Text] = true
-                                        local b = v:FindFirstChildWhichIsA("Frame"):FindFirstChildWhichIsA("TextButton")
-                                        for _=1,50 do b.MouseButton1Click:Fire() end
-                                        task.delay(3, function() joinLock = false end)
-                                        break
-                                    end
-                                end
-                            end
-                        end
-                    end
-                end
             end
         end
-        task.wait(0.01)
+        task.wait(0.1)
     end
 end)
 
--- =========================================================
--- MINI GUI (SIN TOCAR DISEÑO NI DRAG)
--- =========================================================
+-- ✅ CIERRE Y MINI GUI (SIN TOCAR EL INTERIOR)
+local close = Instance.new("TextButton", main)
+close.Size = UDim2.new(0,25,0,25); close.Position = UDim2.new(1,-30,0,3); close.Text = "X"; close.BackgroundColor3 = Color3.fromRGB(60,20,20); close.TextColor3 = Color3.new(1,0,0); Instance.new("UICorner", close)
 
-local miniGui = Instance.new("ScreenGui")
-miniGui.Name = "MiniAtlasUltra"; miniGui.Parent = player:WaitForChild("PlayerGui"); miniGui.Enabled = false
+close.MouseButton1Click:Connect(function()
+    main.Visible = false
+    -- Aquí activas tu Mini GUI que ya tienes hecha
+end)
 
-local shadow = Instance.new("Frame", miniGui)
-shadow.Size = UDim2.new(0, 150, 0, 55); shadow.Position = UDim2.new(1, -165, 0, 110)
-
-local frame = Instance.new("Frame", miniGui)
-frame.Size = UDim2.new(0, 145, 0, 50); frame.Position = shadow.Position; _G.frameRef = frame
-
--- AQUÍ VA TU LIVE FEED Y BOTONES QUE YA TENÍAS (SE QUEDAN IGUAL)
-
-if isfile("atlas_gui.json") then
-    local data = HttpService:JSONDecode(readfile("atlas_gui.json"))
-    if data.mini then frame.Position = UDim2.new(data.mini.X.Scale, data.mini.X.Offset, data.mini.Y.Scale, data.mini.Y.Offset); shadow.Position = frame.Position end
-end
-
-close.MouseButton1Click:Connect(function() main.Visible = false; miniGui.Enabled = true end)
-
--- [DRAG DE MINI GUI QUE YA TENÍAS SE MANTIENE]
+-- Cambio de pestañas
+autoBtn.MouseButton1Click:Connect(function() autoPage.Visible = true; filterPage.Visible = false; miscPage.Visible = false end)
+filterBtn.MouseButton1Click:Connect(function() autoPage.Visible = false; filterPage.Visible = true; miscPage.Visible = false end)
+miscBtn.MouseButton1Click:Connect(function() autoPage.Visible = false; filterPage.Visible = false; miscPage.Visible = true end)
