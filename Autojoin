@@ -1,158 +1,271 @@
--- ==========================================
--- ATLAS FINDER - FIX TOTAL DE CARGA
--- REFRESH FÍSICO CALIBRADO: 543, 154
--- ==========================================
-
 local Players = game:GetService("Players")
 local UIS = game:GetService("UserInputService")
 local player = Players.LocalPlayer
 local TweenService = game:GetService("TweenService")
 local HttpService = game:GetService("HttpService")
 
--- ✅ VARIABLES DEL MOTOR INTERNO
+-- ✅ VARIABLES DE LÓGICA (MOTOR V17)
 local usados = {}
+local ausenciaContador = {}
 local selectedData = {}
-local v1_Enabled = false 
-local autoJoin_Enabled = false 
+local priorityList = {}
+local joinLock = false
+local autoCleanEnabled = true
+local v1_Enabled = false
+local v2_Enabled = false
+local autojoin_Enabled = false
 
--- LISTA DE OBJETOS
 local ALL_OBJECTS = {
-    "Strawberry Elephant", "Meowl", "Skibidi Toilet", "Dragon Cannelloni",
-    "Dragon Gingerini", "Hydra Dragon Cannelloni", "Griffin", "Cerberus", 
-    "Capitano Moby", "Headless Horseman", "Burguro and Fryuro", "Celestial Pegasus",
-    "Tirilikalika Tirilikalako", "Cooki and Milki", "La Casa Boo", "Reinito Sleighito",
-    "Gingerat Gerat", "Elefanto Frigo", "Spooky and Pumpky", "Fragrama and Chocrama",
-    "La Supreme Combinasion", "La Secret Combinasion", "Garama and Madundung",
-    "Lavadorito Spinito", "Ketupat Kepat", "Tictac Sahur", "Ketupat Bros", "Tang Tang Keletang",
-    "Ketchuru and Musturu", "Popcuru and Fizzuru", "La Food Combinasion", "Rosey and Teddy", 
-    "Cigno Fulgoro", "Nacho Spyder", "Signore Carapace", "Fishino Clownino", "Los Amigos", 
-    "Los Sekolahs", "Spinny Hammy", "Love Love Bear", "Sammyni Fattini", "Ventoliero Pavonero", 
-    "Fortunu and Cashuru", "Gold Gold Gold"
+    "Ketchuru and Musturu", "Tang Tang Keletang", "Rosey and Teddy", "Tictac Sahur", "Ketupat Kepat",
+    "Lavadorito Spinito", "Garama and Madundung", "La Secret Combinasion", "La Supreme Combinasion",
+    "Fragrama and Chocrama", "Spooky and Pumpky", "Gingerat Gerat", "Reinito Sleighito",
+    "La Casa Boo", "Cooki and Milki", "Burguro and Fryuro", "Headless Horseman",
+    "Capitano Moby", "Cerberus", "Dragon Gingerini", "Dragon Cannelloni", "Meowl",
+    "Strawberry Elephant", "Skibidi Toilet", "Hydra Dragon Cannelloni", "Griffin",
+    "Celestial Pegasus", "Elefanto Frigo", "Cigno Fulgoro", "Nacho Spyder", "Signore Carapace",
+    "Fishino Clownino", "Los Amigos", "Gold Gold Gold", "Tirilikalika Tirilikalako"
 }
 
+-- Cargar Datos
+if isfile("brainrots_config_v13.json") then
+    local ok, data = pcall(function() return HttpService:JSONDecode(readfile("brainrots_config_v13.json")) end)
+    if ok then 
+        selectedData = data.sel or {}
+        priorityList = data.prio or {}
+    end
+end
 for _, name in ipairs(ALL_OBJECTS) do
-    selectedData[name] = {enabled = false, minVal = 0}
+    if not selectedData[name] then selectedData[name] = {enabled = false, minVal = 0} end
 end
 
--- ✅ GUI PRINCIPAL
 local gui = Instance.new("ScreenGui", player:WaitForChild("PlayerGui"))
 local main = Instance.new("Frame", gui)
+
+local function savePositions()
+    local data = {
+        main = {
+            X = {Scale = main.Position.X.Scale, Offset = main.Position.X.Offset},
+            Y = {Scale = main.Position.Y.Scale, Offset = main.Position.Y.Offset}
+        }
+    }
+    -- La mini gui se define abajo, pero savePositions la usará
+    if _G.miniFrame then
+        data.mini = {
+            X = {Scale = _G.miniFrame.Position.X.Scale, Offset = _G.miniFrame.Position.X.Offset},
+            Y = {Scale = _G.miniFrame.Position.Y.Scale, Offset = _G.miniFrame.Position.Y.Offset}
+        }
+    end
+    writefile("atlas_gui.json", HttpService:JSONEncode(data))
+end
+
+local function saveFilters()
+    local data = {sel = selectedData, prio = priorityList}
+    writefile("brainrots_config_v13.json", HttpService:JSONEncode(data))
+end
+
+-- CONFIG MAIN (TU DISEÑO)
 main.Size = UDim2.new(0, 340, 0, 366)
-main.Position = UDim2.new(0.5, -173, 0.5, -209)
+if isfile("atlas_gui.json") then
+    local data = HttpService:JSONDecode(readfile("atlas_gui.json"))
+    main.Position = UDim2.new(data.main.X.Scale, data.main.X.Offset, data.main.Y.Scale, data.main.Y.Offset)
+else
+    main.Position = UDim2.new(0.5, -173, 0.5, -209)
+end
 main.BackgroundColor3 = Color3.fromRGB(8,12,25)
 Instance.new("UICorner", main).CornerRadius = UDim.new(0,12)
 
--- ✅ FUNCIONES DE SOPORTE (LAS QUE FALTABAN)
-local function makeTab(text, order, parent, tabsFrame)
-    local t = Instance.new("TextButton", tabsFrame)
-    local tabWidth = 90
-    local spacing = 15
-    local startX = (340 - ((tabWidth * 3) + (spacing * 2))) / 2
-    t.Size = UDim2.new(0, tabWidth, 1, 0)
-    t.Position = UDim2.new(0, startX + (order * (tabWidth + spacing)), 0, 0)
-    t.Text = text
-    t.Font = Enum.Font.GothamBold
-    t.TextSize = 14
-    t.TextColor3 = Color3.fromRGB(160,160,160)
-    t.BackgroundTransparency = 1
-    return t
-end
-
-local function makePage(pagesFrame)
-    local f = Instance.new("Frame", pagesFrame)
-    f.Size = UDim2.new(1, 0, 1, 0)
-    f.Visible = false
-    f.BackgroundTransparency = 1
-    return f
-end
-
--- ✅ CABECERA Y TABS
-local title = Instance.new("TextLabel", main)
-title.Size = UDim2.new(1,0,0,30); title.Position = UDim2.new(0,10,0,2); title.BackgroundTransparency = 1; title.Text = "Atlas Finder"; title.Font = Enum.Font.GothamBold; title.TextColor3 = Color3.new(1,1,1); title.TextXAlignment = "Left"
-
-local tabs = Instance.new("Frame", main)
-tabs.Size = UDim2.new(1,0,0,30); tabs.Position = UDim2.new(0,0,0,30); tabs.BackgroundTransparency = 1
-
-local pages = Instance.new("Frame", main)
-pages.Size = UDim2.new(1,-7,1,-56); pages.Position = UDim2.new(0,4,0,66); pages.BackgroundTransparency = 1
-
-local autoBtn = makeTab("Autojoin", 0, main, tabs)
-local filterBtn = makeTab("Filters", 1, main, tabs)
-local miscBtn = makeTab("Misc", 2, main, tabs)
-
-local autoPage = makePage(pages); autoPage.Visible = true
-local filterPage = makePage(pages)
-local miscPage = makePage(pages)
-
--- ✅ LÓGICA DE BOTONES "BOLITA" (V1, V2, AUTOJOIN)
-local function createToggle(parent, text, pos, callback)
-    local btn = Instance.new("TextButton", parent)
-    btn.Size = UDim2.new(0, 100, 0, 30); btn.Position = pos; btn.BackgroundColor3 = Color3.fromRGB(60,20,20); btn.Text = text; btn.TextColor3 = Color3.new(1,1,1); btn.Font = "GothamBold"; Instance.new("UICorner", btn)
-    
-    local ball = Instance.new("Frame", btn)
-    ball.Size = UDim2.new(0, 18, 0, 18); ball.Position = UDim2.new(0, 5, 0.5, -9); ball.BackgroundColor3 = Color3.new(1,1,1); Instance.new("UICorner", ball)
-
-    local state = false
-    btn.MouseButton1Click:Connect(function()
-        state = not state
-        ball:TweenPosition(state and UDim2.new(1, -23, 0.5, -9) or UDim2.new(0, 5, 0.5, -9), "Out", "Quad", 0.2, true)
-        btn.BackgroundColor3 = state and Color3.fromRGB(0, 100, 255) or Color3.fromRGB(60,20,20)
-        callback(state)
-    end)
-end
-
--- Crear los botones en Autojoin
-createToggle(autoPage, "V1", UDim2.new(0.05, 0, 0.1, 0), function(s) v1_Enabled = s end)
-createToggle(autoPage, "AUTOJOIN", UDim2.new(0.5, 0, 0.1, 0), function(s) autoJoin_Enabled = s end)
-
--- ✅ FILTERS CON FLECHAS SEPARADAS
-local scroll = Instance.new("ScrollingFrame", filterPage)
-scroll.Size = UDim2.new(1, 0, 1, 0); scroll.BackgroundTransparency = 1; scroll.CanvasSize = UDim2.new(0,0,0, #ALL_OBJECTS * 40)
-
-for i, name in ipairs(ALL_OBJECTS) do
-    local f = Instance.new("Frame", scroll)
-    f.Size = UDim2.new(1, -10, 0, 35); f.Position = UDim2.new(0, 5, 0, (i-1)*40); f.BackgroundTransparency = 1
-    
-    local objBtn = Instance.new("TextButton", f)
-    objBtn.Size = UDim2.new(0.6, 0, 1, 0); objBtn.Text = name; objBtn.BackgroundColor3 = Color3.fromRGB(40,40,60); objBtn.TextColor3 = Color3.new(1,1,1); Instance.new("UICorner", objBtn)
-    
-    -- Mini-GUI para las flechas (Separadas)
-    local up = Instance.new("TextButton", f)
-    up.Size = UDim2.new(0.1, 0, 0.4, 0); up.Position = UDim2.new(0.85, 0, 0, 0); up.Text = "▲"; up.BackgroundColor3 = Color3.fromRGB(30,30,50); up.TextColor3 = Color3.new(1,1,1); Instance.new("UICorner", up)
-    
-    local down = Instance.new("TextButton", f)
-    down.Size = UDim2.new(0.1, 0, 0.4, 0); down.Position = UDim2.new(0.85, 0, 0.5, 0); down.Text = "▼"; down.BackgroundColor3 = Color3.fromRGB(30,30,50); down.TextColor3 = Color3.new(1,1,1); Instance.new("UICorner", down)
-
-    objBtn.MouseButton1Click:Connect(function()
-        selectedData[name].enabled = not selectedData[name].enabled
-        objBtn.BackgroundColor3 = selectedData[name].enabled and Color3.fromRGB(0, 170, 255) or Color3.fromRGB(40,40,60)
-        objBtn.BackgroundTransparency = selectedData[name].enabled and 0.6 or 0
-    end)
-end
-
--- ✅ MOTOR DE CLICKS (V1 + AUTOJOIN)
-task.spawn(function()
-    while true do
-        if autoJoin_Enabled and v1_Enabled then
-            if getgenv().mousemoveabs then
-                getgenv().mousemoveabs(543, 154)
-                getgenv().mouse1click()
-            end
-        end
-        task.wait(0.1)
+-- DRAG (TU DISEÑO)
+local dragging, dragStart, startPos
+main.InputBegan:Connect(function(input)
+	if input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseButton1 then
+		dragging = true; dragStart = input.Position; startPos = main.Position
+	end
+end)
+UIS.InputChanged:Connect(function(input)
+	if dragging and (input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseMovement) then
+		local delta = input.Position - dragStart
+		main.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+	end
+end)
+UIS.InputEnded:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseButton1 then
+        dragging = false; savePositions()
     end
 end)
 
--- ✅ CIERRE Y MINI GUI (SIN TOCAR EL INTERIOR)
-local close = Instance.new("TextButton", main)
-close.Size = UDim2.new(0,25,0,25); close.Position = UDim2.new(1,-30,0,3); close.Text = "X"; close.BackgroundColor3 = Color3.fromRGB(60,20,20); close.TextColor3 = Color3.new(1,0,0); Instance.new("UICorner", close)
+-- TITLE Y CLOSE (TU DISEÑO)
+local title = Instance.new("TextLabel", main)
+title.Size = UDim2.new(1,0,0,30); title.Position = UDim2.new(0,10,0,2); title.BackgroundTransparency = 1; title.Text = "Atlas Finder"; title.Font = Enum.Font.GothamBold; title.TextSize = 16; title.TextColor3 = Color3.fromRGB(255,255,255); title.TextXAlignment = "Left"
 
-close.MouseButton1Click:Connect(function()
-    main.Visible = false
-    -- Aquí activas tu Mini GUI que ya tienes hecha
+local close = Instance.new("TextButton", main)
+close.Size = UDim2.new(0,25,0,25); close.Position = UDim2.new(1,-30,0,3); close.Text = "X"; close.BackgroundColor3 = Color3.fromRGB(60,20,20); close.TextColor3 = Color3.fromRGB(255,80,80); Instance.new("UICorner", close).CornerRadius = UDim.new(0,6)
+
+-- TABS (TU DISEÑO)
+local tabs = Instance.new("Frame", main)
+tabs.Size = UDim2.new(1,0,0,30); tabs.Position = UDim2.new(0,0,0,30); tabs.BackgroundTransparency = 1
+local tabWidth, spacing = 90, 15
+local startX = (340 - ((tabWidth * 3) + (spacing * 2))) / 2
+
+local function makeTab(text,order)
+	local t = Instance.new("TextButton", tabs)
+	t.Size = UDim2.new(0,tabWidth,1,0); t.Position = UDim2.new(0, startX + (order * (tabWidth + spacing)), 0, 0); t.Text = text; t.Font = Enum.Font.GothamBold; t.TextSize = 14; t.TextColor3 = Color3.fromRGB(160,160,160); t.BackgroundTransparency = 1
+	return t
+end
+
+local autoBtn = makeTab("Autojoin",0); local filterBtn = makeTab("Filters",1); local miscBtn = makeTab("Misc",2)
+
+-- UNDERLINE Y PAGES (TU DISEÑO)
+local underline = Instance.new("Frame", tabs)
+underline.Size = UDim2.new(0,50,0,2); underline.BackgroundColor3 = Color3.fromRGB(0,170,255)
+local function moveUnderline(btn)
+    TweenService:Create(underline, TweenInfo.new(0.25, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {Position = UDim2.new(0, btn.Position.X.Offset + 20, 1, -2)}):Play()
+end
+
+local pages = Instance.new("Frame", main)
+pages.Size = UDim2.new(1,-7,1,-56); pages.Position = UDim2.new(0,4,0,66); pages.BackgroundTransparency = 1
+local function makePage()
+	local f = Instance.new("Frame", pages); f.Size = UDim2.new(1,0,1,0); f.Visible = false; f.BackgroundTransparency = 1
+	return f
+end
+
+local autoPage = makePage(); local filterPage = makePage(); local miscPage = makePage()
+autoPage.Visible = true; autoBtn.TextColor3 = Color3.fromRGB(255,255,255); moveUnderline(autoBtn)
+
+local function switch(page,btn)
+    for _,p in pairs(pages:GetChildren()) do p.Visible = false end
+    for _,b in pairs(tabs:GetChildren()) do if b:IsA("TextButton") then b.TextColor3 = Color3.fromRGB(160,160,160) end end
+    page.Visible = true; btn.TextColor3 = Color3.fromRGB(255,255,255); moveUnderline(btn)
+end
+
+autoBtn.MouseButton1Click:Connect(function() switch(autoPage,autoBtn) end)
+filterBtn.MouseButton1Click:Connect(function() switch(filterPage,filterBtn) end)
+miscBtn.MouseButton1Click:Connect(function() switch(miscPage,miscBtn) end)
+
+-- ✅ SECCIÓN AUTOJOIN (BOTONES V1, V2, CANCEL, CLEAN, AUTOJOIN)
+local function createMainButton(txt, pos, parent, callback)
+    local b = Instance.new("TextButton", parent)
+    b.Size = UDim2.new(0, 140, 0, 35); b.Position = pos; b.BackgroundColor3 = Color3.fromRGB(25,25,40); b.Text = txt; b.TextColor3 = Color3.new(1,1,1); b.Font = "GothamBold"; Instance.new("UICorner", b)
+    local state = false
+    b.MouseButton1Click:Connect(function()
+        state = not state
+        b.BackgroundColor3 = state and Color3.fromRGB(0, 170, 255) or Color3.fromRGB(25,25,40)
+        callback(state)
+    end)
+    return b
+end
+
+createMainButton("V1", UDim2.new(0.05, 0, 0.05, 0), autoPage, function(s) v1_Enabled = s end)
+createMainButton("V2", UDim2.new(0.52, 0, 0.05, 0), autoPage, function(s) v2_Enabled = s end)
+createMainButton("CANCEL", UDim2.new(0.05, 0, 0.2, 0), autoPage, function() end)
+createMainButton("CLEAN", UDim2.new(0.52, 0, 0.2, 0), autoPage, function() usados = {}; saveFilters() end)
+createMainButton("AUTOJOIN", UDim2.new(0.05, 0, 0.4, 0), autoPage, function(s) autojoin_Enabled = s end)
+
+-- ✅ SECCIÓN FILTERS (SELECTOR IZQUIERDA, PRIORITY DERECHA)
+local scrollSel = Instance.new("ScrollingFrame", filterPage)
+scrollSel.Size = UDim2.new(0.48, 0, 0.9, 0); scrollSel.Position = UDim2.new(0, 0, 0.05, 0); scrollSel.BackgroundTransparency = 1; scrollSel.CanvasSize = UDim2.new(0,0,0,#ALL_OBJECTS*35)
+
+local scrollPrio = Instance.new("ScrollingFrame", filterPage)
+scrollPrio.Size = UDim2.new(0.48, 0, 0.9, 0); scrollPrio.Position = UDim2.new(0.52, 0, 0.05, 0); scrollPrio.BackgroundTransparency = 1
+
+local renderPrio -- Definición previa
+
+local function updateFilters()
+    scrollSel:ClearAllChildren()
+    for i, name in ipairs(ALL_OBJECTS) do
+        local b = Instance.new("TextButton", scrollSel)
+        b.Size = UDim2.new(0.9, 0, 0, 30); b.Position = UDim2.new(0.05, 0, 0, (i-1)*33); b.Text = name; b.TextSize = 10; b.BackgroundColor3 = selectedData[name].enabled and Color3.fromRGB(0,100,200) or Color3.fromRGB(30,30,45); b.TextColor3 = Color3.new(1,1,1); Instance.new("UICorner", b)
+        b.MouseButton1Click:Connect(function()
+            selectedData[name].enabled = not selectedData[name].enabled
+            if selectedData[name].enabled then table.insert(priorityList, name) else
+                for k,v in ipairs(priorityList) do if v == name then table.remove(priorityList, k) break end end
+            end
+            b.BackgroundColor3 = selectedData[name].enabled and Color3.fromRGB(0,100,200) or Color3.fromRGB(30,30,45)
+            renderPrio(); saveFilters()
+        end)
+    end
+end
+
+function renderPrio()
+    scrollPrio:ClearAllChildren()
+    for i, name in ipairs(priorityList) do
+        local f = Instance.new("Frame", scrollPrio)
+        f.Size = UDim2.new(0.95, 0, 0, 30); f.Position = UDim2.new(0, 0, 0, (i-1)*33); f.BackgroundColor3 = Color3.fromRGB(20,20,35); Instance.new("UICorner", f)
+        local t = Instance.new("TextLabel", f); t.Size = UDim2.new(0.7,0,1,0); t.Text = name; t.TextSize = 10; t.TextColor3 = Color3.new(1,1,1); t.BackgroundTransparency = 1
+        
+        local up = Instance.new("TextButton", f); up.Size = UDim2.new(0.12,0,0.5,0); up.Position = UDim2.new(0.75,0,0,0); up.Text = "▲"; up.TextColor3 = Color3.new(1,1,1); up.BackgroundTransparency = 1
+        local dw = Instance.new("TextButton", f); dw.Size = UDim2.new(0.12,0,0.5,0); dw.Position = UDim2.new(0.75,0,0.5,0); dw.Text = "▼"; dw.TextColor3 = Color3.new(1,1,1); dw.BackgroundTransparency = 1
+        
+        up.MouseButton1Click:Connect(function() if i > 1 then table.remove(priorityList, i); table.insert(priorityList, i-1, name); renderPrio(); saveFilters() end end)
+        dw.MouseButton1Click:Connect(function() if i < #priorityList then table.remove(priorityList, i); table.insert(priorityList, i+1, name); renderPrio(); saveFilters() end end)
+    end
+    scrollPrio.CanvasSize = UDim2.new(0,0,0,#priorityList*33)
+end
+updateFilters(); renderPrio()
+
+-- ✅ SECCIÓN MISC (AUTOCLEAN)
+local miscTitle = Instance.new("TextLabel", miscPage)
+miscTitle.Size = UDim2.new(0.4, 0, 0, 30); miscTitle.Position = UDim2.new(0.05, 0, 0, 10); miscTitle.Text = "CLEAN"; miscTitle.Font = "GothamBold"; miscTitle.TextColor3 = Color3.new(1,1,1); miscTitle.BackgroundTransparency = 1; miscTitle.TextXAlignment = "Left"
+local miscLine = Instance.new("Frame", miscPage)
+miscLine.Size = UDim2.new(0.9, 0, 0, 2); miscLine.Position = UDim2.new(0.05, 0, 0, 40); miscLine.BackgroundColor3 = Color3.fromRGB(0, 170, 255)
+
+createMainButton("AUTOCLEAN", UDim2.new(0.05, 0, 0.15, 0), miscPage, function(s) autoCleanEnabled = s end).BackgroundColor3 = Color3.fromRGB(0, 170, 255)
+
+-- ✅ MOTOR DE ESCANEO (V17)
+local function escanear()
+    if joinLock or not autojoin_Enabled then return end
+    local pm = player.PlayerGui:FindFirstChild("PetMenu")
+    if not pm then return end
+    
+    local allFrames = {}; for _,v in ipairs(pm.Frame.ScrollingFrame:GetChildren()) do if v:IsA("Frame") and v.Visible then table.insert(allFrames, v) end end
+    
+    -- Limpieza automática
+    if autoCleanEnabled then
+        local firmasActuales = {}; for i=1, 5 do if allFrames[i] then local lbl = allFrames[i]:FindFirstChild("TextLabel"); if lbl then firmasActuales[lbl.Text] = true end end end
+        for firma, _ in pairs(usados) do
+            if not firmasActuales[firma] then
+                ausenciaContador[firma] = (ausenciaContador[firma] or 0) + 1
+                if ausenciaContador[firma] >= 6 then usados[firma] = nil; ausenciaContador[firma] = nil end
+            end
+        end
+    end
+
+    for _, name in ipairs(priorityList) do
+        for i=1, 5 do
+            local frameObj = allFrames[i]
+            if frameObj then
+                local lbl = frameObj:FindFirstChild("TextLabel")
+                if lbl and lbl.Text:lower():find(name:lower()) and not usados[lbl.Text] then
+                    joinLock = true; usados[lbl.Text] = true; saveFilters()
+                    local btn = frameObj:FindFirstChildWhichIsA("Frame"):FindFirstChildWhichIsA("TextButton")
+                    for _=1, 50 do for _,c in ipairs(getconnections(btn.MouseButton1Click)) do c:Fire() end end
+                    task.delay(2, function() joinLock = false end)
+                    return
+                end
+            end
+        end
+    end
+end
+
+task.spawn(function()
+    while task.wait(0.1) do
+        if autojoin_Enabled then
+            if v1_Enabled and getgenv().mousemoveabs then
+                getgenv().mousemoveabs(543, 154); getgenv().mouse1click()
+            end
+            escanear()
+        end
+    end
 end)
 
--- Cambio de pestañas
-autoBtn.MouseButton1Click:Connect(function() autoPage.Visible = true; filterPage.Visible = false; miscPage.Visible = false end)
-filterBtn.MouseButton1Click:Connect(function() autoPage.Visible = false; filterPage.Visible = true; miscPage.Visible = false end)
-miscBtn.MouseButton1Click:Connect(function() autoPage.Visible = false; filterPage.Visible = false; miscPage.Visible = true end)
+-- MINI GUI (TU DISEÑO)
+local miniGui = Instance.new("ScreenGui", player.PlayerGui)
+miniGui.Name = "MiniAtlasUltra"; miniGui.Enabled = false
+close.MouseButton1Click:Connect(function() main.Visible = false; miniGui.Enabled = true end)
+
+local shadow = Instance.new("Frame", miniGui); shadow.Size = UDim2.new(0, 150, 0, 55); shadow.Position = UDim2.new(1, -165, 0, 110)
+local frame = Instance.new("Frame", miniGui); frame.Size = UDim2.new(0, 145, 0, 50); frame.Position = shadow.Position; _G.miniFrame = frame
+
+if isfile("atlas_gui.json") then
+    local data = HttpService:JSONDecode(readfile("atlas_gui.json"))
+    if data.mini then frame.Position = UDim2.new(data.mini.X.Scale, data.mini.X.Offset, data.mini.Y.Scale, data.mini.Y.Offset); shadow.Position = frame.Position end
+end
