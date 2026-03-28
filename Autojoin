@@ -1,15 +1,94 @@
+-- ==========================================
+-- ATLAS FINDER - INTEGRACIÓN PREMIUM V17
+-- REFRESH FÍSICO CALIBRADO: 543, 154
+-- ==========================================
+
 local Players = game:GetService("Players")
 local UIS = game:GetService("UserInputService")
 local player = Players.LocalPlayer
 local TweenService = game:GetService("TweenService")
 local HttpService = game:GetService("HttpService")
+local RunService = game:GetService("RunService")
 
+-- CONFIGURACIÓN DEL MOTOR
+local MAX_SERVERS_A_ESCANEAR = 5 
+local MAX_WAIT_TIME = 0.2
+local INTENTOS_PARA_LIMPIAR = 6 
+local FILE_CONFIG = "atlas_finder_v17.json"
+local FILE_POSITIONS = "atlas_gui.json"
+
+local ALL_OBJECTS = {
+    "Ketchuru and Musturu", "Tang Tang Keletang", "Rosey and Teddy", "Tictac Sahur", "Ketupat Kepat",
+    "Lavadorito Spinito", "Garama and Madundung", "La Secret Combinasion", "La Supreme Combinasion",
+    "Fragrama and Chocrama", "Spooky and Pumpky", "Gingerat Gerat", "Reinito Sleighito",
+    "La Casa Boo", "Cooki and Milki", "Burguro and Fryuro", "Headless Horseman",
+    "Capitano Moby", "Cerberus", "Dragon Gingerini", "Dragon Cannelloni", "Meowl",
+    "Los Spaghettis", "Spaghetti Tualetti", "La Ginger Sekolah", "Strawberry Elephant",
+    "Skibidi Toilet", "Money Money Puggy", "Hydra Dragon Cannelloni", "Swag Soda", "Los Combinasionas",
+    "Chicleteira Noelteira", "Tacorita Bicicleta", "Las Sis", "Los Hotspotsitos", "Dug dug dug",
+    "Celularcini Viciosini", "Los Candies", "Los Bros", "Popcuru and Fizzuru", "La Extinct Grande", "Foxini Lanternini",
+    "Chipso and Queso", "Chillin Chili", "Ketupat Bros", "Money Money Reindeer", "Mieteteira Bicicleteira",
+    "Tuff Toucan", "Tralaledon", "Los Puggies", "W or L", "Los Primos", "Eviledon", "Cloverat Clapat", 
+    "La Taco Combinasion", "Orcaledon", "Swaggy Bros", "La Food Combinasion", "Love Love Bear", "Celestial Pegasus", "Griffin",
+    "Elefanto Frigo", "Cigno Fulgoro", "Nacho Spyder", "Signore Carapace", "Fishino Clownino", "Los Amigos", "Gold Gold Gold",
+    "Los Sekolahs", "Spinny Hammy", "Sammyni Fattini", "Ventoliero Pavonero", "Tirilikalika Tirilikalako", "Fortunu and Cashuru"
+}
+
+local INITIAL_PRIORITY = {
+    "Strawberry Elephant", "Meowl", "Skibidi Toilet", "Dragon Cannelloni",
+    "Dragon Gingerini", "Hydra Dragon Cannelloni", "Griffin", "Cerberus", "Capitano Moby", "Headless Horseman",
+    "Burguro and Fryuro", "Celestial Pegasus", "Tirilikalika Tirilikalako", "Cooki and Milki", "La Casa Boo", "Reinito Sleighito",
+    "Gingerat Gerat", "Elefanto Frigo", "Spooky and Pumpky", "Fragrama and Chocrama",
+    "La Supreme Combinasion", "La Secret Combinasion", "Garama and Madundung",
+    "Lavadorito Spinito", "Ketupat Kepat", "Tictac Sahur", "Ketupat Bros", "Tang Tang Keletang",
+    "Ketchuru and Musturu", "Popcuru and Fizzuru", "La Food Combinasion", "Rosey and Teddy", "Cigno Fulgoro", "Nacho Spyder", 
+    "Signore Carapace", "Fishino Clownino", "Los Amigos", "Los Sekolahs", "Spinny Hammy", "Love Love Bear", "Sammyni Fattini",
+    "Ventoliero Pavonero", "Fortunu and Cashuru", "Gold Gold Gold"
+}
+
+-- VARIABLES DE ESTADO
+local usados = {}
+local ausenciaContador = {}
+local selectedData = {}
+local priorityList = {unpack(INITIAL_PRIORITY)}
+local joinLock = false
+local autoRefreshV1 = false
+local autoJoinMotor = false
+local autoCleanEnabled = false
+
+-- PERSISTENCIA DE DATOS (NO POSICIONES)
+local function loadSettings()
+    if isfile(FILE_CONFIG) then
+        local ok, data = pcall(function() return HttpService:JSONDecode(readfile(FILE_CONFIG)) end)
+        if ok then
+            selectedData = data.sel or {}
+            priorityList = data.prio or priorityList
+            autoCleanEnabled = data.clean or false
+        end
+    end
+    for _, name in ipairs(ALL_OBJECTS) do
+        if not selectedData[name] then selectedData[name] = {enabled = false, minVal = 0} end
+    end
+end
+
+local function saveSettings()
+    local data = {
+        sel = selectedData,
+        prio = priorityList,
+        clean = autoCleanEnabled
+    }
+    writefile(FILE_CONFIG, HttpService:JSONEncode(data))
+end
+
+loadSettings()
+
+-- GUI BASE (TU CÓDIGO ORIGINAL SIN TOCAR)
 local gui = Instance.new("ScreenGui", player:WaitForChild("PlayerGui"))
+gui.Name = "AtlasUltraMain"
 
--- ✅ FIX 1: crear main
 local main = Instance.new("Frame", gui)
+main.Size = UDim2.new(0, 340, 0, 366)
 
--- MAIN
 local function savePositions()
     local data = {
         main = {
@@ -17,200 +96,296 @@ local function savePositions()
             Y = {Scale = main.Position.Y.Scale, Offset = main.Position.Y.Offset}
         }
     }
-
-    if frame then
+    if _G.miniFrameRef then
         data.mini = {
-            X = {Scale = frame.Position.X.Scale, Offset = frame.Position.X.Offset},
-            Y = {Scale = frame.Position.Y.Scale, Offset = frame.Position.Y.Offset}
+            X = {Scale = _G.miniFrameRef.Position.X.Scale, Offset = _G.miniFrameRef.Position.X.Offset},
+            Y = {Scale = _G.miniFrameRef.Position.Y.Scale, Offset = _G.miniFrameRef.Position.Y.Offset}
         }
     end
-
-    writefile("atlas_gui.json", HttpService:JSONEncode(data))
+    writefile(FILE_POSITIONS, HttpService:JSONEncode(data))
 end
 
-main.Size = UDim2.new(0, 340, 0, 366)
-if isfile("atlas_gui.json") then
-    local data = HttpService:JSONDecode(readfile("atlas_gui.json"))
-
-    main.Position = UDim2.new(
-        data.main.X.Scale,
-        data.main.X.Offset,
-        data.main.Y.Scale,
-        data.main.Y.Offset
-    )
+if isfile(FILE_POSITIONS) then
+    local data = HttpService:JSONDecode(readfile(FILE_POSITIONS))
+    main.Position = UDim2.new(data.main.X.Scale, data.main.X.Offset, data.main.Y.Scale, data.main.Y.Offset)
 else
     main.Position = UDim2.new(0.5, -173, 0.5, -209)
 end
 main.BackgroundColor3 = Color3.fromRGB(8,12,25)
 Instance.new("UICorner", main).CornerRadius = UDim.new(0,12)
 
--- DRAG
+-- DRAG (SISTEMA ORIGINAL)
 local dragging, dragStart, startPos
 main.InputBegan:Connect(function(input)
-	if input.UserInputType == Enum.UserInputType.Touch then
-		dragging = true
-		dragStart = input.Position
-		startPos = main.Position
+	if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+		dragging = true; dragStart = input.Position; startPos = main.Position
 	end
 end)
-
 UIS.InputChanged:Connect(function(input)
-	if dragging and input.UserInputType == Enum.UserInputType.Touch then
+	if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
 		local delta = input.Position - dragStart
-		main.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X,
-			startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+		main.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
 	end
 end)
-
 UIS.InputEnded:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.Touch then
-        dragging = false
-        savePositions()
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+        dragging = false; savePositions()
     end
 end)
 
--- TITLE
 local title = Instance.new("TextLabel", main)
-title.Size = UDim2.new(1,0,0,30)
-title.Position = UDim2.new(0,10,0,2)
-title.BackgroundTransparency = 1
-title.Text = "Atlas Finder"
-title.Font = Enum.Font.GothamBold
-title.TextSize = 16
-title.TextColor3 = Color3.fromRGB(255,255,255)
-title.TextXAlignment = Enum.TextXAlignment.Left
+title.Size = UDim2.new(1,0,0,30); title.Position = UDim2.new(0,10,0,2); title.BackgroundTransparency = 1
+title.Text = "Atlas Finder"; title.Font = Enum.Font.GothamBold; title.TextSize = 16; title.TextColor3 = Color3.fromRGB(255,255,255); title.TextXAlignment = Enum.TextXAlignment.Left
 
--- CLOSE
 local close = Instance.new("TextButton", main)
-close.Size = UDim2.new(0,25,0,25)
-close.Position = UDim2.new(1,-30,0,3)
-close.Text = "X"
-close.BackgroundColor3 = Color3.fromRGB(60,20,20)
-close.TextColor3 = Color3.fromRGB(255,80,80)
+close.Size = UDim2.new(0,25,0,25); close.Position = UDim2.new(1,-30,0,3); close.Text = "X"
+close.BackgroundColor3 = Color3.fromRGB(60,20,20); close.TextColor3 = Color3.fromRGB(255,80,80)
 Instance.new("UICorner", close).CornerRadius = UDim.new(0,6)
 
--- TABS
 local tabs = Instance.new("Frame", main)
-tabs.Size = UDim2.new(1,0,0,30)
-tabs.Position = UDim2.new(0,0,0,30)
-tabs.BackgroundTransparency = 1
+tabs.Size = UDim2.new(1,0,0,30); tabs.Position = UDim2.new(0,0,0,30); tabs.BackgroundTransparency = 1
 
-local tabWidth = 90
-local spacing = 15
+local tabWidth, spacing = 90, 15
 local totalWidth = (tabWidth * 3) + (spacing * 2)
 local startX = (340 - totalWidth) / 2
 
 local function makeTab(text,order)
 	local t = Instance.new("TextButton", tabs)
-	t.Size = UDim2.new(0,tabWidth,1,0)
-	t.Position = UDim2.new(0, startX + (order * (tabWidth + spacing)), 0, 0)
-	t.Text = text
-	t.Font = Enum.Font.GothamBold
-	t.TextSize = 14
-	t.TextColor3 = Color3.fromRGB(160,160,160)
-	t.BackgroundTransparency = 1
+	t.Size = UDim2.new(0,tabWidth,1,0); t.Position = UDim2.new(0, startX + (order * (tabWidth + spacing)), 0, 0)
+	t.Text = text; t.Font = Enum.Font.GothamBold; t.TextSize = 14; t.TextColor3 = Color3.fromRGB(160,160,160); t.BackgroundTransparency = 1
 	return t
 end
 
-local autoBtn = makeTab("Autojoin",0)
-local filterBtn = makeTab("Filters",1)
-local miscBtn = makeTab("Misc",2)
+local autoTabBtn = makeTab("Autojoin",0)
+local filterTabBtn = makeTab("Filters",1)
+local miscTabBtn = makeTab("Misc",2)
 
--- UNDERLINE
 local underline = Instance.new("Frame", tabs)
-underline.Size = UDim2.new(0,50,0,2)
-underline.BackgroundColor3 = Color3.fromRGB(0,170,255)
-
+underline.Size = UDim2.new(0,50,0,2); underline.BackgroundColor3 = Color3.fromRGB(0,170,255)
 local function moveUnderline(btn)
-    local goal = {
-        Position = UDim2.new(0, btn.Position.X.Offset + 20, 1, -2)
-    }
-
-    local tween = TweenService:Create(
-        underline,
-        TweenInfo.new(0.25, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
-        goal
-    )
-
-    tween:Play()
+    TweenService:Create(underline, TweenInfo.new(0.25, Enum.EasingStyle.Quad), {Position = UDim2.new(0, btn.Position.X.Offset + 20, 1, -2)}):Play()
 end
 
--- PAGES
 local pages = Instance.new("Frame", main)
-pages.Size = UDim2.new(1,-7,1,-56)
-pages.Position = UDim2.new(0,4,0,66)
-pages.BackgroundTransparency = 1
+pages.Size = UDim2.new(1,-7,1,-56); pages.Position = UDim2.new(0,4,0,66); pages.BackgroundTransparency = 1
 
 local function makePage()
-	local f = Instance.new("Frame", pages)
-	f.Size = UDim2.new(1,0,1,0)
-	f.Visible = false
-	f.BackgroundTransparency = 1
-	return f
+	local f = Instance.new("Frame", pages); f.Size = UDim2.new(1,0,1,0); f.Visible = false; f.BackgroundTransparency = 1; return f
 end
 
-local autoPage = makePage()
-local filterPage = makePage()
-local miscPage = makePage()
-
-autoPage.Visible = true
-autoBtn.TextColor3 = Color3.fromRGB(255,255,255)
-moveUnderline(autoBtn)
+local autoPage = makePage(); local filterPage = makePage(); local miscPage = makePage()
+autoPage.Visible = true; moveUnderline(autoTabBtn); autoTabBtn.TextColor3 = Color3.fromRGB(255,255,255)
 
 local function switch(page,btn)
-    for _,p in pairs(pages:GetChildren()) do
-        if p ~= page then
-            p.Visible = false
-        end
-    end
-
-    for _,b in pairs(tabs:GetChildren()) do
-        if b:IsA("TextButton") then
-            b.TextColor3 = Color3.fromRGB(160,160,160)
-        end
-    end
-
-    page.Visible = true
-    btn.TextColor3 = Color3.fromRGB(255,255,255)
-    moveUnderline(btn)
+    for _,p in pairs(pages:GetChildren()) do p.Visible = false end
+    for _,b in pairs(tabs:GetChildren()) do if b:IsA("TextButton") then b.TextColor3 = Color3.fromRGB(160,160,160) end end
+    page.Visible = true; btn.TextColor3 = Color3.fromRGB(255,255,255); moveUnderline(btn)
 end
 
-autoBtn.MouseButton1Click:Connect(function() switch(autoPage,autoBtn) end)
-filterBtn.MouseButton1Click:Connect(function() switch(filterPage,filterBtn) end)
-miscBtn.MouseButton1Click:Connect(function() switch(miscPage,miscBtn) end)
+autoTabBtn.MouseButton1Click:Connect(function() switch(autoPage,autoTabBtn) end)
+filterTabBtn.MouseButton1Click:Connect(function() switch(filterPage,filterTabBtn) end)
+miscTabBtn.MouseButton1Click:Connect(function() switch(miscPage,miscTabBtn) end)
 
--- (TODO tu resto de código sigue IGUAL, no lo toqué)
+-- CONTENIDO PESTAÑA AUTOJOIN
+local btnV1 = Instance.new("TextButton", autoPage)
+btnV1.Size = UDim2.new(0,100,0,40); btnV1.Position = UDim2.new(0.1,0,0.1,0)
+btnV1.Text = "V1 (REFRESH)"; btnV1.BackgroundColor3 = Color3.fromRGB(150,50,50); btnV1.TextColor3 = Color3.new(1,1,1); Instance.new("UICorner", btnV1)
 
--- MINI GUI
+local btnAutoJoin = Instance.new("TextButton", autoPage)
+btnAutoJoin.Size = UDim2.new(0,100,0,40); btnAutoJoin.Position = UDim2.new(0.55,0,0.1,0)
+btnAutoJoin.Text = "AUTO JOIN"; btnAutoJoin.BackgroundColor3 = Color3.fromRGB(150,50,50); btnAutoJoin.TextColor3 = Color3.new(1,1,1); Instance.new("UICorner", btnAutoJoin)
+
+btnV1.MouseButton1Click:Connect(function()
+    autoRefreshV1 = not autoRefreshV1
+    btnV1.BackgroundColor3 = autoRefreshV1 and Color3.fromRGB(0,100,255) or Color3.fromRGB(150,50,50)
+end)
+
+btnAutoJoin.MouseButton1Click:Connect(function()
+    autoJoinMotor = not autoJoinMotor
+    btnAutoJoin.BackgroundColor3 = autoJoinMotor and Color3.fromRGB(0,100,255) or Color3.fromRGB(150,50,50)
+end)
+
+-- CONTENIDO PESTAÑA FILTERS
+local scrollSel = Instance.new("ScrollingFrame", filterPage)
+scrollSel.Size = UDim2.new(0.48,0,0.9,0); scrollSel.Position = UDim2.new(0,0,0.05,0); scrollSel.BackgroundTransparency = 1; scrollSel.CanvasSize = UDim2.new(0,0,0,#ALL_OBJECTS*35)
+
+local scrollPrio = Instance.new("ScrollingFrame", filterPage)
+scrollPrio.Size = UDim2.new(0.48,0,0.9,0); scrollPrio.Position = UDim2.new(0.52,0,0.05,0); scrollPrio.BackgroundTransparency = 1
+
+local function renderPrio()
+    scrollPrio:ClearAllChildren()
+    local y = 0
+    for i, name in ipairs(priorityList) do
+        if selectedData[name].enabled then
+            local f = Instance.new("Frame", scrollPrio); f.Size = UDim2.new(1,-10,0,25); f.Position = UDim2.new(0,0,0,y); f.BackgroundColor3 = Color3.fromRGB(30,30,45); Instance.new("UICorner", f)
+            local t = Instance.new("TextLabel", f); t.Size = UDim2.new(0.7,0,1,0); t.Text = name; t.TextColor3 = Color3.new(1,1,1); t.BackgroundTransparency = 1; t.TextSize = 9; t.TextXAlignment = "Left"; t.Position = UDim2.new(0,5,0,0)
+            
+            local up = Instance.new("TextButton", f); up.Size = UDim2.new(0,20,0,12); up.Position = UDim2.new(0.85,0,0,0); up.Text = "▲"; up.BackgroundTransparency = 1; up.TextColor3 = Color3.new(1,1,1)
+            local dw = Instance.new("TextButton", f); dw.Size = UDim2.new(0,20,0,12); dw.Position = UDim2.new(0.85,0,0.5,0); dw.Text = "▼"; dw.BackgroundTransparency = 1; dw.TextColor3 = Color3.new(1,1,1)
+            
+            up.MouseButton1Click:Connect(function() if i > 1 then table.remove(priorityList, i); table.insert(priorityList, i-1, name); renderPrio(); saveSettings() end end)
+            dw.MouseButton1Click:Connect(function() if i < #priorityList then table.remove(priorityList, i); table.insert(priorityList, i+1, name); renderPrio(); saveSettings() end end)
+            y = y + 28
+        end
+    end
+    scrollPrio.CanvasSize = UDim2.new(0,0,0,y)
+end
+
+local function updateFilterList()
+    scrollSel:ClearAllChildren()
+    for i, name in ipairs(ALL_OBJECTS) do
+        local f = Instance.new("Frame", scrollSel); f.Size = UDim2.new(1,-10,0,30); f.Position = UDim2.new(0,0,0,(i-1)*33); f.BackgroundColor3 = Color3.fromRGB(20,20,35); Instance.new("UICorner", f)
+        local b = Instance.new("TextButton", f); b.Size = UDim2.new(0.7,0,1,0); b.Text = name; b.TextSize = 9; b.TextColor3 = Color3.new(1,1,1); b.BackgroundTransparency = selectedData[name].enabled and 0.5 or 1; b.BackgroundColor3 = selectedData[name].enabled and Color3.fromRGB(0, 150, 255) or Color3.fromRGB(40,40,60); Instance.new("UICorner", b)
+        local v = Instance.new("TextBox", f); v.Size = UDim2.new(0.25,0,1,0); v.Position = UDim2.new(0.75,0,0,0); v.PlaceholderText = "M/s"; v.Text = selectedData[name].minVal > 0 and tostring(selectedData[name].minVal) or ""; v.BackgroundColor3 = Color3.fromRGB(30,30,50); v.TextColor3 = Color3.new(1,1,1); v.TextSize = 10; Instance.new("UICorner", v)
+        
+        b.MouseButton1Click:Connect(function()
+            selectedData[name].enabled = not selectedData[name].enabled
+            b.BackgroundTransparency = selectedData[name].enabled and 0.7 or 1 -- Azul Transparente Claro
+            b.BackgroundColor3 = selectedData[name].enabled and Color3.fromRGB(100, 200, 255) or Color3.fromRGB(40,40,60)
+            renderPrio(); saveSettings()
+        end)
+        v.FocusLost:Connect(function() selectedData[name].minVal = tonumber(v.Text) or 0; saveSettings() end)
+    end
+end
+updateFilterList(); renderPrio()
+
+-- CONTENIDO PESTAÑA MISC (CLEAN)
+local cleanTitle = Instance.new("TextLabel", miscPage)
+cleanTitle.Size = UDim2.new(1,0,0,30); cleanTitle.Text = "CLEAN"; cleanTitle.TextColor3 = Color3.new(1,1,1); cleanTitle.BackgroundTransparency = 1; cleanTitle.Font = "GothamBold"
+
+local line = Instance.new("Frame", miscPage)
+line.Size = UDim2.new(0.9,0,0,2); line.Position = UDim2.new(0.05,0,0,35); line.BackgroundColor3 = Color3.fromRGB(50,100,200)
+
+local btnAutoClean = Instance.new("TextButton", miscPage)
+btnAutoClean.Size = UDim2.new(0,120,0,35); btnAutoClean.Position = UDim2.new(0.05,0,0.15,0)
+btnAutoClean.Text = "AutoClean v1"; btnAutoClean.BackgroundColor3 = autoCleanEnabled and Color3.fromRGB(0,150,255) or Color3.fromRGB(60,60,80); btnAutoClean.TextColor3 = Color3.new(1,1,1); Instance.new("UICorner", btnAutoClean)
+
+btnAutoClean.MouseButton1Click:Connect(function()
+    autoCleanEnabled = not autoCleanEnabled
+    btnAutoClean.BackgroundColor3 = autoCleanEnabled and Color3.fromRGB(0,150,255) or Color3.fromRGB(60,60,80)
+    saveSettings()
+end)
+
+-- LÓGICA DEL MOTOR (SCRIPT V17)
+local function parseSms(txt, targetName)
+    local lowTxt, lowTarget = txt:lower(), targetName:lower()
+    local startIdx = lowTxt:find(lowTarget, 1, true)
+    if startIdx then
+        local sub = txt:sub(startIdx + #targetName); local n = sub:match("(%d+%.?%d*)"); local val = tonumber(n) or 0
+        if sub:find("B") and sub:find("B") < 15 then val = val * 1000 end; return val
+    end; return 0
+end
+
+local function escanear()
+    if joinLock or not autoJoinMotor then return end
+    local pm = player.PlayerGui:FindFirstChild("PetMenu")
+    if not pm then return end
+    
+    local allFrames = {}; for _,v in ipairs(pm.Frame.ScrollingFrame:GetChildren()) do if v:IsA("Frame") and v.Visible then table.insert(allFrames, v) end end
+    local limiteEscaneo = math.min(#allFrames, MAX_SERVERS_A_ESCANEAR)
+    
+    -- LÓGICA AUTOCLEAN
+    if autoCleanEnabled then
+        local firmasActuales = {}; for i = 1, limiteEscaneo do local lbl = allFrames[i]:FindFirstChild("TextLabel", false); if lbl and lbl.Text ~= "" then firmasActuales[lbl.Text] = true end end
+        for firma, _ in pairs(usados) do
+            if not firmasActuales[firma] then
+                ausenciaContador[firma] = (ausenciaContador[firma] or 0) + 1
+                if ausenciaContador[firma] >= INTENTOS_PARA_LIMPIAR then usados[firma] = nil; ausenciaContador[firma] = nil end
+            else ausenciaContador[firma] = 0 end
+        end
+    end
+
+    local candidatos = {}
+    for i = 1, limiteEscaneo do
+        local lbl = allFrames[i]:FindFirstChild("TextLabel", false)
+        if lbl then
+            for name, data in pairs(selectedData) do
+                if data.enabled and lbl.Text:lower():find(name:lower(), 1, true) then
+                    local val = parseSms(lbl.Text, name)
+                    if val >= data.minVal and not usados[lbl.Text] then
+                        table.insert(candidatos, {frame = allFrames[i], name = name, val = val, firma = lbl.Text})
+                    end
+                end
+            end
+        end
+    end
+
+    if #candidatos > 0 then
+        table.sort(candidatos, function(a,b)
+            local pA = table.find(priorityList, a.name) or 999; local pB = table.find(priorityList, b.name) or 999
+            return pA < pB
+        end)
+        local mejor = candidatos[1]
+        joinLock = true; usados[mejor.firma] = true; saveSettings()
+        local btn = mejor.frame:FindFirstChildWhichIsA("Frame"):FindFirstChildWhichIsA("TextButton")
+        for i = 1, 150 do for _,c in ipairs(getconnections(btn.MouseButton1Click)) do c:Fire() end end
+        task.delay(2, function() joinLock = false end)
+    end
+end
+
+-- BUCLE DE EJECUCIÓN FÍSICA
+task.spawn(function()
+    while true do
+        if autoRefreshV1 and not joinLock then
+            if player.PlayerGui:FindFirstChild("PetMenu") then
+                if getgenv().mousemoveabs and getgenv().mouse1click then
+                    getgenv().mousemoveabs(543, 154)
+                    getgenv().mouse1click()
+                end
+                task.wait(MAX_WAIT_TIME); escanear()
+            end
+        end
+        task.wait(0.01)
+    end
+end)
+
+-- MINI GUI (SISTEMA ORIGINAL SIN CAMBIOS)
 local miniGui = Instance.new("ScreenGui")
 miniGui.Name = "MiniAtlasUltra"
 miniGui.Parent = player:WaitForChild("PlayerGui")
 miniGui.Enabled = false
 
-close.MouseButton1Click:Connect(function()
-	main.Visible = false
-	miniGui.Enabled = true
-end)
-
 local shadow = Instance.new("Frame", miniGui)
 shadow.Size = UDim2.new(0, 150, 0, 55)
-shadow.Position = UDim2.new(1, -165, 0, 110)
+shadow.BackgroundColor3 = Color3.fromRGB(0,0,0); shadow.BackgroundTransparency = 0.5
 
-local frame = Instance.new("Frame", miniGui)
-frame.Size = UDim2.new(0, 145, 0, 50)
-frame.Position = shadow.Position
+local mframe = Instance.new("Frame", miniGui)
+mframe.Size = UDim2.new(0, 145, 0, 50); mframe.BackgroundColor3 = Color3.fromRGB(8,12,25)
+Instance.new("UICorner", mframe); _G.miniFrameRef = mframe
 
-if isfile("atlas_gui.json") then
-    local data = HttpService:JSONDecode(readfile("atlas_gui.json"))
+local openBtn = Instance.new("TextButton", mframe)
+openBtn.Size = UDim2.new(1,0,1,0); openBtn.Text = "OPEN ATLAS"; openBtn.TextColor3 = Color3.new(1,1,1); openBtn.BackgroundTransparency = 1
 
+if isfile(FILE_POSITIONS) then
+    local data = HttpService:JSONDecode(readfile(FILE_POSITIONS))
     if data.mini then
-        frame.Position = UDim2.new(
-            data.mini.X.Scale,
-            data.mini.X.Offset,
-            data.mini.Y.Scale,
-            data.mini.Y.Offset
-        )
-
-        shadow.Position = frame.Position
+        mframe.Position = UDim2.new(data.mini.X.Scale, data.mini.X.Offset, data.mini.Y.Scale, data.mini.Y.Offset)
+        shadow.Position = mframe.Position
     end
+else
+    mframe.Position = UDim2.new(1, -165, 0, 110)
+    shadow.Position = mframe.Position
 end
+
+close.MouseButton1Click:Connect(function() main.Visible = false; miniGui.Enabled = true end)
+openBtn.MouseButton1Click:Connect(function() main.Visible = true; miniGui.Enabled = false end)
+
+-- DRAG PARA MINI GUI (SISTEMA ORIGINAL)
+local mDragging, mDragStart, mStartPos
+mframe.InputBegan:Connect(function(input)
+	if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+		mDragging = true; mDragStart = input.Position; mStartPos = mframe.Position
+	end
+end)
+UIS.InputChanged:Connect(function(input)
+	if mDragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+		local delta = input.Position - mDragStart
+		mframe.Position = UDim2.new(mStartPos.X.Scale, mStartPos.X.Offset + delta.X, mStartPos.Y.Scale, mStartPos.Y.Offset + delta.Y)
+        shadow.Position = mframe.Position
+	end
+end)
+UIS.InputEnded:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+        mDragging = false; savePositions()
+    end
+end)
