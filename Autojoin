@@ -11,12 +11,12 @@ local main = Instance.new("Frame", gui)
 local function savePositions()
     local data = {
         main = {
-            X = main.Position.X.Offset,
-            Y = main.Position.Y.Offset
+            X = {Scale = main.Position.X.Scale, Offset = main.Position.X.Offset},
+            Y = {Scale = main.Position.Y.Scale, Offset = main.Position.Y.Offset}
         },
         mini = {
-            X = frame.Position.X.Offset,
-            Y = frame.Position.Y.Offset
+            X = {Scale = frame.Position.X.Scale, Offset = frame.Position.X.Offset},
+            Y = {Scale = frame.Position.Y.Scale, Offset = frame.Position.Y.Offset}
         }
     }
 
@@ -348,8 +348,20 @@ frame.Position = shadow.Position
 if isfile("atlas_gui.json") then
     local data = HttpService:JSONDecode(readfile("atlas_gui.json"))
 
-    main.Position = UDim2.new(0.5, data.main.X, 0.5, data.main.Y)
-    frame.Position = UDim2.new(0, data.mini.X, 0, data.mini.Y)
+    main.Position = UDim2.new(
+        data.main.X.Scale,
+        data.main.X.Offset,
+        data.main.Y.Scale,
+        data.main.Y.Offset
+    )
+
+    frame.Position = UDim2.new(
+        data.mini.X.Scale,
+        data.mini.X.Offset,
+        data.mini.Y.Scale,
+        data.mini.Y.Offset
+    )
+
     shadow.Position = frame.Position
 end
 frame.BackgroundColor3 = Color3.fromRGB(15, 20, 35)
