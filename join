@@ -1,6 +1,7 @@
 -- ==========================================
 -- BRAINROTS AUTO-JOINER PREMIUM V17 (PRIME MODE)
 -- VERSION CALIBRADA: REFRESH FISICO 543, 154
+-- CORRECCIÓN: RUTA ACTUALIZADA A 'jackk'
 -- ==========================================
 
 local UserInputService = game:GetService("UserInputService")
@@ -191,7 +192,7 @@ function renderPrio()
     scrollPrio.CanvasSize = UDim2.new(0,0,0,y)
 end
 
--- ================= MOTOR =================
+-- ================= MOTOR (RUTA: jackk) =================
 local function parseSms(txt, targetName)
     local lowTxt = txt:lower(); local lowTarget = targetName:lower(); local startIdx = lowTxt:find(lowTarget, 1, true)
     if startIdx then
@@ -202,7 +203,8 @@ end
 
 local function escanear()
     if joinLock or (not autoRefresh and not primeActive) then return end
-    local pm = PlayerGui:FindFirstChild("PetMenu"); if not pm then return end
+    -- RUTA ACTUALIZADA: 'jackk' reemplaza a 'PetMenu'
+    local pm = PlayerGui:FindFirstChild("jackk"); if not pm then return end
     
     local allFrames = {}; for _,v in ipairs(pm.Frame.ScrollingFrame:GetChildren()) do if v:IsA("Frame") and v.Visible then table.insert(allFrames, v) end end
     local limiteEscaneo = math.min(#allFrames, MAX_SERVERS_A_ESCANEAR)
@@ -255,7 +257,8 @@ end
 task.spawn(function()
     while true do
         if (autoRefresh or primeActive) and not joinLock then
-            local pm = PlayerGui:FindFirstChild("PetMenu")
+            -- RUTA ACTUALIZADA: 'jackk' reemplaza a 'PetMenu'
+            local pm = PlayerGui:FindFirstChild("jackk")
             if pm then
                 -- Lógica de Auto-Refresh Físico (X: 543, Y: 154)
                 if getgenv().mousemoveabs and getgenv().mouse1click then
