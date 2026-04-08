@@ -194,11 +194,25 @@ end
 
 -- ================= MOTOR (RUTA: jackk) =================
 local function parseSms(txt, targetName)
-    local lowTxt = txt:lower(); local lowTarget = targetName:lower(); local startIdx = lowTxt:find(lowTarget, 1, true)
+    local lowTxt = txt:lower()
+    local lowTarget = targetName:lower()
+    local startIdx = lowTxt:find(lowTarget, 1, true)
+    
     if startIdx then
-        local sub = txt:sub(startIdx + #targetName); local n = sub:match("(%d+%.?%d*)"); local val = tonumber(n) or 0
-        if sub:find("B") and sub:find("B") < 15 then val = val * 1000 end; return val
-    end; return 0
+        local sub = txt:sub(startIdx + #targetName)
+        
+        -- 👇 ARREGLO AQUI
+        local n, suf = sub:match("(%d+%.?%d*)([MB])")
+        local val = tonumber(n) or 0
+        
+        if suf == "B" then
+            val = val * 1000
+        end
+        
+        return val
+    end
+    
+    return 0
 end
 
 local function escanear()
