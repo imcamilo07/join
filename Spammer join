@@ -193,3 +193,24 @@ spamBtn.MouseButton1Click:Connect(function()
 end)
 
 print("🚀 BRAINROTS SPAM JOINER V2 TOP 5 CARGADO.")
+
+-- ================= DETECCIÓN ERROR 773 (UNAUTHORIZED) =================
+
+local TeleportService = game:GetService("TeleportService")
+
+TeleportService.TeleportInitFailed:Connect(function(player, result)
+    if result == Enum.TeleportResult.Unauthorized then
+        print("🔒 Error 773 detectado - Deteniendo spam")
+
+        -- Detener spam
+        isSpamming = false
+
+        -- Reset visual del botón
+        spamBtn.Text = "SPAM JOIN"
+        spamBtn.BackgroundColor3 = Color3.fromRGB(0, 170, 0)
+
+        -- Reset contador
+        currentAttempts = 0
+        counter.Text = "0 / " .. (tonumber(attInput.Text) or 2000)
+    end
+end)
