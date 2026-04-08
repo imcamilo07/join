@@ -63,7 +63,7 @@ delayLabel.Text = "CPS (Delay):"; delayLabel.TextColor3 = Color3.new(0.8, 0.8, 0
 local delayInput = Instance.new("TextBox", main)
 delayInput.Size = UDim2.new(0.8, 0, 0, 25); delayInput.Position = UDim2.new(0.1, 0, 0, 95)
 delayInput.BackgroundColor3 = Color3.fromRGB(35, 35, 40); 
-delayInput.Text = "100"
+delayInput.Text = "100" -- ACTUALIZADO A 100 CPS
 delayInput.TextColor3 = Color3.new(1, 1, 1); delayInput.Font = Enum.Font.Code
 Instance.new("UICorner", delayInput)
 
@@ -101,7 +101,7 @@ scroll.Size = UDim2.new(0.9, 0, 0.75, 0); scroll.Position = UDim2.new(0.05, 0, 0
 
 local function updateList()
     scroll:ClearAllChildren()
-    local pm = PlayerGui:FindFirstChild("jackk") -- 🔥 FIX AQUÍ
+    local pm = PlayerGui:FindFirstChild("jackk")
     if not pm then return end
     local sc = pm.Frame:FindFirstChild("ScrollingFrame")
     if not sc then return end
@@ -112,6 +112,7 @@ local function updateList()
     end
 
     local y = 0
+    -- LÓGICA MODIFICADA: Tomamos solo los PRIMEROS 5 (TOP 5)
     local limite = math.min(#allFrames, 5)
     for i = 1, limite do
         local f = allFrames[i]
@@ -125,19 +126,25 @@ local function updateList()
         
         b.MouseButton1Click:Connect(function()
             targetServerManual = f
-            updateList()
+            updateList() -- Resaltar selección
         end)
         y = y + 33
     end
     scroll.CanvasSize = UDim2.new(0,0,0,y)
 end
 
+settingsBtn.MouseButton1Click:Connect(function() selector.Visible = not selector.Visible; if selector.Visible then updateList() end end)
+closeSelector.MouseButton1Click:Connect(function() selector.Visible = false end)
+refreshBtn.MouseButton1Click:Connect(updateList)
+
 -- ================= LÓGICA DE DISPARO =================
 
 local function getTarget()
+    -- Si hay uno manual seleccionado, lo usamos
     if targetServerManual and targetServerManual.Parent then return targetServerManual end
     
-    local pm = PlayerGui:FindFirstChild("jackk") -- 🔥 FIX AQUÍ
+    -- Si no hay selección, por defecto toma el primero de la lista (Top 1)
+    local pm = PlayerGui:FindFirstChild("jackk")
     local sc = pm and pm.Frame:FindFirstChild("ScrollingFrame")
     if sc then
         for _, v in ipairs(sc:GetChildren()) do 
@@ -146,3 +153,43 @@ local function getTarget()
     end
     return nil
 end
+
+local function startSpam()
+    local maxAtt = tonumber(attInput.Text) or 2000
+    local cps = tonumber(delayInput.Text) or 100
+    local waitTime = 1 / cps
+    
+    local target = getTarget()
+    if not target then isSpamming = false; return end
+
+    local inner = target:FindFirstChildWhichIsA("Frame")
+    local btn = inner and inner:FindFirstChildWhichIsA("TextButton")
+    if not btn then isSpamming = false; return end
+
+    while isSpamming and currentAttempts < maxAtt do
+        currentAttempts = currentAttempts + 1
+        counter.Text = currentAttempts .. " / " .. maxAtt
+        
+        for _, conn in ipairs(getconnections(btn.MouseButton1Click)) do conn:Fire() end
+        task.wait(waitTime)
+    end
+    
+    isSpamming = false
+    spamBtn.Text = "SPAM JOIN"
+    spamBtn.BackgroundColor3 = Color3.fromRGB(0, 170, 0)
+    currentAttempts = 0
+end
+
+spamBtn.MouseButton1Click:Connect(function()
+    if isSpamming then
+        isSpamming = false
+        spamBtn.Text = "SPAM JOIN"
+        spamBtn.BackgroundColor3 = Color3.fromRGB(0, 170, 0)
+    else
+        isSpamming = true; currentAttempts = 0
+        spamBtn.Text = "STOP"; spamBtn.BackgroundColor3 = Color3.fromRGB(200, 0, 0)
+        task.spawn(startSpam)
+    end
+end)
+
+print("🚀 BRAINROTS SPAM JOINER V2 TOP 5 CARGADO.")
