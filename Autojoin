@@ -1,10 +1,11 @@
 -- ==========================================
--- AUTOJOIN PRIME - LOGS & NOTIFY REVISION
+-- AUTOJOIN PRIME - SPAMMER TOP 5 EDITION
 -- ==========================================
 
 local Players = game:GetService("Players")
 local UIS = game:GetService("UserInputService")
 local HttpService = game:GetService("HttpService")
+local TeleportService = game:GetService("TeleportService")
 local player = Players.LocalPlayer
 
 local FILE_CONFIG = "autojoin_prime_v2.json"
@@ -35,6 +36,9 @@ local priorityList = {unpack(ALL_OBJECTS)}
 local usados, ausenciaContador = {}, {}
 local joinLock = false
 local miniLabels, miniDots = {}, {}
+local config = {spamDelay = 100, spamAtt = 2000} -- Valores base del Spammer
+local isManualSpamming = false
+local activeSpamConnection = nil
 
 for _, name in ipairs(ALL_OBJECTS) do 
     filters[name] = {enabled = false, minVal = 0} 
@@ -54,7 +58,7 @@ local triggerC = Instance.new("TextButton", frame); triggerC.Size = UDim2.new(1,
 
 -- PERSISTENCIA
 local function saveData()
-    local data = {toggles = {v1 = toggles.v1, v2 = toggles.v2, ca = toggles.ca}, filters = filters, primeFilters = primeFilters, prio = priorityList, mainPos = {main.Position.X.Offset, main.Position.Y.Offset}, miniPos = {frame.Position.X.Offset, frame.Position.Y.Offset}}
+    local data = {toggles = {v1 = toggles.v1, v2 = toggles.v2, ca = toggles.ca}, filters = filters, primeFilters = primeFilters, prio = priorityList, mainPos = {main.Position.X.Offset, main.Position.Y.Offset}, miniPos = {frame.Position.X.Offset, frame.Position.Y.Offset}, config = config}
     writefile(FILE_CONFIG, HttpService:JSONEncode(data)); writefile(FILE_USADOS, HttpService:JSONEncode(usados))
 end
 
@@ -64,6 +68,7 @@ local function loadData()
         if ok then
             toggles.v1 = data.toggles.v1; toggles.v2 = data.toggles.v2; toggles.ca = data.toggles.ca
             filters = data.filters or filters; primeFilters = data.primeFilters or primeFilters; priorityList = data.prio or priorityList
+            if data.config then config = data.config end
             if data.mainPos then main.Position = UDim2.new(0.5, data.mainPos[1], 0.5, data.mainPos[2]) end
             if data.miniPos then frame.Position = UDim2.new(1, data.miniPos[1], 0, data.miniPos[2]); miniShadow.Position = frame.Position end
         end
@@ -123,13 +128,88 @@ local function createTab(name, order)
 end
 local autoPage = createTab("Autojoin", 0); local filterPage = createTab("Filters", 1); local miscPage = createTab("Misc", 2)
 
--- LOGS CON TITULO CENTRADO
-local logTitle = Instance.new("TextLabel", autoPage); logTitle.Size = UDim2.new(1,0,0,10); logTitle.Position = UDim2.new(0,0,0,22); logTitle.BackgroundTransparency = 1; logTitle.Text = "LOGS"; logTitle.Font = "GothamBold"; logTitle.TextSize = 7; logTitle.TextColor3 = Color3.fromRGB(80,80,80)
-local logScroll = Instance.new("ScrollingFrame", autoPage); logScroll.Size = UDim2.new(1,-24,1,-45); logScroll.Position = UDim2.new(0,12,0,35); logScroll.BackgroundTransparency = 1; logScroll.ScrollBarThickness = 1
-local function addLog(txt)
-    local l = Instance.new("TextLabel", logScroll); l.Size = UDim2.new(1,0,0,14); l.Position = UDim2.new(0,0,0,#logScroll:GetChildren()*14); l.BackgroundTransparency = 1; l.Text = ">> " .. txt; l.TextColor3 = Color3.fromRGB(120,160,255); l.TextSize = 8; l.Font = "Code"; l.TextXAlignment = "Left"
-    logScroll.CanvasSize = UDim2.new(0,0,0,#logScroll:GetChildren()*14); logScroll.CanvasPosition = Vector2.new(0, logScroll.CanvasSize.Y.Offset)
+-- LOGS PAGE (REDISEÑADA CON SELECTOR TOP 5)
+local logTitle = Instance.new("TextLabel", autoPage); logTitle.Size = UDim2.new(0,100,0,15); logTitle.Position = UDim2.new(0,12,0,22); logTitle.BackgroundTransparency = 1; logTitle.Text = "LOGS"; logTitle.Font = "GothamBold"; logTitle.TextSize = 10; logTitle.TextColor3 = Color3.fromRGB(200,200,200); logTitle.TextXAlignment = "Left"
+
+local refreshLogs = Instance.new("TextButton", autoPage); refreshLogs.Size = UDim2.new(0, 60, 0, 18); refreshLogs.Position = UDim2.new(1, -72, 0, 24); refreshLogs.Text = "REFRESH"; refreshLogs.BackgroundColor3 = Color3.fromRGB(20,40,80); refreshLogs.TextColor3 = Color3.fromRGB(80,170,255); refreshLogs.Font = "GothamBold"; refreshLogs.TextSize = 8; Instance.new("UICorner", refreshLogs)
+
+local logScroll = Instance.new("ScrollingFrame", autoPage); logScroll.Size = UDim2.new(1,-24,1,-45); logScroll.Position = UDim2.new(0,12,0,45); logScroll.BackgroundTransparency = 1; logScroll.ScrollBarThickness = 1
+
+-- DETECCIÓN DE ERROR 773 (SOLO CUANDO EL SPAM ESTÁ ACTIVO)
+local function stopAllSpam(msg)
+    isManualSpamming = false
+    if activeSpamConnection then activeSpamConnection:Disconnect(); activeSpamConnection = nil end
+    game:GetService("StarterGui"):SetCore("SendNotification", {Title = "SPAM STOPPED", Text = msg or "Error 773", Duration = 3})
 end
+
+-- FUNCIÓN PARA ACTUALIZAR LA LISTA TOP 5 EN LOGS
+local function updateTop5()
+    logScroll:ClearAllChildren()
+    local pm = player.PlayerGui:FindFirstChild("jackk")
+    if not pm then return end
+    local sc = pm.Frame:FindFirstChild("ScrollingFrame")
+    if not sc then return end
+
+    local allFrames = {}
+    for _, v in ipairs(sc:GetChildren()) do if v:IsA("Frame") and v.Visible then table.insert(allFrames, v) end end
+
+    for i = 1, math.min(#allFrames, 5) do
+        local frameData = allFrames[i]
+        local serverName = frameData:FindFirstChild("TextLabel") and frameData.TextLabel.Text or "Unknown"
+        
+        local cell = Instance.new("Frame", logScroll); cell.Size = UDim2.new(1, 0, 0, 26); cell.Position = UDim2.new(0, 0, 0, (i-1)*28); cell.BackgroundColor3 = Color3.fromRGB(25, 30, 45); cell.BackgroundTransparency = 0.5; Instance.new("UICorner", cell)
+        
+        local nameLbl = Instance.new("TextLabel", cell); nameLbl.Size = UDim2.new(0.6, 0, 1, 0); nameLbl.Position = UDim2.new(0, 5, 0, 0); nameLbl.Text = "#"..i.." "..serverName; nameLbl.TextColor3 = Color3.new(1,1,1); nameLbl.TextSize = 8; nameLbl.Font = "Code"; nameLbl.TextXAlignment = "Left"; nameLbl.BackgroundTransparency = 1
+        
+        local sBtn = Instance.new("TextButton", cell); sBtn.Size = UDim2.new(0.3, 0, 0.8, 0); sBtn.Position = UDim2.new(0.68, 0, 0.1, 0); sBtn.Text = "SPAM JOIN"; sBtn.BackgroundColor3 = Color3.fromRGB(50,20,20); sBtn.TextColor3 = Color3.fromRGB(255,80,80); sBtn.Font = "GothamBold"; sBtn.TextSize = 7; Instance.new("UICorner", sBtn)
+
+        sBtn.MouseButton1Click:Connect(function()
+            if isManualSpamming then
+                isManualSpamming = false
+                sBtn.Text = "SPAM JOIN"
+                sBtn.BackgroundColor3 = Color3.fromRGB(50,20,20)
+                sBtn.TextColor3 = Color3.fromRGB(255,80,80)
+            else
+                isManualSpamming = true
+                sBtn.Text = "STOP"
+                sBtn.BackgroundColor3 = Color3.fromRGB(20,40,80)
+                sBtn.TextColor3 = Color3.fromRGB(80,170,255)
+                
+                -- Activar monitoreo de error solo cuando se spamea
+                local conn; conn = TeleportService.TeleportInitFailed:Connect(function(_, result)
+                    if result == Enum.TeleportResult.Unauthorized then
+                        isManualSpamming = false
+                        nameLbl.Text = "Server Priv"
+                        nameLbl.TextColor3 = Color3.new(1, 0.4, 0.4)
+                        sBtn.Text = "SPAM JOIN"
+                        sBtn.BackgroundColor3 = Color3.fromRGB(50,20,20)
+                        conn:Disconnect()
+                    end
+                end)
+                activeSpamConnection = conn
+
+                task.spawn(function()
+                    local btnToClick = frameData:FindFirstChildWhichIsA("Frame"):FindFirstChildWhichIsA("TextButton")
+                    local waitTime = 1 / config.spamDelay
+                    local attempts = 0
+                    while isManualSpamming and attempts < config.spamAtt do
+                        if btnToClick then
+                            for _, c in ipairs(getconnections(btnToClick.MouseButton1Click)) do c:Fire() end
+                        end
+                        attempts = attempts + 1
+                        task.wait(waitTime)
+                    end
+                    isManualSpamming = false
+                    sBtn.Text = "SPAM JOIN"
+                    sBtn.BackgroundColor3 = Color3.fromRGB(50,20,20)
+                    if conn then conn:Disconnect() end
+                end)
+            end
+        end)
+    end
+    logScroll.CanvasSize = UDim2.new(0, 0, 0, 5*28)
+end
+refreshLogs.MouseButton1Click:Connect(updateTop5)
 
 -- BOTONES SIMÉTRICOS
 toggles.btns = {}
@@ -147,7 +227,7 @@ local function makeToggleBtn(text, x, width, id, parent)
     b.MouseButton1Click:Connect(function()
         if id == "v1" then toggles.v1 = not toggles.v1; if toggles.v1 then toggles.v2 = false end
         elseif id == "v2" then toggles.v2 = not toggles.v2; if toggles.v2 then toggles.v1 = false end
-        elseif id == "c" then usados = {}; addLog("CLEARED!"); b.Text = "CLR!"; task.delay(1, function() b.Text = "CLEAR" end)
+        elseif id == "c" then usados = {}; b.Text = "CLR!"; task.delay(1, function() b.Text = "CLEAR" end)
         elseif id == "ca" then toggles.ca = not toggles.ca; _G.refreshFilters()
         else toggles[id] = not toggles[id] end
         updateVisuals(); saveData()
@@ -155,7 +235,7 @@ local function makeToggleBtn(text, x, width, id, parent)
 end
 makeToggleBtn("CLEAR", 12, 50, "c", autoPage); makeToggleBtn("PRIME", 66, 50, "ca", autoPage); makeToggleBtn("V1", 120, 30, "v1", autoPage); makeToggleBtn("V2", 154, 30, "v2", autoPage); makeToggleBtn("AUTOJOIN", 192, 106, "a", autoPage)
 
--- FILTROS
+-- FILTROS (SIN CAMBIOS)
 local modeBtn = Instance.new("TextButton", filterPage); modeBtn.Size = UDim2.new(0, 100, 0, 22); modeBtn.Position = UDim2.new(0.5, -50, 0, 0); modeBtn.Text = "MODE: SELECT"; modeBtn.BackgroundColor3 = Color3.fromRGB(20,40,80); modeBtn.TextColor3 = Color3.new(1,1,1); Instance.new("UICorner", modeBtn)
 local filterScroll = Instance.new("ScrollingFrame", filterPage); filterScroll.Size = UDim2.new(1, -24, 1, -25); filterScroll.Position = UDim2.new(0,12,0,25); filterScroll.BackgroundTransparency = 1; filterScroll.ScrollBarThickness = 1
 local filterMode = "SELECT"
@@ -183,7 +263,16 @@ _G.refreshFilters = function()
 end
 modeBtn.MouseButton1Click:Connect(function() filterMode = (filterMode == "SELECT") and "PRIORITY" or "SELECT"; modeBtn.Text = "MODE: "..filterMode; _G.refreshFilters() end)
 
--- MOTOR
+-- MISC PAGE (CON CONFIGURACIÓN DE SPAMMER)
+local function createMiscInput(label, y, key)
+    local l = Instance.new("TextLabel", miscPage); l.Size = UDim2.new(0, 120, 0, 20); l.Position = UDim2.new(0, 15, 0, y); l.Text = label; l.TextColor3 = Color3.new(1,1,1); l.BackgroundTransparency = 1; l.TextXAlignment = "Left"; l.TextSize = 10; l.Font = "GothamBold"
+    local box = Instance.new("TextBox", miscPage); box.Size = UDim2.new(0, 80, 0, 20); box.Position = UDim2.new(0, 140, 0, y); box.BackgroundColor3 = Color3.new(0,0,0); box.TextColor3 = Color3.new(0,0.7,1); box.Text = tostring(config[key]); box.Font = "Code"; Instance.new("UICorner", box)
+    box.FocusLost:Connect(function() config[key] = tonumber(box.Text) or config[key]; saveData() end)
+end
+createMiscInput("SPAM DELAY (CPS):", 20, "spamDelay")
+createMiscInput("SPAM ATTEMPTS:", 50, "spamAtt")
+
+-- MOTOR AUTOJOIN (SIN CAMBIOS EN VELOCIDAD)
 local function parseSms(txt, targetName)
     local lowTxt = txt:lower(); local startIdx = lowTxt:find(targetName:lower(), 1, true)
     if startIdx then
@@ -197,14 +286,9 @@ end
 local function escanear()
     if joinLock or not toggles.a then return end
     local pm = player.PlayerGui:FindFirstChild("jackk"); if not pm then return end
-    local allFrames = {}; for _,v in ipairs(pm.Frame.ScrollingFrame:GetChildren()) do if v:IsA("Frame") and v.Visible then table.insert(allFrames, v) end end
-    local firmasActuales = {}; for i = 1, math.min(#allFrames, 5) do local lbl = allFrames[i]:FindFirstChild("TextLabel"); if lbl then firmasActuales[lbl.Text] = true end end
-    local umbralLimpieza = toggles.v1 and 6 or 20
-    for firma, _ in pairs(usados) do
-        if not firmasActuales[firma] then ausenciaContador[firma] = (ausenciaContador[firma] or 0) + 1
-            if ausenciaContador[firma] >= umbralLimpieza then usados[firma] = nil; ausenciaContador[firma] = nil end
-        else ausenciaContador[firma] = 0 end
-    end
+    local sc = pm.Frame:FindFirstChild("ScrollingFrame")
+    local allFrames = {}; for _,v in ipairs(sc:GetChildren()) do if v:IsA("Frame") and v.Visible then table.insert(allFrames, v) end end
+    
     local candidatos, currentData = {}, toggles.ca and primeFilters or filters
     for i = 1, math.min(#allFrames, 5) do
         local lbl = allFrames[i]:FindFirstChild("TextLabel")
@@ -220,7 +304,6 @@ local function escanear()
     if #candidatos > 0 then
         table.sort(candidatos, function(a,b) return (table.find(priorityList, a.name) or 999) < (table.find(priorityList, b.name) or 999) end)
         local mejor = candidatos[1]; joinLock = true; usados[mejor.firma] = true; saveData()
-        addLog("JOIN: "..mejor.name.." "..mejor.val.."M/s"); local s = Instance.new("Sound", game.SoundService); s.SoundId = "rbxassetid://128387076668435"; s:Play()
         writefile(FILE_LAST_JOIN, mejor.name.." $"..mejor.val.."M/s"); local btn = mejor.frame:FindFirstChildWhichIsA("Frame"):FindFirstChildWhichIsA("TextButton")
         for i = 1, 150 do for _,c in ipairs(getconnections(btn.MouseButton1Click)) do c:Fire() end end
         task.delay(1.5, function() joinLock = false end)
@@ -241,7 +324,7 @@ task.spawn(function()
     end
 end)
 
--- MINI LINEAS
+-- MINI GUI LINEAS
 local function createMiniLine(id, y)
     local c = Instance.new("Frame", frame); c.Size = UDim2.new(1,-10,0,10); c.Position = UDim2.new(0,6,0,y); c.BackgroundTransparency = 1
     local d = Instance.new("Frame", c); d.Size = UDim2.new(0,3,0,3); d.Position = UDim2.new(0,0,0.5,-1); Instance.new("UICorner", d); miniDots[id] = d
@@ -249,4 +332,4 @@ local function createMiniLine(id, y)
 end
 createMiniLine("v1", 18); createMiniLine("v2", 30); createMiniLine("a", 42)
 
-loadData(); updateVisuals(); _G.refreshFilters()
+loadData(); updateVisuals(); _G.refreshFilters(); updateTop5()
