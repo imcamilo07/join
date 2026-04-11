@@ -26,8 +26,8 @@ local ALL_OBJECTS = {
     "Tuff Toucan", "Tralaledon", "Los Puggies", "W or L", "Los Primos", "Eviledon", "Cloverat Clapat", 
     "La Taco Combinasion", "Orcaledon", "Swaggy Bros", "La Food Combinasion", "Love Love Bear", "Celestial Pegasus", "Griffin",
     "Elefanto Frigo", "Cigno Fulgoro", "Nacho Spyder", "Signore Carapace", "Fishino Clownino", "Los Amigos", "Gold Gold Gold",
-    "Los Sekolahs", "Spinny Hammy", "Love Love Bear", "Sammyni Fattini", "Ventoliero Pavonero", "Tirilikalika Tirilikalako", "Fortunu and Cashuru",
-    "La Easter Grande", "La Lucky Grande", "Hydra Bunny", "Bunny and Eggy", "Boppin Bunny", "Hopilikalika Hopilikalako"
+    "Los Sekolahs", "Spinny Hammy", "Cash or Card", "Sammyni Fattini", "Ventoliero Pavonero", "Tirilikalika Tirilikalako", "Fortunu and Cashuru",
+    "La Easter Grande", "La Lucky Grande", "Hydra Bunny", "Bunny and Eggy", "Boppin Bunny", "Hopilikalika Hopilikalako", "Bananito"
 }
 
 local toggles = {v1 = false, v2 = false, a = false, ca = false}
