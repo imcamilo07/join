@@ -1,5 +1,5 @@
 -- ==========================================
--- AUTOJOIN PRIME - FINAL EDITION (V17 FEATURES)
+-- AUTOJOIN PRIME - FINAL EDITION (V17 FEATURES) + NEW UPDATES
 -- ==========================================
 
 local Players = game:GetService("Players")
@@ -30,7 +30,7 @@ local ALL_OBJECTS = {
     "La Easter Grande", "La Lucky Grande", "Hydra Bunny", "Bunny and Eggy", "Boppin Bunny", "Hopilikalika Hopilikalako", "Bananito"
 }
 
-local toggles = {v1 = false, v2 = false, a = false, ca = false}
+local toggles = {v1 = false, v2 = false, a = false, ca = false, lock = false} -- lock agregado
 local filters, primeFilters = {}, {}
 local priorityList = {unpack(ALL_OBJECTS)}
 local usados, ausenciaContador = {}, {}
@@ -72,7 +72,7 @@ end
 local gui = Instance.new("ScreenGui", player.PlayerGui); gui.Name = "Autojoin_System"; gui.ResetOnSpawn = false
 local main = Instance.new("Frame", gui); main.Size = UDim2.new(0, 310, 0, 250); main.Position = UDim2.new(0.5, -155, 0.5, -125); main.BackgroundColor3 = Color3.fromRGB(8,12,25); main.Visible = false; Instance.new("UICorner", main)
 
--- MINI GUI (SIN CAMBIOS)
+-- MINI GUI
 local miniGui = Instance.new("ScreenGui", player.PlayerGui)
 local miniShadow = Instance.new("Frame", miniGui); miniShadow.Size = UDim2.new(0, 60, 0, 60); miniShadow.Position = UDim2.new(1, -80, 0, 110); miniShadow.BackgroundColor3 = Color3.fromRGB(0, 170, 255); miniShadow.BackgroundTransparency = 0.8; Instance.new("UICorner", miniShadow)
 local frame = Instance.new("Frame", miniGui); frame.Size = UDim2.new(0, 60, 0, 60); frame.Position = miniShadow.Position; frame.BackgroundColor3 = Color3.fromRGB(15, 20, 35); Instance.new("UICorner", frame)
@@ -81,7 +81,7 @@ local triggerC = Instance.new("TextButton", frame); triggerC.Size = UDim2.new(1,
 
 -- PERSISTENCIA
 local function saveData()
-    local data = {toggles = {v1 = toggles.v1, v2 = toggles.v2, ca = toggles.ca}, filters = filters, primeFilters = primeFilters, prio = priorityList, mainPos = {main.Position.X.Offset, main.Position.Y.Offset}, miniPos = {frame.Position.X.Offset, frame.Position.Y.Offset}, config = config}
+    local data = {toggles = {v1 = toggles.v1, v2 = toggles.v2, ca = toggles.ca, lock = toggles.lock}, filters = filters, primeFilters = primeFilters, prio = priorityList, mainPos = {main.Position.X.Offset, main.Position.Y.Offset}, miniPos = {frame.Position.X.Offset, frame.Position.Y.Offset}, config = config}
     writefile(FILE_CONFIG, HttpService:JSONEncode(data)); writefile(FILE_USADOS, HttpService:JSONEncode(usados))
 end
 
@@ -89,8 +89,16 @@ local function loadData()
     if isfile(FILE_CONFIG) then
         local ok, data = pcall(function() return HttpService:JSONDecode(readfile(FILE_CONFIG)) end)
         if ok then
-            toggles.v1 = data.toggles.v1; toggles.v2 = data.toggles.v2; toggles.ca = data.toggles.ca
+            toggles.v1 = data.toggles.v1; toggles.v2 = data.toggles.v2; toggles.ca = data.toggles.ca; toggles.lock = data.toggles.lock or false
             filters = data.filters or filters; primeFilters = data.primeFilters or primeFilters; priorityList = data.prio or priorityList
+            
+            -- Fusión automática: Si hay algo nuevo en ALL_OBJECTS, meterlo a filtros sin resetear
+            for _, name in ipairs(ALL_OBJECTS) do
+                if not filters[name] then filters[name] = {enabled = false, minVal = 0} end
+                if not primeFilters[name] then primeFilters[name] = {enabled = false, minVal = 0} end
+                if not table.find(priorityList, name) then table.insert(priorityList, name) end
+            end
+
             if data.config then config = data.config end
             if data.mainPos then main.Position = UDim2.new(0.5, data.mainPos[1], 0.5, data.mainPos[2]) end
             if data.miniPos then frame.Position = UDim2.new(1, data.miniPos[1], 0, data.miniPos[2]); miniShadow.Position = frame.Position end
@@ -107,16 +115,17 @@ local function loadData()
     end)
 end
 
--- ARRASTRE
+-- ARRASTRE CON LOCK
 local function makeDraggable(obj, target, isMini)
     local dragging, dragStart, startPos, moved = false, nil, nil, false
     obj.InputBegan:Connect(function(input)
+        if toggles.lock then return end
         if input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseButton1 then
             dragging = true; dragStart = input.Position; startPos = target.Position; moved = false
         end
     end)
     UIS.InputChanged:Connect(function(input)
-        if dragging and (input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseMovement) then
+        if dragging and not toggles.lock and (input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseMovement) then
             local delta = input.Position - dragStart
             if delta.Magnitude > 5 then moved = true end
             target.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
@@ -209,6 +218,10 @@ local function updateVisuals()
         btn.TextColor3 = state and Color3.fromRGB(80,170,255) or Color3.fromRGB(255,80,80)
         if miniLabels[id] then miniLabels[id].Text = (id=="a" and "AJ: " or id:upper()..": ").. (state and "ON" or "OFF"); miniLabels[id].TextColor3 = btn.TextColor3; miniDots[id].BackgroundColor3 = btn.TextColor3 end
     end
+    if toggles.lockBtn then
+        toggles.lockBtn.Text = "LOCK GUI POSITIONS: " .. (toggles.lock and "ON" or "OFF")
+        toggles.lockBtn.BackgroundColor3 = toggles.lock and Color3.fromRGB(20,40,80) or Color3.fromRGB(50,20,20)
+    end
 end
 
 local function makeToggleBtn(text, x, width, id, parent)
@@ -224,8 +237,12 @@ local function makeToggleBtn(text, x, width, id, parent)
 end
 makeToggleBtn("CLEAR", 12, 50, "c", autoPage); makeToggleBtn("PRIME", 66, 50, "ca", autoPage); makeToggleBtn("V1", 120, 30, "v1", autoPage); makeToggleBtn("V2", 154, 30, "v2", autoPage); makeToggleBtn("AUTOJOIN", 192, 106, "a", autoPage)
 
--- FILTROS
-local modeBtn = Instance.new("TextButton", filterPage); modeBtn.Size = UDim2.new(0, 100, 0, 22); modeBtn.Position = UDim2.new(0.5, -50, 0, 0); modeBtn.Text = "MODE: SELECT"; modeBtn.BackgroundColor3 = Color3.fromRGB(20,40,80); modeBtn.TextColor3 = Color3.new(1,1,1); Instance.new("UICorner", modeBtn)
+-- FILTROS CON BARRA ADD
+local modeBtn = Instance.new("TextButton", filterPage); modeBtn.Size = UDim2.new(0, 80, 0, 22); modeBtn.Position = UDim2.new(0, 10, 0, 0); modeBtn.Text = "MODE: SELECT"; modeBtn.BackgroundColor3 = Color3.fromRGB(20,40,80); modeBtn.TextColor3 = Color3.new(1,1,1); Instance.new("UICorner", modeBtn)
+
+local addBox = Instance.new("TextBox", filterPage); addBox.Size = UDim2.new(0, 130, 0, 22); addBox.Position = UDim2.new(0, 95, 0, 0); addBox.PlaceholderText = "New Object Name..."; addBox.BackgroundColor3 = Color3.new(0,0,0); addBox.TextColor3 = Color3.new(1,1,1); addBox.Text = ""; addBox.Font = "Gotham"; addBox.TextSize = 9; Instance.new("UICorner", addBox)
+local addBtn = Instance.new("TextButton", filterPage); addBtn.Size = UDim2.new(0, 40, 0, 22); addBtn.Position = UDim2.new(0, 230, 0, 0); addBtn.Text = "ADD"; addBtn.BackgroundColor3 = Color3.fromRGB(0,100,0); addBtn.TextColor3 = Color3.new(1,1,1); Instance.new("UICorner", addBtn)
+
 local filterScroll = Instance.new("ScrollingFrame", filterPage); filterScroll.Size = UDim2.new(1, -24, 1, -25); filterScroll.Position = UDim2.new(0,12,0,25); filterScroll.BackgroundTransparency = 1; filterScroll.ScrollBarThickness = 1
 local filterMode = "SELECT"
 
@@ -240,16 +257,24 @@ _G.refreshFilters = function()
                 local box = Instance.new("TextBox", f); box.Size = UDim2.new(0.2, 0, 0.9, 0); box.Position = UDim2.new(0.75, 0, 0, 0); box.BackgroundColor3 = Color3.new(0,0,0); box.TextColor3 = Color3.new(1,1,1); box.Text = data.minVal > 0 and tostring(data.minVal) or ""; box.PlaceholderText = "M/s"; Instance.new("UICorner", box)
                 box.FocusLost:Connect(function() data.minVal = tonumber(box.Text) or 0; saveData() end)
             else
-                local up = Instance.new("TextButton", f); up.Size = UDim2.new(0,18,0,22); up.Position = UDim2.new(0.75,0,0,0); up.Text = "▲"; up.TextColor3 = Color3.new(1,1,1); up.BackgroundTransparency = 1
-                local dw = Instance.new("TextButton", f); dw.Size = UDim2.new(0,18,0,22); dw.Position = UDim2.new(0.88,0,0,0); dw.Text = "▼"; dw.TextColor3 = Color3.new(1,1,1); dw.BackgroundTransparency = 1
-                up.MouseButton1Click:Connect(function() if i > 1 then table.remove(priorityList, i); table.insert(priorityList, i-1, name); _G.refreshFilters(); saveData() end end)
-                dw.MouseButton1Click:Connect(function() if i < #priorityList then table.remove(priorityList, i); table.insert(priorityList, i+1, name); _G.refreshFilters(); saveData() end end)
+                -- FLECHAS CON GUI SEMITRANSPARENTE
+                local function createArrBtn(txt, x, cb)
+                    local frame_ = Instance.new("Frame", f); frame_.Size = UDim2.new(0, 20, 0, 20); frame_.Position = UDim2.new(x, 0, 0.1, 0); frame_.BackgroundColor3 = Color3.new(1,1,1); frame_.BackgroundTransparency = 0.85; Instance.new("UICorner", frame_)
+                    local b = Instance.new("TextButton", frame_); b.Size = UDim2.new(1,0,1,0); b.BackgroundTransparency = 1; b.Text = txt; b.TextColor3 = Color3.new(1,1,1); b.TextSize = 10; b.MouseButton1Click:Connect(cb)
+                end
+                createArrBtn("▲", 0.75, function() if i > 1 then table.remove(priorityList, i); table.insert(priorityList, i-1, name); _G.refreshFilters(); saveData() end end)
+                createArrBtn("▼", 0.88, function() if i < #priorityList then table.remove(priorityList, i); table.insert(priorityList, i+1, name); _G.refreshFilters(); saveData() end end)
             end
             btn.MouseButton1Click:Connect(function() data.enabled = not data.enabled; _G.refreshFilters(); saveData() end); count = count + 1
         end
     end
     filterScroll.CanvasSize = UDim2.new(0,0,0, count * 27)
 end
+
+addBtn.MouseButton1Click:Connect(function()
+    local name = addBox.Text; if name == "" or filters[name] then return end
+    filters[name] = {enabled = false, minVal = 0}; primeFilters[name] = {enabled = false, minVal = 0}; table.insert(priorityList, name); addBox.Text = ""; _G.refreshFilters(); saveData(); showNotify("Added: "..name)
+end)
 modeBtn.MouseButton1Click:Connect(function() filterMode = (filterMode == "SELECT") and "PRIORITY" or "SELECT"; modeBtn.Text = "MODE: "..filterMode; _G.refreshFilters() end)
 
 -- MISC PAGE
@@ -261,7 +286,12 @@ end
 createMiscInput("SPAM DELAY (CPS):", 20, "spamDelay")
 createMiscInput("SPAM ATTEMPTS:", 50, "spamAtt")
 
--- MOTOR AUTOJOIN (CON AUTOCLEAN ADAPTATIVO V17)
+-- LOCK POSITIONS BTN
+local lockBtn = Instance.new("TextButton", miscPage); lockBtn.Size = UDim2.new(0, 150, 0, 25); lockBtn.Position = UDim2.new(0, 15, 0, 100); lockBtn.Font = "GothamBold"; lockBtn.TextSize = 9; Instance.new("UICorner", lockBtn)
+toggles.lockBtn = lockBtn
+lockBtn.MouseButton1Click:Connect(function() toggles.lock = not toggles.lock; updateVisuals(); saveData() end)
+
+-- MOTOR AUTOJOIN (SIN CAMBIOS)
 local function parseSms(txt, targetName)
     local lowTxt = txt:lower(); local startIdx = lowTxt:find(targetName:lower(), 1, true)
     if startIdx then
@@ -278,11 +308,10 @@ local function escanear()
     local sc = pm.Frame:FindFirstChild("ScrollingFrame")
     local allFrames = {}; for _,v in ipairs(sc:GetChildren()) do if v:IsA("Frame") and v.Visible then table.insert(allFrames, v) end end
     
-    -- LÓGICA DE AUTOCLEAN V17 (ADAPTADA)
     local limiteEscaneo = math.min(#allFrames, 5)
     local firmasActuales = {}; for i = 1, limiteEscaneo do local lbl = allFrames[i]:FindFirstChild("TextLabel"); if lbl then firmasActuales[lbl.Text] = true end end
     
-    local umbralLimpieza = toggles.v1 and 6 or 20 -- V1 es rápido (6), V2 espera carga (20)
+    local umbralLimpieza = toggles.v1 and 6 or 20 
     for firma, _ in pairs(usados) do
         if not firmasActuales[firma] then
             ausenciaContador[firma] = (ausenciaContador[firma] or 0) + 1
@@ -305,10 +334,7 @@ local function escanear()
     if #candidatos > 0 then
         table.sort(candidatos, function(a,b) return (table.find(priorityList, a.name) or 999) < (table.find(priorityList, b.name) or 999) end)
         local mejor = candidatos[1]; joinLock = true; usados[mejor.firma] = true; saveData()
-        
-        -- SONIDO V17
         local s = Instance.new("Sound", game.SoundService); s.SoundId = "rbxassetid://128387076668435"; s.Volume = 1; s:Play()
-        
         writefile(FILE_LAST_JOIN, mejor.name.." $"..mejor.val.."M/s"); local btn = mejor.frame:FindFirstChildWhichIsA("Frame"):FindFirstChildWhichIsA("TextButton")
         for i = 1, 200 do for _,c in ipairs(getconnections(btn.MouseButton1Click)) do c:Fire() end end
         task.delay(1.5, function() joinLock = false end)
