@@ -27,7 +27,9 @@ local ALL_OBJECTS = {
     "La Taco Combinasion", "Orcaledon", "Swaggy Bros", "La Food Combinasion", "Love Love Bear", "Celestial Pegasus", "Griffin",
     "Elefanto Frigo", "Cigno Fulgoro", "Nacho Spyder", "Signore Carapace", "Fishino Clownino", "Los Amigos", "Gold Gold Gold",
     "Los Sekolahs", "Spinny Hammy", "Cash or Card", "Sammyni Fattini", "Ventoliero Pavonero", "Tirilikalika Tirilikalako", "Fortunu and Cashuru",
-    "La Easter Grande", "La Lucky Grande", "Hydra Bunny", "Bunny and Eggy", "Boppin Bunny", "Hopilikalika Hopilikalako", "Bananito"
+    "La Easter Grande", "La Lucky Grande", "Hydra Bunny", "Bunny and Eggy", "Boppin Bunny", "Hopilikalika Hopilikalako", "Bananito", "Pancake and Syrup", "John Doe",
+    "Los Hackers", "1x1x1x1", "Guest 666", "Digi Narwhal", "Arcadragon", "Duggy Bros", "Gym Bros", "Los Strawberry Elephants", "Money Money Bros", "Kalika Bros",
+    "Los Chillis"
 }
 
 local toggles = {v1 = false, v2 = false, a = false, ca = false, lock = false} -- lock agregado
