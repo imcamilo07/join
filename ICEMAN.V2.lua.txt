@@ -9030,52 +9030,7 @@ task.spawn(function()
         return GITHUB_BASE .. fileName
     end
 
-    local function SendWebhook(petName, value, mutation)
-        local isOG = isOGPet(petName)
-        local embedColor = isOG and 16711680 or 16711935
-
-        local mutPrefix = (mutation and mutation ~= "None" and mutation ~= "") and ("[" .. mutation .. "] ") or ""
-        local brainrotField = "`" .. mutPrefix .. petName .. " (" .. value .. ")`"
-        local stealerField = "@!" .. LocalPlayer.Name .. " (" .. LocalPlayer.DisplayName .. ")"
-
-        local thumbnailUrl = getBrainrotImageId(petName)
-
-        local embedBody = {
-            title = "🔥 Steal Detected",
-            color = embedColor,
-            fields = {
-                {
-                    name = "☠️ Brainrot",
-                    value = brainrotField,
-                    inline = false
-                },
-                {
-                    name = "🕵️ Stealer",
-                    value = stealerField,
-                    inline = false
-                }
-            },
-            footer = { text = "Iceman V2" },
-            timestamp = os.date("!%Y-%m-%dT%H:%M:%SZ")
-        }
-
-        if thumbnailUrl ~= "" then
-            embedBody.thumbnail = { url = thumbnailUrl }
-        end
-
-        local body = { embeds = { embedBody } }
-        if isOG then body.content = "@here" end
-
-        request({
-            Url = WEBHOOK_URL,
-            Method = "POST",
-            Headers = {
-                ["Content-Type"] = "application/json",
-                ["X-Secret-Key"] = SECRET_KEY,
-            },
-            Body = HttpService:JSONEncode(body)
-        })
-    end
+    
     local Packages = ReplicatedStorage:WaitForChild("Packages")
     local Datas = ReplicatedStorage:WaitForChild("Datas")
     local Shared = ReplicatedStorage:WaitForChild("Shared")
@@ -9170,7 +9125,7 @@ task.spawn(function()
             if stolenData then
     local name, gen, mut = GetInfo(stolenData)
 
-    SendWebhook(name, gen, mut)
+
                 if Config.AutoTpOnFailedSteal and stealDuration > 3 and distanceMoved > 60 then
                     _F.ShowNotification("STEAL FAILED", string.format("Auto TPing... (%.1fs, %d studs)", stealDuration, distanceMoved))
                     task.spawn(_F.runAutoSnipe)
