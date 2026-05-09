@@ -13,23 +13,15 @@ local FILE_USADOS = "autojoin_usados_v2.json"
 local FILE_LAST_JOIN = "autojoin_last_msg.json"
 
 local ALL_OBJECTS = {
-    "Ketchuru and Musturu", "Tang Tang Keletang", "Rosey and Teddy", "Tictac Sahur", "Ketupat Kepat",
-    "Lavadorito Spinito", "Garama and Madundung", "La Secret Combinasion", "La Supreme Combinasion",
-    "Fragrama and Chocrama", "Spooky and Pumpky", "Gingerat Gerat", "Reinito Sleighito",
-    "La Casa Boo", "Cooki and Milki", "Burguro and Fryuro", "Headless Horseman",
-    "Capitano Moby", "Cerberus", "Dragon Gingerini", "Dragon Cannelloni", "Meowl",
-    "Los Spaghettis", "Spaghetti Tualetti", "La Ginger Sekolah", "Strawberry Elephant",
-    "Skibidi Toilet", "Money Money Puggy", "Hydra Dragon Cannelloni", "Swag Soda", "Los Combinasionas",
-    "Chicleteira Noelteira", "Tacorita Bicicleta", "Las Sis", "Los Hotspotsitos", "Dug dug dug",
-    "Celularcini Viciosini", "Los Candies", "Los Bros", "Popcuru and Fizzuru", "La Extinct Grande", "Foxini Lanternini",
-    "Chipso and Queso", "Chillin Chili", "Ketupat Bros", "Money Money Reindeer", "Mieteteira Bicicleteira",
-    "Tuff Toucan", "Tralaledon", "Los Puggies", "W or L", "Los Primos", "Eviledon", "Cloverat Clapat", 
-    "La Taco Combinasion", "Orcaledon", "Swaggy Bros", "La Food Combinasion", "Love Love Bear", "Celestial Pegasus", "Griffin",
-    "Elefanto Frigo", "Cigno Fulgoro", "Nacho Spyder", "Signore Carapace", "Fishino Clownino", "Los Amigos", "Gold Gold Gold",
-    "Los Sekolahs", "Spinny Hammy", "Cash or Card", "Sammyni Fattini", "Ventoliero Pavonero", "Tirilikalika Tirilikalako", "Fortunu and Cashuru",
-    "La Easter Grande", "La Lucky Grande", "Hydra Bunny", "Bunny and Eggy", "Boppin Bunny", "Hopilikalika Hopilikalako", "Bananito", "Pancake and Syrup", "John Doe",
-    "Los Hackers", "1x1x1x1", "Guest 666", "Digi Narwhal", "Arcadragon", "Duggy Bros", "Gym Bros", "Los Strawberry Elephants", "Money Money Bros", "Kalika Bros",
-    "Los Chillis"
+    "Headless Horseman", "Strawberry Elephant", "Signore Carapace", "John Pork", "Meowl", "Antonio", "Elefanto Frigo", "Skibidi Toilet", "Dragon Gingerini", "Griffin", "Hydra Dragon Cannelloni", "Dragon Cannelloni",
+    "La Supreme Combinasion", "Love Love Bear", "Arcadragon", "Rosey and Teddy", "Cerberus", "Hydra Bunny", "Digi Narwhal", "Capitano Moby", "Popcuru and Fizzuru", "Cooki and Milki", "Burguro and Fryuro", 
+    "Reinito Sleighito", "Ketupat Bros", "Gingerat Gerat", "Cash or Card", "Fortunu and Cashuru", "John Doe", "Pancake and Syrup", "Foxini Lanternini", "La Casa Boo", "Fragrama and Chocrama", "Cloverat Clapat", "Boppin Bunny", "Celestial Pegasus",
+    "Los Hackers", "Duggy Bros",  "Gym Bros", "Spooky and Pumpky", "La Food Combinasion", "Fragola La La La", "Kalika Bros", "Los Chillis", "Money Money Bros", "La Secret Combinasion", "Garama and Madundung", "Lavadorito Spinito", "Ketchuru and Musturu", "Ketupat Kepat", "Tang Tang Keletang", "Tictac Sahur",
+    "Dug dug dug", "Los Amigos", "Los Sekolahs", "Gold Gold Gold", "Los Spaghettis", "Spaghetti Tualetti", "La Ginger Sekolah", "Money Money Puggy", "Los Combinasionas", "Chicleteira Noelteira", "Tacorita Bicicleta", "Swag Soda", "Las Sis", 
+    "Los Hotspotsitos", "Celularcini Viciosini", "Los Candies", "Los Bros", "La Extinct Grande", "Chipso and Queso", "Chillin Chili", "Money Money Reindeer", "Tuff Toucan", "Mieteteira Bicicleteira", 
+    "Tralaledon", "Los Puggies", "W or L", "Los Primos", "Eviledon", "Orcaledon", "Swaggy Bros", "La Taco Combinasion", "Cigno Fulgoro", "Fishino Clownino", "Nacho Spyder",
+    "Spinny Hammy", "Sammyni Fattini", "Ventoliero Pavonero", "Tirilikalika Tirilikalako", "La Easter Grande", "La Lucky Grande", "Bunny and Eggy",
+    "Hopilikalika Hopilikalako", "Bananito", "1x1x1x1", "Guest 666", 
 }
 
 local toggles = {v1 = false, v2 = false, a = false, ca = false, lock = false} -- lock agregado
