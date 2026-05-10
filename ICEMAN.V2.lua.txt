@@ -144,7 +144,7 @@ local DefaultConfig = {
     BrainrotESP = true,
     LineToBase = false,
     StealNearest = false,
-    StealHighest = true,
+    StealHighest = false,
     StealPriority = false,
     DefaultToNearest = false,
     DefaultToHighest = false,
@@ -1427,7 +1427,7 @@ task.spawn(function()
     local AnimalsShared = require(Shared:WaitForChild("Animals"))
     local NumberUtils   = require(Utils:WaitForChild("NumberUtils"))
 
-    local autoStealEnabled   = true
+    local autoStealEnabled   = false
     
     
     if Config.DefaultToPriority and Config.DefaultToHighest then
@@ -1441,7 +1441,7 @@ task.spawn(function()
     end
     
     if not Config.DefaultToPriority and not Config.DefaultToHighest and not Config.DefaultToNearest and not Config.DefaultToDisable then
-        Config.DefaultToHighest = true
+        Config.DefaultToHighest = false
     end
     
     local stealNearestEnabled = false
@@ -1449,20 +1449,20 @@ task.spawn(function()
     local stealPriorityEnabled = false
     
     if Config.DefaultToNearest then
-        stealNearestEnabled = true
-        Config.StealNearest = true
+        stealNearestEnabled = false
+        Config.StealNearest = false
         Config.StealHighest = false
         Config.StealPriority = false
         Config.AutoTPPriority = true
     elseif Config.DefaultToHighest then
-        stealHighestEnabled = true
-        Config.StealHighest = true
+        stealHighestEnabled = false
+        Config.StealHighest = false
         Config.StealNearest = false
         Config.StealPriority = false
         Config.AutoTPPriority = false
     elseif Config.DefaultToPriority then
-        stealPriorityEnabled = true
-        Config.StealPriority = true
+        stealPriorityEnabled = false
+        Config.StealPriority = false
         Config.StealNearest = false
         Config.StealHighest = false
         Config.AutoTPPriority = true
@@ -1489,7 +1489,7 @@ task.spawn(function()
         end
     end
     
-    local instantStealEnabled = true
+    local instantStealEnabled = false
     local instantStealReady = false
     local instantStealDidInit = false
     local selectedTargetIndex = 1
@@ -1502,555 +1502,6 @@ task.spawn(function()
     local petButtons         = {}
     local ShowPriorityAlert = function() end
 
-    -- ── STEAL REMOTE RESOLVER ─────────────────────────────────────────────
-    -- Resolved once and cached. Used in all steal paths for maximum speed.
-    
-    local function isMyBaseAnimal(animalData)
-        if not animalData or not animalData.plot then return false end
-        local plots = Workspace:FindFirstChild("Plots")
-        if not plots then return false end
-        local plot = plots:FindFirstChild(animalData.plot)
-        if not plot then return false end
-        local channel = Synchronizer:Get(plot.Name)
-        if channel then
-            local owner = channel:Get("Owner")
-            if owner then
-                if typeof(owner) == "Instance" and owner:IsA("Player") then return owner.UserId == LocalPlayer.UserId
-                elseif typeof(owner) == "table" and owner.UserId then return owner.UserId == LocalPlayer.UserId
-                elseif typeof(owner) == "Instance" then return owner == LocalPlayer end
-            end
-        end
-        return false
-    end
-    
-    local function formatMutationText(mutationName)
-        if not mutationName or mutationName == "None" then return "" end
-        local f = ""
-        if mutationName == "Cursed" then f = "<font color='rgb(200,0,0)'>Cur</font><font color='rgb(0,0,0)'>sed</font>"
-        elseif mutationName == "Gold" then f = "<font color='rgb(255,215,0)'>Gold</font>"
-        elseif mutationName == "Diamond" then f = "<font color='rgb(0,255,255)'>Diamond</font>"
-        elseif mutationName == "YinYang" then f = "<font color='rgb(255,255,255)'>Yin</font><font color='rgb(0,0,0)'>Yang</font>"
-        elseif mutationName == "Candy" then f = "<font color='rgb(255,105,180)'>Candy</font>"
-        elseif mutationName == "Divine" then f = "<font color='rgb(255,255,255)'>Divine</font>"
-        elseif mutationName == "Rainbow" then
-            local cols = {"rgb(255,0,0)","rgb(255,127,0)","rgb(255,255,0)","rgb(0,255,0)","rgb(0,0,255)","rgb(75,0,130)","rgb(148,0,211)"}
-            for i = 1, #mutationName do f = f.."<font color='"..cols[(i-1)%#cols+1].."'>"..mutationName:sub(i,i).."</font>" end
-        else f = mutationName end
-        return "<font weight='800'>"..f.." </font>"
-    end
-
-    -- With inline controls hidden, keep auto-steal active by default.
-    if Config.DefaultToDisable then
-        Config.DefaultToDisable = false
-        _F.SaveConfig()
-    end
-
-    -- Safety: if all modes are OFF, fall back to Highest.
-    if not stealNearestEnabled and not stealHighestEnabled and not stealPriorityEnabled then
-        stealHighestEnabled = true
-        Config.StealNearest = false
-        Config.StealHighest = true
-        Config.StealPriority = false
-        _F.SaveConfig()
-    end
-
-    local function get_all_pets()
-        local out = {}
-        for _, a in ipairs(allAnimalsCache) do
-            if a.genValue >= 1 and not isMyBaseAnimal(a) then
-                table.insert(out, {petName=a.name, mpsText=a.genText, mpsValue=a.genValue,
-                    owner=a.owner, plot=a.plot, slot=a.slot, uid=a.uid, mutation=a.mutation, animalData=a, source="CARPET"})
-            end
-        end
-        -- also include conveyor brainrots
-        -- (REMOVED: conveyor detection disabled)
-        return out
-    end
-
-    local screenGui = Instance.new("ScreenGui")
-    screenGui.Name = "AutoStealUI"; screenGui.ResetOnSpawn = false; screenGui.Parent = PlayerGui
-
-    local C_BG         = Color3.fromRGB(18, 20, 26)
-    local C_HEADER_BG  = Color3.fromRGB(26, 29, 38)
-    local C_ACCENT_AS  = Color3.fromRGB(0, 220, 255)
-    local C_BORDER_AS  = Color3.fromRGB(0, 180, 230)
-    local C_TEXTSEC_AS = Color3.fromRGB(130, 200, 230)
-
-    local frame = Instance.new("Frame")
-    frame.Size = UDim2.new(0, 315, 0, 390)
-    frame.Position = UDim2.new(Config.Positions.AutoSteal.X, 0, Config.Positions.AutoSteal.Y, 0)
-    frame.BackgroundColor3 = C_BG; frame.BackgroundTransparency = 0
-    frame.BorderSizePixel = 0; frame.ClipsDescendants = true; frame.Parent = screenGui
-
-    Instance.new("UICorner", frame).CornerRadius = UDim.new(0, 12)
-    local frameStroke = Instance.new("UIStroke", frame)
-    frameStroke.Color = C_BORDER_AS; frameStroke.Thickness = 1; frameStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
-    task.defer(function() applyIceToPanel(frame, 8, 7) end)
-
-    -- Header background (52 px)
-    local headerBg = Instance.new("Frame", frame)
-    headerBg.Size = UDim2.new(1, 0, 0, 38)
-    headerBg.Position = UDim2.new(0, 0, 0, 0)
-    headerBg.BackgroundColor3 = C_HEADER_BG; headerBg.BorderSizePixel = 0
-    -- top corners only via corner + clip fix
-    local hbCorner = Instance.new("UICorner", headerBg); hbCorner.CornerRadius = UDim.new(0, 12)
-    local hbFix = Instance.new("Frame", headerBg)
-    hbFix.Size = UDim2.new(1,0,0,10); hbFix.Position = UDim2.new(0,0,1,-10)
-    hbFix.BackgroundColor3 = C_HEADER_BG; hbFix.BorderSizePixel = 0
-
-    -- Separator line below header
-    local headerDiv = Instance.new("Frame", frame)
-    headerDiv.Size = UDim2.new(1,-24,0,1); headerDiv.Position = UDim2.new(0,12,0,38)
-    headerDiv.BackgroundColor3 = C_BORDER_AS; headerDiv.BorderSizePixel = 0
-
-
-
-    -- Subtitle
-    local subLabel = Instance.new("TextLabel", headerBg)
-    subLabel.Size = UDim2.new(1,-28,0,14); subLabel.Position = UDim2.new(0,14,0.5,-7)
-    subLabel.BackgroundTransparency = 1; subLabel.Text = "Steal Target"
-    subLabel.Font = Enum.Font.GothamBold; subLabel.TextSize = 10
-    subLabel.TextColor3 = C_TEXTSEC_AS; subLabel.TextXAlignment = Enum.TextXAlignment.Left
-
-
-    -- Draggable header region
-    local header = Instance.new("Frame", headerBg)
-    header.Size = UDim2.new(1,0,1,0); header.BackgroundTransparency = 1; header.ZIndex = 10
-    _F.MakeDraggable(header, frame, "AutoSteal")
-
-    local ITEM_H, ITEM_PAD, VISIBLE_ROWS = 29, 4, 10
-    local LIST_H = ITEM_H * VISIBLE_ROWS + ITEM_PAD * (VISIBLE_ROWS - 1)
-    local listFrame = Instance.new("ScrollingFrame", frame)
-    listFrame.Size = UDim2.new(1,-10,1,-46); listFrame.Position = UDim2.new(0,5,0,44)
-    listFrame.BackgroundTransparency = 1; listFrame.BorderSizePixel = 0
-    listFrame.ScrollingDirection = Enum.ScrollingDirection.Y
-    listFrame.ScrollBarThickness = 0
-    listFrame.ScrollBarImageColor3 = Theme.Accent1
-    local uiListLayout = Instance.new("UIListLayout", listFrame)
-    uiListLayout.Padding = UDim.new(0,ITEM_PAD); uiListLayout.SortOrder = Enum.SortOrder.LayoutOrder
-
-    -- Progress visual is optional (UI removed from panel).
-    local progressBarFill = nil
-
-    local function resetProgressVisual()
-        if progressBarFill then
-            progressBarFill.Size = UDim2.new(0, 0, 1, 0)
-            progressBarFill.BackgroundTransparency = 0
-        end
-    end
-
-    local function setProgressVisualFull()
-        if progressBarFill then
-            progressBarFill.Size = UDim2.new(1, 0, 1, 0)
-            progressBarFill.BackgroundTransparency = 0
-        end
-    end
-
-    local function runProgressTimer()
-        if progressBarFill then
-            activeProgressTween = TweenService:Create(
-                progressBarFill,
-                TweenInfo.new(STEAL_DURATION, Enum.EasingStyle.Linear),
-                {Size = UDim2.new(1, 0, 1, 0)}
-            )
-            activeProgressTween:Play()
-            activeProgressTween.Completed:Wait()
-        else
-            task.wait(STEAL_DURATION)
-        end
-    end
-
-    local toggleBtnContainer = Instance.new("Frame", frame)
-    toggleBtnContainer.Size = UDim2.new(1,-30,0,144); toggleBtnContainer.Position = UDim2.new(0,15,1,-154)
-    toggleBtnContainer.BackgroundTransparency = 1
-    toggleBtnContainer.Visible = false
-    
-    local enableBtn = Instance.new("TextButton", toggleBtnContainer)
-    local uiScale = 1
-    enableBtn.Size = UDim2.new(1,0,0,32*uiScale); enableBtn.BackgroundColor3 = Theme.Success
-    enableBtn.Text = "ENABLED"; enableBtn.Font = Enum.Font.GothamBold
-    enableBtn.TextSize = 13*uiScale; enableBtn.TextColor3 = Theme.TextPrimary
-    Instance.new("UICorner", enableBtn).CornerRadius = UDim.new(0, 8)
-    
-    local nearestBtn = Instance.new("TextButton", toggleBtnContainer)
-    nearestBtn.Size = UDim2.new(0.48,0,0,28*uiScale); nearestBtn.Position = UDim2.new(0,0,0,36*uiScale)
-    nearestBtn.BackgroundColor3 = Theme.SurfaceHighlight
-    nearestBtn.Text = "NEAREST"; nearestBtn.Font = Enum.Font.GothamBold
-    nearestBtn.TextSize = 11*uiScale; nearestBtn.TextColor3 = Theme.TextPrimary
-    Instance.new("UICorner", nearestBtn).CornerRadius = UDim.new(0, 6)
-
-    local highestBtn = Instance.new("TextButton", toggleBtnContainer)
-    highestBtn.Size = UDim2.new(0.48,0,0,28*uiScale); highestBtn.Position = UDim2.new(0.52,0,0,36*uiScale)
-    highestBtn.BackgroundColor3 = Theme.SurfaceHighlight
-    highestBtn.Text = "HIGHEST"; highestBtn.Font = Enum.Font.GothamBold
-    highestBtn.TextSize = 11*uiScale; highestBtn.TextColor3 = Theme.TextPrimary
-    Instance.new("UICorner", highestBtn).CornerRadius = UDim.new(0, 6)
-
-    local priorityBtn = Instance.new("TextButton", toggleBtnContainer)
-    priorityBtn.Size = UDim2.new(1,0,0,24*uiScale); priorityBtn.Position = UDim2.new(0,0,0,68*uiScale)
-    priorityBtn.BackgroundColor3 = Theme.SurfaceHighlight
-    priorityBtn.Text = "PRIORITY"; priorityBtn.Font = Enum.Font.GothamBold
-    priorityBtn.TextSize = 11*uiScale; priorityBtn.TextColor3 = Theme.TextPrimary
-    Instance.new("UICorner", priorityBtn).CornerRadius = UDim.new(0, 6)
-
-    local function attachPet3DPreview(parentBtn, petData, layoutOpts)
-        layoutOpts = layoutOpts or {}
-        local holder = Instance.new("Frame", parentBtn)
-        holder.Size = layoutOpts.Size or UDim2.new(0, 20, 0, 20)
-        holder.Position = layoutOpts.Position or UDim2.new(0, 34, 0.5, -10)
-        holder.BackgroundColor3 = Theme.SurfaceHighlight
-        holder.BackgroundTransparency = 0.05
-        holder.BorderSizePixel = 0
-        Instance.new("UICorner", holder).CornerRadius = UDim.new(0, layoutOpts.CornerRadius or 5)
-        local hs = Instance.new("UIStroke", holder)
-        hs.Color = Theme.Accent1
-        hs.Thickness = 1
-        hs.Transparency = 0.45
-
-        local vp = Instance.new("ViewportFrame", holder)
-        vp.Size = UDim2.new(1, 0, 1, 0)
-        vp.Position = UDim2.new(0, 0, 0, 0)
-        vp.BackgroundTransparency = 1
-        vp.BorderSizePixel = 0
-        vp.Ambient = Color3.fromRGB(245, 245, 245)
-        vp.LightColor = Color3.new(1, 1, 1)
-        vp.LightDirection = Vector3.new(-0.45, -0.9, -0.35)
-        vp.ImageTransparency = 0
-
-        local failLbl = Instance.new("TextLabel", holder)
-        failLbl.Size = UDim2.new(1, 0, 1, 0)
-        failLbl.BackgroundTransparency = 1
-        failLbl.Text = "3D"
-        failLbl.Font = Enum.Font.GothamBlack
-        failLbl.TextSize = 9
-        failLbl.TextColor3 = Theme.TextSecondary
-        failLbl.Visible = true
-
-        local ad = petData and petData.animalData
-        local srcModel, srcPart = nil, nil
-        local petNameNorm = (petData and petData.petName and tostring(petData.petName):lower()) or ""
-        local slotNorm = ad and ad.slot and tostring(ad.slot) or ""
-        local forceLiveModelOnly = (petData and petData.ForceLiveModelOnly == true) or (layoutOpts and layoutOpts.ForceLiveModelOnly == true)
-        local preferFallbackModelOnly = (petData and petData.ForceFallbackModel == true) or (layoutOpts and layoutOpts.ForceFallbackModel == true)
-        local forceEmbeddedAnimation = (petData and petData.ForceEmbeddedAnimation == true) or (layoutOpts and layoutOpts.ForceEmbeddedAnimation == true)
-
-        local function getAnimatorFrom(obj)
-            if not obj then return nil end
-            local hum = obj:FindFirstChildOfClass("Humanoid")
-            if hum then
-                return hum:FindFirstChildOfClass("Animator") or hum:FindFirstChildWhichIsA("Animator", true)
-            end
-            local ac = obj:FindFirstChildOfClass("AnimationController")
-            if ac then
-                return ac:FindFirstChildOfClass("Animator") or ac:FindFirstChildWhichIsA("Animator", true)
-            end
-            return obj:FindFirstChildWhichIsA("Animator", true)
-        end
-        local function ensureAnimatorForPreviewModel(model)
-            if not model or not model:IsA("Model") then return nil end
-            local animator = getAnimatorFrom(model)
-            if animator then return animator end
-            local ac = model:FindFirstChildOfClass("AnimationController")
-            if not ac then
-                ac = Instance.new("AnimationController")
-                ac.Name = "PreviewAnimationController"
-                ac.Parent = model
-            end
-            animator = ac:FindFirstChildOfClass("Animator")
-            if not animator then
-                animator = Instance.new("Animator")
-                animator.Parent = ac
-            end
-            return animator
-        end
-
-        local function playEmbeddedPreviewAnimations(model)
-            local animator = getAnimatorFrom(model)
-            -- Se não tiver animator, tenta criar via ensureAnimatorForPreviewModel
-            if not animator then animator = ensureAnimatorForPreviewModel(model) end
-            if not animator then return false end
-            local any = false
-            -- Coleta animações únicas (evita duplicatas)
-            local seen = {}
-            for _, d in ipairs(model:GetDescendants()) do
-                if d:IsA("Animation") and d.AnimationId ~= "" and not seen[d.AnimationId] then
-                    seen[d.AnimationId] = true
-                    local okLoad, track = pcall(function() return animator:LoadAnimation(d) end)
-                    if okLoad and track then
-                        pcall(function() track.Looped = true end)
-                        pcall(function() track:Play(0.15, 1, 1) end)
-                        any = true
-                    end
-                end
-            end
-            return any
-        end
-
-        local function buildPetPreviewCacheKey()
-            if petData and type(petData.previewCacheKey) == "string" and petData.previewCacheKey ~= "" then
-                return petData.previewCacheKey
-            end
-            if petData and type(petData.uid) == "string" and petData.uid ~= "" then
-                return petData.uid
-            end
-            if ad and ad.plot and ad.slot then
-                return tostring(ad.plot) .. "|" .. tostring(ad.slot)
-            end
-            if petNameNorm ~= "" then
-                return petNameNorm
-            end
-            return ""
-        end
-        local cacheKey = buildPetPreviewCacheKey()
-
-        local function getAnimalsTemplateFolder()
-            local root = ReplicatedStorage:FindFirstChild("Models")
-            return root and root:FindFirstChild("Animals")
-        end
-        local function findAnimalModelInFolder(folder, nameKey)
-            if not folder or not nameKey or nameKey == "" then return nil end
-            local key = tostring(nameKey)
-            local inst = folder:FindFirstChild(key)
-            if inst and inst:IsA("Model") then return inst end
-            local kl = key:lower()
-            for _, ch in ipairs(folder:GetChildren()) do
-                if ch:IsA("Model") and ch.Name:lower() == kl then
-                    return ch
-                end
-            end
-            return nil
-        end
-        local function resolveTemplateModelFromStorage()
-            local folder = getAnimalsTemplateFolder()
-            if not folder then return nil end
-            local order = {}
-            local function push(v)
-                if v == nil or v == "" then return end
-                local s = tostring(v)
-                for _, ex in ipairs(order) do
-                    if ex == s then return end
-                end
-                table.insert(order, s)
-            end
-            if ad then
-                push(ad.Index)
-                push(ad.index)
-            end
-            if petData and petData.petName then
-                push(petData.petName)
-                -- Tenta normalizar DisplayName → chave do RS (remove espaços)
-                local norm = tostring(petData.petName):gsub("%s+", "")
-                push(norm)
-            end
-            for _, key in ipairs(order) do
-                local m = findAnimalModelInFolder(folder, key)
-                if m then return m end
-            end
-            -- Busca fuzzy: procura modelo cujo nome contém o petName
-            if petData and petData.petName and petData.petName ~= "" then
-                local pnl = tostring(petData.petName):lower():gsub("%s+", "")
-                for _, ch in ipairs(folder:GetChildren()) do
-                    if ch:IsA("Model") then
-                        local nl = ch.Name:lower()
-                        if nl == pnl or nl:find(pnl, 1, true) or pnl:find(nl, 1, true) then
-                            return ch
-                        end
-                    end
-                end
-            end
-            return nil
-        end
-        local function findModelByPetNameInPlot(plot, animalData, petNameLower)
-            if not plot then return nil end
-            local wanted = {}
-            local function addWanted(v)
-                if v == nil or v == "" then return end
-                wanted[tostring(v):lower()] = true
-            end
-            if animalData then
-                addWanted(animalData.Index)
-                addWanted(animalData.index)
-            end
-            addWanted(petNameLower)
-
-            local exact = nil
-            for _, d in ipairs(plot:GetDescendants()) do
-                if d:IsA("Model") and d ~= plot and d.Name ~= "Base" then
-                    local nl = d.Name:lower()
-                    if wanted[nl] then
-                        exact = d
-                        break
-                    end
-                end
-            end
-            return exact
-        end
-
-        local templateModel = resolveTemplateModelFromStorage()
-
-        local previewObj = nil
-        local previewFromCache = false
-        local previewFromLiveModel = false
-        if not forceLiveModelOnly then
-            if templateModel and templateModel.Archivable then
-                local ok, cloned = pcall(function() return templateModel:Clone() end)
-                if ok then previewObj = cloned end
-            end
-            if not previewObj and cacheKey ~= "" then
-                local tmpl = SharedState.PetPreviewModelCache[cacheKey]
-                if tmpl and tmpl.Parent == nil and tmpl.Archivable then
-                    local ok, cloned = pcall(function() return tmpl:Clone() end)
-                    if ok and cloned then
-                        previewObj = cloned
-                        previewFromCache = true
-                    end
-                end
-            end
-        end
-
-        do
-            local plot = ad and ad.plot and Workspace:FindFirstChild("Plots") and Workspace.Plots:FindFirstChild(ad.plot)
-            local podiums = plot and plot:FindFirstChild("AnimalPodiums")
-            local podium = podiums and ad.slot and podiums:FindFirstChild(tostring(ad.slot))
-            if plot then
-                srcModel = findModelByPetNameInPlot(plot, ad, petNameNorm)
-                local base = podium and podium:FindFirstChild("Base")
-                local spawnPart = base and (base:FindFirstChild("Spawn") or base:FindFirstChildWhichIsA("BasePart"))
-
-                if not srcModel then
-                    if forceLiveModelOnly then
-                        local targetPart = _F.findAdorneeGlobal(ad)
-                        if targetPart and targetPart:IsA("BasePart") then
-                            srcPart = targetPart
-                        elseif spawnPart then
-                            srcPart = spawnPart
-                        end
-                    else
-
-                        local bestModel, bestScore = nil, -math.huge
-                        for _, d in ipairs(plot:GetDescendants()) do
-                            if d:IsA("Model") and d ~= plot and d.Name ~= "Base" then
-                                local pp = d.PrimaryPart or d:FindFirstChildWhichIsA("BasePart")
-                                if pp then
-                                    local nameL = d.Name:lower()
-                                    local score = 0
-                                    if petNameNorm ~= "" and (nameL:find(petNameNorm, 1, true) or petNameNorm:find(nameL, 1, true)) then
-                                        score = score + 200
-                                    end
-                                    if slotNorm ~= "" and nameL:find(slotNorm, 1, true) then
-                                        score = score + 100
-                                    end
-                                    if nameL:find("podium", 1, true) or nameL:find("base", 1, true) then
-                                        score = score - 120
-                                    end
-                                    if spawnPart then
-                                        local dist = (pp.Position - spawnPart.Position).Magnitude
-                                        score = score - dist
-                                    end
-                                    if score > bestScore then
-                                        bestScore = score
-                                        bestModel = d
-                                    end
-                                end
-                            end
-                        end
-
-                        srcModel = bestModel
-                        if not srcModel and spawnPart then
-                            srcPart = spawnPart
-                        end
-                    end
-                end
-            end
-        end
-
-        if (not srcModel) and (not forceLiveModelOnly) and petNameNorm ~= "" then
-            local plots = Workspace:FindFirstChild("Plots")
-            if plots then
-                local bestModel, bestScore = nil, -math.huge
-                for _, plot in ipairs(plots:GetChildren()) do
-                    for _, d in ipairs(plot:GetDescendants()) do
-                        if d:IsA("Model") and d ~= plot and d.Name ~= "Base" then
-                            local pp = d.PrimaryPart or d:FindFirstChildWhichIsA("BasePart")
-                            if pp then
-                                local nameL = d.Name:lower()
-                                if nameL:find("podium", 1, true) or nameL:find("base", 1, true) or nameL:find("plotsign", 1, true) then
-                                    continue
-                                end
-                                local score = 0
-                                if nameL == petNameNorm then
-                                    score = score + 320
-                                elseif nameL:find(petNameNorm, 1, true) or petNameNorm:find(nameL, 1, true) then
-                                    score = score + 220
-                                end
-                                if slotNorm ~= "" and nameL:find(slotNorm, 1, true) then
-                                    score = score + 60
-                                end
-                                if score > bestScore then
-                                    bestScore = score
-                                    bestModel = d
-                                end
-                            end
-                        end
-                    end
-                end
-                if bestModel then
-                    srcModel = bestModel
-                end
-            end
-        end
-
-        -- srcModel é apenas o driver de animação (não substitui previewObj)
-        -- Se não tiver templateModel (RS), usa live model como fallback visual
-        if not previewObj then
-            if srcModel and srcModel.Archivable then
-                local ok, clonedLive = pcall(function() return srcModel:Clone() end)
-                if ok and clonedLive then
-                    previewObj = clonedLive
-                    previewFromCache = false
-                    previewFromLiveModel = true
-                end
-            elseif srcPart and srcPart.Archivable then
-                local ok, clonedPart = pcall(function() return srcPart:Clone() end)
-                if ok and clonedPart then
-                    previewObj = clonedPart
-                    previewFromCache = false
-                end
-            end
-        end
-
-        if not previewObj then return holder end
-
-        failLbl.Visible = false
-
-        -- WorldModel é necessário para AnimationController + Bone funcionarem no ViewportFrame
-        local worldModel = Instance.new("WorldModel", vp)
-        previewObj.Parent = worldModel
-
-        for _, d in ipairs(previewObj:GetDescendants()) do
-            if d:IsA("BasePart") then
-                d.Massless = true
-                d.CanCollide = false
-                -- Para RS template: partes desancoradas para o WorldModel mover via animação
-                -- Para live model como visual: ancoramos e copiamos CFrame
-                if previewFromLiveModel then
-                    d.Anchored = true
-                else
-                    d.Anchored = false
-                end
-            end
-        end
-
-        -- Posicionar o modelo no origin do WorldModel para a câmera enquadrar corretamente
-        if not previewFromLiveModel and previewObj:IsA("Model") then
-            pcall(function()
-                local cf, sz = previewObj:GetBoundingBox()
-                if cf then
-                    local offset = cf.Position
-                    previewObj:PivotTo(CFrame.new(-offset.X, -offset.Y, -offset.Z) * cf.Rotation)
-                end
-            end)
-        end
 
         -- Detectar tipo de rig
         local hasAnimController = previewObj:IsA("Model") and previewObj:FindFirstChildOfClass("AnimationController") ~= nil
@@ -2601,7 +2052,7 @@ task.spawn(function()
     end)
     
     SharedState.UpdateAutoStealUI = function()
-        autoStealEnabled = true
+        autoStealEnabled = false
         updateUI(true, get_all_pets())
     end
     
@@ -2640,15 +2091,15 @@ task.spawn(function()
     -- Simula o clique no botão nativo do auto steal — forma mais segura de mudar o modo
     _G.setStealMode = function(mode)
         if mode == "highest" then
-            stealHighestEnabled  = true
+            stealHighestEnabled  = galse
             stealNearestEnabled  = false
             stealPriorityEnabled = false
         elseif mode == "nearest" then
-            stealNearestEnabled  = true
+            stealNearestEnabled  = false
             stealHighestEnabled  = false
             stealPriorityEnabled = false
         elseif mode == "priority" then
-            stealPriorityEnabled = true
+            stealPriorityEnabled = false
             stealHighestEnabled  = false
             stealNearestEnabled  = false
         end
