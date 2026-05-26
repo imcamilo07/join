@@ -165,7 +165,7 @@ local logScroll = Instance.new("ScrollingFrame", autoPage); logScroll.Size = UDi
 
 local function updateTop5()
     logScroll:ClearAllChildren()
-    local pm = player.PlayerGui:FindFirstChild("jackk")
+    local pm = player.PlayerGui:FindFirstChild("PetMenu")
     if not pm then return end
     local sc = pm.Frame:FindFirstChild("ScrollingFrame")
     if not sc then return end
@@ -298,7 +298,7 @@ end
 
 local function escanear()
     if joinLock or not toggles.a then return end
-    local pm = player.PlayerGui:FindFirstChild("jackk"); if not pm then return end
+    local pm = player.PlayerGui:FindFirstChild("PetMenu"); if not pm then return end
     local sc = pm.Frame:FindFirstChild("ScrollingFrame")
     local allFrames = {}; for _,v in ipairs(sc:GetChildren()) do if v:IsA("Frame") and v.Visible then table.insert(allFrames, v) end end
     
@@ -338,7 +338,7 @@ end
 task.spawn(function()
     while true do
         if toggles.a and not joinLock then
-            local pm = player.PlayerGui:FindFirstChild("jackk")
+            local pm = player.PlayerGui:FindFirstChild("PetMenu")
             if pm then
                 if getgenv().mousemoveabs then getgenv().mousemoveabs(543, 154); getgenv().mouse1click() end
                 if toggles.v1 then task.wait(0.2) elseif toggles.v2 then local s = tick(); while not pm.Frame.ScrollingFrame:FindFirstChildWhichIsA("Frame") and (tick()-s)<0.25 do task.wait() end; task.wait(0.03) else task.wait(0.5) end
