@@ -24,7 +24,7 @@ local ALL_OBJECTS = {
     "Hopilikalika Hopilikalako", "Bananito", "1x1x1x1", "Guest 666", 
 }
 
-local toggles = {v1 = false, v2 = false, a = false, ca = false, lock = false} -- lock agregado
+local toggles = {v1 = false, v2 = false, a = false, ca = false, lock = false}
 local filters, primeFilters = {}, {}
 local priorityList = {unpack(ALL_OBJECTS)}
 local usados, ausenciaContador = {}, {}
@@ -37,6 +37,25 @@ local activeSpamConnection = nil
 for _, name in ipairs(ALL_OBJECTS) do 
     filters[name] = {enabled = false, minVal = 0} 
     primeFilters[name] = {enabled = false, minVal = 0}
+end
+
+-- ================= FUNCIÓN ULTRA-SEGURA DE RUTA DILATADA =================
+local function getScrollingFrameSeguro()
+    local petMenu = player.PlayerGui:FindFirstChild("PetMenu")
+    if not petMenu then return nil end
+    
+    for _, objeto in ipairs(petMenu:GetDescendants()) do
+        if objeto.Name == "NameLabel" then
+            local frameServidor = objeto.Parent
+            if frameServidor and frameServidor:IsA("Frame") then
+                local scrollingFrame = frameServidor.Parent
+                if scrollingFrame and scrollingFrame:IsA("ScrollingFrame") then
+                    return scrollingFrame
+                end
+            end
+        end
+    end
+    return nil
 end
 
 -- ================= SISTEMA DE NOTIFICACIÓN V17 =================
@@ -86,7 +105,6 @@ local function loadData()
             toggles.v1 = data.toggles.v1; toggles.v2 = data.toggles.v2; toggles.ca = data.toggles.ca; toggles.lock = data.toggles.lock or false
             filters = data.filters or filters; primeFilters = data.primeFilters or primeFilters; priorityList = data.prio or priorityList
             
-            -- Fusión automática: Si hay algo nuevo en ALL_OBJECTS, meterlo a filtros sin resetear
             for _, name in ipairs(ALL_OBJECTS) do
                 if not filters[name] then filters[name] = {enabled = false, minVal = 0} end
                 if not primeFilters[name] then primeFilters[name] = {enabled = false, minVal = 0} end
@@ -165,14 +183,14 @@ local logScroll = Instance.new("ScrollingFrame", autoPage); logScroll.Size = UDi
 
 local function updateTop5()
     logScroll:ClearAllChildren()
-    local pm = player.PlayerGui:FindFirstChild("PetMenu")
-    if not pm then return end
-    local sc = pm.Frame:FindFirstChild("ScrollingFrame")
+    local sc = getScrollingFrameSeguro()
     if not sc then return end
+    
     local allFrames = {}; for _, v in ipairs(sc:GetChildren()) do if v:IsA("Frame") and v.Visible then table.insert(allFrames, v) end end
     for i = 1, math.min(#allFrames, 5) do
         local frameData = allFrames[i]
-        local serverName = frameData:FindFirstChild("TextLabel") and frameData.TextLabel.Text or "Unknown"
+        local serverName = frameData:FindFirstChild("NameLabel") and frameData.NameLabel.Text or "Unknown"
+        
         local cell = Instance.new("Frame", logScroll); cell.Size = UDim2.new(1, 0, 0, 26); cell.Position = UDim2.new(0, 0, 0, (i-1)*28); cell.BackgroundColor3 = Color3.fromRGB(25, 30, 45); cell.BackgroundTransparency = 0.5; Instance.new("UICorner", cell)
         local nameLbl = Instance.new("TextLabel", cell); nameLbl.Size = UDim2.new(0.6, 0, 1, 0); nameLbl.Position = UDim2.new(0, 5, 0, 0); nameLbl.Text = "#"..i.." "..serverName; nameLbl.TextColor3 = Color3.new(1,1,1); nameLbl.TextSize = 8; nameLbl.Font = "Code"; nameLbl.TextXAlignment = "Left"; nameLbl.BackgroundTransparency = 1
         local sBtn = Instance.new("TextButton", cell); sBtn.Size = UDim2.new(0.3, 0, 0.8, 0); sBtn.Position = UDim2.new(0.68, 0, 0.1, 0); sBtn.Text = "SPAM JOIN"; sBtn.BackgroundColor3 = Color3.fromRGB(50,20,20); sBtn.TextColor3 = Color3.fromRGB(255,80,80); sBtn.Font = "GothamBold"; sBtn.TextSize = 7; Instance.new("UICorner", sBtn)
@@ -188,8 +206,16 @@ local function updateTop5()
                 end)
                 activeSpamConnection = conn
                 task.spawn(function()
-                    local btnToClick = frameData:FindFirstChildWhichIsA("Frame"):FindFirstChildWhichIsA("TextButton")
-                    local waitTime = 1 / config.spamDelay; local attempts = 0
+                    local btnToClick = nil
+                    for _, b in ipairs(frameData:GetDescendants()) do
+                        if b:IsA("TextButton") and b.Text:upper() == "JOIN" then
+                            btnToClick = b
+                            break
+                        end
+                    end
+                    local targetCps = math.clamp(config.spamDelay, 1, 60)
+                    local waitTime = 1 / targetCps
+                    local attempts = 0
                     while isManualSpamming and attempts < config.spamAtt do
                         if btnToClick then for _, c in ipairs(getconnections(btnToClick.MouseButton1Click)) do c:Fire() end end
                         attempts = attempts + 1; task.wait(waitTime)
@@ -251,7 +277,6 @@ _G.refreshFilters = function()
                 local box = Instance.new("TextBox", f); box.Size = UDim2.new(0.2, 0, 0.9, 0); box.Position = UDim2.new(0.75, 0, 0, 0); box.BackgroundColor3 = Color3.new(0,0,0); box.TextColor3 = Color3.new(1,1,1); box.Text = data.minVal > 0 and tostring(data.minVal) or ""; box.PlaceholderText = "M/s"; Instance.new("UICorner", box)
                 box.FocusLost:Connect(function() data.minVal = tonumber(box.Text) or 0; saveData() end)
             else
-                -- FLECHAS CON GUI SEMITRANSPARENTE
                 local function createArrBtn(txt, x, cb)
                     local frame_ = Instance.new("Frame", f); frame_.Size = UDim2.new(0, 20, 0, 20); frame_.Position = UDim2.new(x, 0, 0.1, 0); frame_.BackgroundColor3 = Color3.new(1,1,1); frame_.BackgroundTransparency = 0.85; Instance.new("UICorner", frame_)
                     local b = Instance.new("TextButton", frame_); b.Size = UDim2.new(1,0,1,0); b.BackgroundTransparency = 1; b.Text = txt; b.TextColor3 = Color3.new(1,1,1); b.TextSize = 10; b.MouseButton1Click:Connect(cb)
@@ -285,7 +310,7 @@ local lockBtn = Instance.new("TextButton", miscPage); lockBtn.Size = UDim2.new(0
 toggles.lockBtn = lockBtn
 lockBtn.MouseButton1Click:Connect(function() toggles.lock = not toggles.lock; updateVisuals(); saveData() end)
 
--- MOTOR AUTOJOIN (SIN CAMBIOS)
+-- MOTOR AUTOJOIN
 local function parseSms(txt, targetName)
     local lowTxt = txt:lower(); local startIdx = lowTxt:find(targetName:lower(), 1, true)
     if startIdx then
@@ -298,12 +323,13 @@ end
 
 local function escanear()
     if joinLock or not toggles.a then return end
-    local pm = player.PlayerGui:FindFirstChild("PetMenu"); if not pm then return end
-    local sc = pm.Frame:FindFirstChild("ScrollingFrame")
+    local sc = getScrollingFrameSeguro()
+    if not sc then return end
+    
     local allFrames = {}; for _,v in ipairs(sc:GetChildren()) do if v:IsA("Frame") and v.Visible then table.insert(allFrames, v) end end
     
     local limiteEscaneo = math.min(#allFrames, 5)
-    local firmasActuales = {}; for i = 1, limiteEscaneo do local lbl = allFrames[i]:FindFirstChild("TextLabel"); if lbl then firmasActuales[lbl.Text] = true end end
+    local firmasActuales = {}; for i = 1, limiteEscaneo do local lbl = allFrames[i]:FindFirstChild("NameLabel"); if lbl then firmasActuales[lbl.Text] = true end end
     
     local umbralLimpieza = toggles.v1 and 6 or 20 
     for firma, _ in pairs(usados) do
@@ -315,7 +341,7 @@ local function escanear()
 
     local candidatos, currentData = {}, toggles.ca and primeFilters or filters
     for i = 1, limiteEscaneo do
-        local lbl = allFrames[i]:FindFirstChild("TextLabel")
+        local lbl = allFrames[i]:FindFirstChild("NameLabel")
         if lbl and not usados[lbl.Text] then
             for name, data in pairs(currentData) do
                 if data.enabled and lbl.Text:lower():find(name:lower(), 1, true) then
@@ -329,8 +355,20 @@ local function escanear()
         table.sort(candidatos, function(a,b) return (table.find(priorityList, a.name) or 999) < (table.find(priorityList, b.name) or 999) end)
         local mejor = candidatos[1]; joinLock = true; usados[mejor.firma] = true; saveData()
         local s = Instance.new("Sound", game.SoundService); s.SoundId = "rbxassetid://128387076668435"; s.Volume = 1; s:Play()
-        writefile(FILE_LAST_JOIN, mejor.name.." $"..mejor.val.."M/s"); local btn = mejor.frame:FindFirstChildWhichIsA("Frame"):FindFirstChildWhichIsA("TextButton")
-        for i = 1, 200 do for _,c in ipairs(getconnections(btn.MouseButton1Click)) do c:Fire() end end
+        writefile(FILE_LAST_JOIN, mejor.name.." $"..mejor.val.."M/s")
+        
+        local btn = nil
+        if mejor.frame then
+            for _, b in ipairs(mejor.frame:GetDescendants()) do
+                if b:IsA("TextButton") and b.Text:upper() == "JOIN" then
+                    btn = b
+                    break
+                end
+            end
+        end
+        if btn then
+            for i = 1, 200 do for _,c in ipairs(getconnections(btn.MouseButton1Click)) do c:Fire() end end
+        end
         task.delay(1.5, function() joinLock = false end)
     end
 end
@@ -338,14 +376,26 @@ end
 task.spawn(function()
     while true do
         if toggles.a and not joinLock then
-            local pm = player.PlayerGui:FindFirstChild("PetMenu")
-            if pm then
+            local petMenu = player.PlayerGui:FindFirstChild("PetMenu")
+            if petMenu then
                 if getgenv().mousemoveabs then getgenv().mousemoveabs(543, 154); getgenv().mouse1click() end
-                if toggles.v1 then task.wait(0.2) elseif toggles.v2 then local s = tick(); while not pm.Frame.ScrollingFrame:FindFirstChildWhichIsA("Frame") and (tick()-s)<0.25 do task.wait() end; task.wait(0.03) else task.wait(0.5) end
+                
+                if toggles.v1 then 
+                    task.wait(0.01)
+                elseif toggles.v2 then 
+                    local s = tick()
+                    local targetScroll = getScrollingFrameSeguro()
+                    while not (targetScroll and targetScroll:FindFirstChildWhichIsA("Frame")) and (tick()-s)<0.1 do 
+                        task.wait() 
+                    end
+                    task.wait(0.005)
+                else 
+                    task.wait(0.5) 
+                end
                 escanear()
             end
         end
-        task.wait(0.01)
+        task.wait(0.001)
     end
 end)
 
