@@ -1,5 +1,5 @@
 -- ==========================================
--- SUPER ADMIN SPAMMER: ULTRA OPTIMIZED (V3.4)
+-- SUPER ADMIN SPAMMER: ULTRA OPTIMIZED (V3.1)
 -- ==========================================
 
 local Players = game:GetService("Players")
@@ -227,9 +227,6 @@ local function updateSize()
     end
 end
 
--- VARIABLE GLOBAL DE CONTROL EXTRA
-local duenoCercanoActual = nil
-
 -- 5. LÓGICA DE TARJETAS (FUSIONADA CON DETECCIÓN VISUAL)
 local function addPlayer(p)
     if not p or p == lp then return end
@@ -290,8 +287,21 @@ local function addPlayer(p)
         uName.Text = "@" .. p.Name .. (mineral and (" | " .. mineral) or "")
         card.LayoutOrder = -(Prioridad[mineral] or 0)
 
-        -- Lógica de Base Dinámica por Distancia Mínima al PlotSign
-        local enBase = (duenoCercanoActual == p)
+        -- Lógica de Base (Detección de dueño de terreno)
+        local enBase = false
+        local lpChar = lp.Character
+        if lpChar and lpChar:FindFirstChild("HumanoidRootPart") then
+            for folder, owner in pairs(mapaDeDuenos) do
+                if owner == p then
+                    local plotFolder = Plots:FindFirstChild(folder)
+                    if plotFolder then
+                        local pv, ps = plotFolder:GetBoundingBox()
+                        local localPos = pv:PointToObjectSpace(lpChar.HumanoidRootPart.Position)
+                        if math.abs(localPos.X) <= ps.X/2 and math.abs(localPos.Z) <= ps.Z/2 then enBase = true break end
+                    end
+                end
+            end
+        end
 
         -- Aplicación de colores según estado
         if enBase then
@@ -319,10 +329,7 @@ local function addPlayer(p)
     end)
 
     allBtn.MouseButton1Click:Connect(function()
-        for _, ef in ipairs(EFECTOS_ALL) do 
-            cooldownEfectos[ef] = tick() -- Bloquea los cooldowns individuales inmediatamente
-            disparar(p.Name, ef) 
-        end
+        for _, ef in ipairs(EFECTOS_ALL) do disparar(p.Name, ef) end
     end)
 end
 
@@ -362,34 +369,6 @@ end)
 task.spawn(function()
     while true do
         task.wait(0.25)
-        
-        -- NUEVO: Hilo de cálculo de distancia mínima al PlotSign de la base más cercana
-        local lpChar = lp.Character
-        local lrPart = lpChar and lpChar:FindFirstChild("HumanoidRootPart")
-        if lrPart then
-            local menorDistancia = math.huge
-            local candidatoDuenio = nil
-            
-            for folder, owner in pairs(mapaDeDuenos) do
-                local plotFolder = Plots:FindFirstChild(folder)
-                if plotFolder then
-                    local sign = plotFolder:FindFirstChild("PlotSign", true)
-                    local basePart = sign and (sign:FindFirstChild("PrimaryPart") or sign:FindFirstChildWhichIsA("BasePart"))
-                    if basePart then
-                        local dist = (lrPart.Position - basePart.Position).Magnitude
-                        -- Si estás a una distancia razonable (máximo 70 studs del cartel) y es el más cercano de todos
-                        if dist < menorDistancia and dist <= 70 then
-                            menorDistancia = dist
-                            candidatoDuenio = owner
-                        end
-                    end
-                end
-            end
-            duenoCercanoActual = candidatoDuenio
-        else
-            duenoCercanoActual = nil
-        end
-
         if listFrame.Visible then
             for card, upFunc in pairs(updateFunctions) do upFunc() end
         end
@@ -433,4 +412,4 @@ end)
 Players.PlayerAdded:Connect(function() task.wait(1) if listFrame.Visible then refresh() end end)
 Players.PlayerRemoving:Connect(function() if listFrame.Visible then refresh() end end)
 
-print("✅ ULTRA-OPTIMIZED V3.4: Visual Status & Distance Base Detection Ready.")
+print("✅ ULTRA-OPTIMIZED V3.1: Visual Status & Instant Shot Ready.")
