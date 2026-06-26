@@ -412,7 +412,7 @@ RunService.RenderStepped:Connect(function()
         if spawnPart then
             local distancia = (miPos - spawnPart.Position).Magnitude
             -- Si estás a menos de 35 studs del Spawn, se activa que estás dentro
-            if distancia < menorDistancia and distancia <= 35 then
+            if distancia < menorDistancia and distancia <= 70 then
                 menorDistancia = distancia
                 baseMasCercana = plotFolder.Name
             end
