@@ -1,6 +1,6 @@
--- ==========================================
--- SUPER ADMIN SPAMMER: ULTRA OPTIMIZED (V3.1)
--- ==========================================
+-- =================================================================
+-- SUPER ADMIN SPAMMER: ULTRA OPTIMIZED (V3.2 - SPWN MOTOR INTEGRATED)
+-- =================================================================
 
 local Players = game:GetService("Players")
 local lp = Players.LocalPlayer
@@ -76,7 +76,7 @@ local Prioridad = {
     ["Tang Tang Keletang"] = 79, ["Ketchuru and Musturu"] = 78
 }
 
--- Círculo Visual
+-- Círculo Visual (Rango de Proximidad)
 local visualCircle = Instance.new("Part")
 visualCircle.Shape = Enum.PartType.Cylinder
 visualCircle.Transparency = 1
@@ -86,24 +86,60 @@ visualCircle.CanCollide = false
 visualCircle.Anchored = true
 visualCircle.Parent = workspace
 
--- 2. ESCÁNER DE PLOTS
-local mapaDeDuenos = {}
-local function escanearPlots()
-    mapaDeDuenos = {}
-    for _, carpeta in ipairs(Plots:GetChildren()) do
-        local sign = carpeta:FindFirstChild("PlotSign", true)
-        local label = sign and sign:FindFirstChild("TextLabel", true)
-        if label then
-            local text = string.lower(label.Text)
-            for _, p in ipairs(Players:GetPlayers()) do
-                if string.find(text, string.lower(p.Name)) or string.find(text, string.lower(p.DisplayName)) then
-                    mapaDeDuenos[carpeta.Name] = p
-                    break
-                end
+
+-- =================================================================
+-- NUEVO MOTOR INTEGRADO DEL EXPERIMENTO V9.0 (SIN ADORNOS VISUALES)
+-- =================================================================
+local mapaAsignaciones = {}       -- Indexación fija: [NombreDelPlot] = ObjetoJugador
+local baseActualDondeEstoy = nil  -- Guarda el nombre del Plot más cercano en el bucle
+
+-- 1. Ruta exacta del cartel según tu estructura
+local function obtenerTextoCartel(plotFolder)
+    local plotSign = plotFolder:FindFirstChild("PlotSign")
+    local surfaceGui = plotSign and plotSign:FindFirstChild("SurfaceGui")
+    local frame = surfaceGui and surfaceGui:FindFirstChild("Frame")
+    local textLabel = frame and frame:FindFirstChild("TextLabel")
+    return textLabel and textLabel.Text or ""
+end
+
+-- 2. Lógica de escaneo idéntica a tu experimento
+local function escanearPlotParaJugador(jugador)
+    if jugador == lp then return false end
+    
+    for _, jMapeado in pairs(mapaAsignaciones) do
+        if jMapeado == jugador then return true end
+    end
+    
+    for _, plotFolder in ipairs(Plots:GetChildren()) do
+        local plotName = plotFolder.Name
+        if not mapaAsignaciones[plotName] then
+            local texto = string.lower(obtenerTextoCartel(plotFolder))
+            if texto ~= "" and (string.find(texto, string.lower(jugador.Name)) or string.find(texto, string.lower(jugador.DisplayName))) then
+                mapaAsignaciones[plotName] = jugador
+                print("📌 [SISTEMA] ¡Match Encontrado! El plot " .. plotName .. " le pertenece a " .. jugador.Name)
+                return true
             end
         end
     end
+    return false
 end
+
+-- 3. Actualización reactiva limpia
+local function actualizarListaAsignaciones()
+    local listaJugadoresOnline = Players:GetPlayers()
+    
+    for plotName, jugadorGuardado in pairs(mapaAsignaciones) do
+        if not table.find(listaJugadoresOnline, jugadorGuardado) then
+            mapaAsignaciones[plotName] = nil
+        end
+    end
+    
+    for _, jugador in ipairs(listaJugadoresOnline) do
+        escanearPlotParaJugador(jugador)
+    end
+end
+-- =================================================================
+
 
 -- 3. FUNCIÓN DE DISPARO (INSTANTÁNEA)
 local function disparar(targetName, efecto)
@@ -227,7 +263,7 @@ local function updateSize()
     end
 end
 
--- 5. LÓGICA DE TARJETAS (FUSIONADA CON DETECCIÓN VISUAL)
+-- 5. LÓGICA DE TARJETAS (CÁLCULO MEDIANTE DISTANCIAS AL SPAWN DEL EXPERIMENTO)
 local function addPlayer(p)
     if not p or p == lp then return end
     local card = Instance.new("Frame", listFrame)
@@ -253,7 +289,7 @@ local function addPlayer(p)
 
     local ownerLabel = Instance.new("TextLabel", infoBtn)
     ownerLabel.Text = "BASE OWNER"
-    ownerLabel.TextColor3 = Color3.new(1, 0, 0)
+    ownerLabel.TextColor3 = Color3.fromRGB(255, 0, 50)
     ownerLabel.Font = Enum.Font.GothamBold
     ownerLabel.TextSize = 7
     ownerLabel.Position = UDim2.new(0, 5, 0, 3)
@@ -287,23 +323,13 @@ local function addPlayer(p)
         uName.Text = "@" .. p.Name .. (mineral and (" | " .. mineral) or "")
         card.LayoutOrder = -(Prioridad[mineral] or 0)
 
-        -- Lógica de Base (Detección de dueño de terreno)
+        -- EVALUACIÓN ESTRICTA: ¿La base donde estoy parado le pertenece a este jugador?
         local enBase = false
-        local lpChar = lp.Character
-        if lpChar and lpChar:FindFirstChild("HumanoidRootPart") then
-            for folder, owner in pairs(mapaDeDuenos) do
-                if owner == p then
-                    local plotFolder = Plots:FindFirstChild(folder)
-                    if plotFolder then
-                        local pv, ps = plotFolder:GetBoundingBox()
-                        local localPos = pv:PointToObjectSpace(lpChar.HumanoidRootPart.Position)
-                        if math.abs(localPos.X) <= ps.X/2 and math.abs(localPos.Z) <= ps.Z/2 then enBase = true break end
-                    end
-                end
-            end
+        if baseActualDondeEstoy and mapaAsignaciones[baseActualDondeEstoy] == p then
+            enBase = true
         end
 
-        -- Aplicación de colores según estado
+        -- Cambios de estado visuales en la tarjeta del Admin Spammer
         if enBase then
             card.BackgroundColor3 = Color3.fromRGB(255, 255, 180) -- Amarillo Base
             dName.TextColor3 = Color3.new(0,0,0)
@@ -336,7 +362,7 @@ end
 local function refresh()
     updateFunctions = {}
     for _, c in ipairs(listFrame:GetChildren()) do if c:IsA("Frame") then c:Destroy() end end
-    escanearPlots()
+    actualizarListaAsignaciones() -- Escanea usando la lógica exacta del experimento
     for _, p in ipairs(Players:GetPlayers()) do addPlayer(p) end
     listFrame.CanvasSize = UDim2.new(0,0,0, layout.AbsoluteContentSize.Y)
     updateSize()
@@ -355,15 +381,45 @@ titleBtn.MouseButton1Click:Connect(function()
     updateSize()
 end)
 
+-- 6. BUCLE DE PROXIMIDAD DE TU PERSONAJE A LOS SPAWNS (Mismo cálculo matemático del experimento)
 RunService.RenderStepped:Connect(function()
-    if not proximityEnabled and not listFrame.Visible then visualCircle.Transparency = 1 return end
+    if not proximityEnabled and not listFrame.Visible then 
+        visualCircle.Transparency = 1 
+    else
+        local char = lp.Character
+        local hrp = char and char:FindFirstChild("HumanoidRootPart")
+        if hrp then
+            visualCircle.Size = Vector3.new(0.1, rangeValue * 2, rangeValue * 2)
+            visualCircle.CFrame = (hrp.CFrame * CFrame.new(0, -3, 0)) * CFrame.Angles(0, 0, math.rad(90))
+            visualCircle.Transparency = proximityEnabled and 0.8 or 1
+        end
+    end
+
+    -- BUCLE DEL EXPERIMENTO V9.0 (Calcula cuál es el Spawn más cercano a ti en studs)
     local char = lp.Character
     local hrp = char and char:FindFirstChild("HumanoidRootPart")
-    if hrp then
-        visualCircle.Size = Vector3.new(0.1, rangeValue * 2, rangeValue * 2)
-        visualCircle.CFrame = (hrp.CFrame * CFrame.new(0, -3, 0)) * CFrame.Angles(0, 0, math.rad(90))
-        visualCircle.Transparency = proximityEnabled and 0.8 or 1
+    if not hrp then 
+        baseActualDondeEstoy = nil 
+        return 
     end
+    
+    local miPos = hrp.Position
+    local menorDistancia = math.huge
+    local baseMasCercana = nil
+    
+    for _, plotFolder in ipairs(Plots:GetChildren()) do
+        local spawnPart = plotFolder:FindFirstChild("Spawn")
+        if spawnPart then
+            local distancia = (miPos - spawnPart.Position).Magnitude
+            -- Si estás a menos de 35 studs del Spawn, se activa que estás dentro
+            if distancia < menorDistancia and distancia <= 35 then
+                menorDistancia = distancia
+                baseMasCercana = plotFolder.Name
+            end
+        end
+    end
+    
+    baseActualDondeEstoy = baseMasCercana -- Actualiza la variable de control global
 end)
 
 task.spawn(function()
@@ -409,7 +465,24 @@ task.spawn(function()
     end
 end)
 
-Players.PlayerAdded:Connect(function() task.wait(1) if listFrame.Visible then refresh() end end)
-Players.PlayerRemoving:Connect(function() if listFrame.Visible then refresh() end end)
+-- SISTEMA DE CARGA INDEXADA DIRECTA PARA LLAMADAS EN VIVO
+actualizarListaAsignaciones()
 
-print("✅ ULTRA-OPTIMIZED V3.1: Visual Status & Instant Shot Ready.")
+Players.PlayerAdded:Connect(function(player)
+    task.spawn(function()
+        for intento = 1, 15 do
+            task.wait(2)
+            if not player or not player.Parent then break end
+            local asignado = escanearPlotParaJugador(player)
+            if asignado then break end
+        end
+    end)
+    if listFrame.Visible then refresh() end 
+end)
+
+Players.PlayerRemoving:Connect(function(player) 
+    actualizarListaAsignaciones()
+    if listFrame.Visible then refresh() end 
+end)
+
+print("✅ ULTRA-OPTIMIZED V3.2: Fixed Motor Integrado.")
